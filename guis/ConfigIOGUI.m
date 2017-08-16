@@ -1,10 +1,9 @@
-classdef ConfigGUI < handle
+classdef ConfigIOGUI < handle
    
-    properties(Access = private, Constant)
+    properties (Access = private, Constant)
         % Sizing parameters
         FIG_WIDTH_FACTOR = 5;       % Times largest button on bottom row
         FIG_HEIGHT_FACTOR = 17;     % Times height of buttons at font size
-        
     end
     
     properties
@@ -34,7 +33,7 @@ classdef ConfigGUI < handle
     end
     
     methods
-        function obj = ConfigGUI()
+        function obj = ConfigIOGUI()
             % Create the figure (and hide it)
             obj.hFig = figure('Visible', 'off');
             GUISettings.applyFigureStyle(obj.hFig);
@@ -71,11 +70,6 @@ classdef ConfigGUI < handle
             obj.hRefStatus.HorizontalAlignment = 'right';
             obj.hRefStatus.String = '';
             
-            obj.hRefLocation.Callback = {@obj.callbackEvaluateDataset, ...
-                obj.hRefStatus};
-            obj.hRefPicker.Callback = {@obj.callbackChooseDataset, ...
-                obj.hRefLocation, obj.hRefStatus};
-
             % Query dataset elements (title, path edit, file select
             % button, selection status)
             obj.hQuery = uipanel();
@@ -99,11 +93,6 @@ classdef ConfigGUI < handle
             obj.hQueryStatus.HorizontalAlignment = 'right';
             obj.hQueryStatus.String = '';
             
-            obj.hQueryLocation.Callback = {@obj.callbackEvaluateDataset, ...
-                obj.hQueryStatus};
-            obj.hQueryPicker.Callback = {@obj.callbackChooseDataset, ...
-                obj.hQueryLocation, obj.hQueryStatus};
-
             % Results elements (title, path edit, file select button, 
             % selection status)
             obj.hResults = uipanel();
@@ -127,11 +116,6 @@ classdef ConfigGUI < handle
             obj.hResultsStatus.HorizontalAlignment = 'right';
             obj.hResultsStatus.String = '';
             
-            obj.hResultsLocation.Callback = {@obj.callbackEvaluateResults, ...
-                obj.hResultsStatus};
-            obj.hResultsPicker.Callback = {@obj.callbackChooseResults, ...
-                obj.hResultsLocation, obj.hResultsStatus};
-
             % SeqSLAM settings button
             obj.hSettingsSeqSLAM = uicontrol('Style', 'pushbutton');
             GUISettings.applyUIControlStyle(obj.hSettingsSeqSLAM);
@@ -147,6 +131,21 @@ classdef ConfigGUI < handle
             GUISettings.applyUIControlStyle(obj.hStart);
             obj.hStart.String = 'Start';
             
+            % Callbacks (must be last, otherwise empty objects passed...)
+            obj.hRefLocation.Callback = {@obj.callbackEvaluateDataset, ...
+                obj.hRefStatus};
+            obj.hRefPicker.Callback = {@obj.callbackChooseDataset, ...
+                obj.hRefLocation, obj.hRefStatus};
+            obj.hQueryLocation.Callback = {@obj.callbackEvaluateDataset, ...
+                obj.hQueryStatus};
+            obj.hQueryPicker.Callback = {@obj.callbackChooseDataset, ...
+                obj.hQueryLocation, obj.hQueryStatus};
+            obj.hResultsLocation.Callback = {@obj.callbackEvaluateResults, ...
+                obj.hResultsStatus};
+            obj.hResultsPicker.Callback = {@obj.callbackChooseResults, ...
+                obj.hResultsLocation, obj.hResultsStatus};
+            obj.hSettingsSeqSLAM.Callback = {@obj.callbackSeqSLAMSettings};
+
             % Perform sizing of the GUI
             obj.sizeGUI();
             
@@ -308,7 +307,7 @@ classdef ConfigGUI < handle
                 % Inform that the path does not point to an existing directory
                 status.String = 'Error: Selected directory does not exist!';
                 status.ForegroundColor = GUISettings.COL_ERROR;
-            elseif ConfigGUI.containsResults(src.String)
+            elseif ConfigIOGUI.containsResults(src.String)
                 % Results directory selected with existing results
                 status.String = ['Success: selected directory contains ' ...
                     'previous results'];
@@ -320,6 +319,12 @@ classdef ConfigGUI < handle
                 status.ForegroundColor = GUISettings.COL_SUCCESS;
             end
 
+            obj.interactivity(true);
+        end
+
+        function callbackSeqSLAMSettings(obj, src, event)
+            obj.interactivity(false);
+            ConfigSeqSLAMGUI();
             obj.interactivity(true);
         end
 
@@ -361,8 +366,8 @@ classdef ConfigGUI < handle
             
             % Size and position the figure
             obj.hFig.Position = [0, 0, ...
-                maxWidth * ConfigGUI.FIG_WIDTH_FACTOR, ...
-                heightUnit * ConfigGUI.FIG_HEIGHT_FACTOR];
+                maxWidth * ConfigIOGUI.FIG_WIDTH_FACTOR, ...
+                heightUnit * ConfigIOGUI.FIG_HEIGHT_FACTOR];
             movegui(obj.hFig, 'center');
               
             % Now that the figure (space for placing UI elements is set),

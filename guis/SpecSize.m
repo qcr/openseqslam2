@@ -9,6 +9,7 @@ classdef SpecSize < uint16
         MATCH (2)
         PERCENT (3)
         ABSOLUTE (4)
+        WRAP (5)
     end
     
     methods (Static)
@@ -19,18 +20,18 @@ classdef SpecSize < uint16
                 @(x) x == SpecSize.WIDTH || x == SpecSize.HEIGHT);
             p.addRequired('method', ...
                 @(x) x == SpecSize.MATCH || x == SpecSize.PERCENT || ...
-                x == SpecSize.ABSOLUTE);
+                x == SpecSize.ABSOLUTE || x == SpecSize.WRAP);
             p.parse(handle, dim, method);
             
             if (method == SpecSize.MATCH)
                 % Expected arguments: handle, dim, method, handleref
                 % Optional arguments: padding
-                if (nargin < 4 || ~ishandle(varargin{1}))
+                if nargin < 4 || ~ishandle(varargin{1})
                     error('Invalid: Match needs a reference handle');
                 end
-                if (nargin > 4 && ~isnumeric(varargin{2}))
+                if nargin > 4 && ~isnumeric(varargin{2})
                     error('Invalid: Padding must be numeric');
-                elseif (nargin < 5)
+                elseif nargin < 5
                     padding = 0;
                 else
                     padding = varargin{2};
@@ -39,19 +40,19 @@ classdef SpecSize < uint16
             elseif (method == SpecSize.PERCENT)
                 % Expected arguments: handle, dim, method, handleref
                 % Optional arguments: percent, padding
-                if (nargin < 4 || ~ishandle(varargin{1}))
+                if nargin < 4 || ~ishandle(varargin{1})
                     error('Invalid: Percent needs a reference handle');
                 end
-                if (nargin > 4 && ~isnumeric(varargin{2}))
+                if nargin > 4 && ~isnumeric(varargin{2})
                     error('Invalid: Percent value must be numeric');
-                elseif (nargin < 5)
+                elseif nargin < 5
                     percent = 1.0;
                 else
                     percent = varargin{2};
                 end
-                if (nargin > 5 && ~isnumeric(varargin{3}))
+                if nargin > 5 && ~isnumeric(varargin{3})
                     error('Invalid: Padding must be numeric');
-                elseif (nargin < 6)
+                elseif nargin < 6
                     padding = 0;
                 else
                     padding = varargin{3};
@@ -60,10 +61,21 @@ classdef SpecSize < uint16
                     padding);
             elseif (method == SpecSize.ABSOLUTE)
                 % Expected arguments: handle, dim, method, value
-                if (nargin < 4 || ~isnumeric(varargin{1}))
+                if nargin < 4 || ~isnumeric(varargin{1})
                     error('Invalid: Absolute needs a numeric value');
                 end
                 SpecSize.sizeAbsolute(handle, dim, varargin{1});
+            elseif (method == SpecSize.WRAP)
+                % Expected arguments: handle, dim, method
+                % Optional arguments: padding
+                if nargin > 3 && ~isnumeric(varargin{1})
+                    error('Invalid: Padding must be numeric');
+                elseif nargin < 4
+                    padding = 0;
+                else
+                    padding = varargin{1};
+                end
+                SpecSize.sizeWrap(handle, dim, padding);
             end
         end
     end
@@ -86,6 +98,10 @@ classdef SpecSize < uint16
         
         function sizeAbsolute(handle, dim, value)
             handle.Position(3+dim) = value; 
+        end
+
+        function sizeWrap(handle, dim, padding)
+            handle.Position(3+dim) = handle.Extent(3+dim) + 2*padding;
         end
     end
 end
