@@ -1,7 +1,7 @@
-function dbg = SeqSLAMConfig()
-    % Open the GUI
-    %dbg = ConfigIOGUI();
-    dbg = ConfigSeqSLAMGUI();
+function [params, dbg] = SeqSLAMConfig()
+    % Open the GUI, waiting until it is finished
+    dbg = ConfigIOGUI();
     
-    % Wait until the GUI is finished
+    % Save the returned parameters
+    params = dbg.params;
 end

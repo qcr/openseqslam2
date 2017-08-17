@@ -62,7 +62,8 @@ classdef ConfigSeqSLAMGUI < handle
             % Create the figure (and hide it)
             obj.hFig = figure('Visible', 'off');
             GUISettings.applyFigureStyle(obj.hFig);
-            obj.hFig.Name = "SeqSLAM Settings";
+            obj.hFig.Name = 'SeqSLAM Settings';
+            obj.hFig.Resize = 'off';
 
             % Create the image processing panel
             obj.hImPr = uipanel();

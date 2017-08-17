@@ -5,7 +5,3 @@
 
 # Swap files
 *.swp*
-
-# Ignore dataset and result directories
-datasets/
-results/

@@ -65,14 +65,22 @@ function images = preprocessing(params)
     
     % for every image ....
     for i = params.dataset.imageIndices
-        filename = sprintf('%s/%s%05d%s%s', params.dataset.imagePath, ...
-            params.dataset.prefix, ...
-            i, ...
-            params.dataset.suffix, ...
-            params.dataset.extension);
-        
-        img = imread(filename);
-        
+        % Change how to get the image depending on if video or not
+        if isdir(params.dataset.imagePath)
+            filename = sprintf('%s/%s%05d%s%s', params.dataset.imagePath, ...
+                params.dataset.prefix, ...
+                i, ...
+                params.dataset.suffix, ...
+                params.dataset.extension);
+            
+            img = imread(filename);
+        else
+            % Read image from video
+            v = VideoReader(params.dataset.imagePath);
+            v.CurrentTime = floor(i / v.FrameRate);
+            img = v.readFrame();
+        end
+
         % convert to grayscale
         if params.DO_GRAYLEVEL
             img = rgb2gray(img);

@@ -30,6 +30,8 @@ classdef ConfigIOGUI < handle
         hSettingsSeqSLAM;
         hSettingsVisualiser;
         hStart;
+
+        params;
     end
     
     methods
@@ -37,7 +39,8 @@ classdef ConfigIOGUI < handle
             % Create the figure (and hide it)
             obj.hFig = figure('Visible', 'off');
             GUISettings.applyFigureStyle(obj.hFig);
-            obj.hFig.Name = "SeqSLAM Configuration";
+            obj.hFig.Name = 'SeqSLAM Configuration';
+            obj.hFig.Resize = 'off';
 
             % Buttons for exporting and importing parameters
             obj.hParamsImport = uicontrol('Style', 'pushbutton');
@@ -145,12 +148,16 @@ classdef ConfigIOGUI < handle
             obj.hResultsPicker.Callback = {@obj.callbackChooseResults, ...
                 obj.hResultsLocation, obj.hResultsStatus};
             obj.hSettingsSeqSLAM.Callback = {@obj.callbackSeqSLAMSettings};
+            obj.hStart.Callback= {@obj.callbackStart};
 
             % Perform sizing of the GUI
             obj.sizeGUI();
             
             % Finally, show the figure when we are done configuring
             obj.hFig.Visible = 'on';
+
+            % Wait for the figure to be closed (this is a BLOCKING figure!)
+            waitfor(obj.hFig);
         end
     end
     
@@ -326,6 +333,160 @@ classdef ConfigIOGUI < handle
             obj.interactivity(false);
             ConfigSeqSLAMGUI();
             obj.interactivity(true);
+        end
+
+        function callbackStart(obj, src, event)
+            % Verify that all of the paths are valid
+            if ~strncmpi(obj.hRefStatus.String, 'success', 7)
+                h = errordlg( ...
+                    'Please enter a valid reference dataset location', ...
+                    'Invalid reference dataset location', 'modal');
+                return;
+            end
+            if ~strncmpi(obj.hQueryStatus.String, 'success', 7)
+                h = errordlg( ...
+                    'Please enter a valid query dataset location', ...
+                    'Invalid query dataset location', 'modal');
+                return;
+            end
+            if ~strncmpi(obj.hResultsStatus.String, 'success', 7)
+                h = errordlg( ...
+                    'Please enter a valid location to store results', ...
+                    'Invalid results location', 'modal');
+                return;
+            end
+
+            % Extract all data from the UI, and store it in the object
+            % TODO NOT DIRTY HACK TO GET THINGS WORKING!!!
+            obj.hackDefaults();
+            obj.hackExtras();
+
+            obj.params.dataset(1).name = 'Query';
+            obj.params.dataset(1).imagePath = obj.hQueryLocation.String;
+            obj.params.dataset(2).name = 'Reference';
+            obj.params.dataset(2).imagePath = obj.hRefLocation.String;
+            obj.params.savePath = obj.hResultsLocation.String;
+            obj.params.dataset(1).savePath = obj.hResultsLocation.String;
+            obj.params.dataset(2).savePath = obj.hResultsLocation.String;
+
+            % Get image indices legitimately
+            % TODO remove hack
+            datasetFN = obj.hQueryLocation.String;
+            [p, n, e] = fileparts(datasetFN);
+            if isdir(datasetFN)
+                dsPath = fullfile([datasetFN filesep() filesep()]);
+                fs = dir([datasetFN filesep() '*.png']);
+                obj.params.dataset(1).imageIndices = ...
+                    1:obj.params.dataset(1).imageSkip:length(fs);
+            elseif any(ismember({VideoReader.getFileFormats().Extension}, ...
+                    e(2:end)))
+                v = VideoReader(datasetFN);
+                frames = floor(v.Duration*v.FrameRate);
+                obj.params.dataset(1).imageIndices = ...
+                    1:obj.params.dataset(1).imageSkip:frames;
+                obj.params.DO_RESIZE = 1;
+            end
+            datasetFN = obj.hRefLocation.String;
+            [p, n, e] = fileparts(datasetFN);
+            if isdir(datasetFN)
+                dsPath = fullfile([datasetFN filesep() filesep()]);
+                fs = dir([datasetFN filesep() '*.png']);
+                obj.params.dataset(2).imageIndices = ...
+                    1:obj.params.dataset(2).imageSkip:length(fs);
+            elseif any(ismember({VideoReader.getFileFormats().Extension}, ...
+                    e(2:end)))
+                v = VideoReader(datasetFN);
+                frames = floor(v.Duration*v.FrameRate);
+                obj.params.dataset(2).imageIndices = ...
+                    1:obj.params.dataset(2).imageSkip:frames;
+                obj.params.DO_RESIZE = 1;
+            end
+
+            % Close the figure
+            close(obj.hFig);
+        end
+        
+        function hackExtras(obj)
+            % Nordland spring dataset
+            ds.name = 'spring';
+            ds.imagePath = '../datasets/nordland/64x32-grayscale-1fps/spring';    
+            ds.prefix='images-';
+            ds.extension='.png';
+            ds.suffix='';
+            ds.imageSkip = 100;     % use every n-nth image
+            ds.imageIndices = 1:ds.imageSkip:35700;    
+            ds.savePath = 'results';
+            ds.saveFile = sprintf('%s-%d-%d-%d', ds.name, ds.imageIndices(1), ds.imageSkip, ds.imageIndices(end));
+            
+            ds.preprocessing.save = 1;
+            ds.preprocessing.load = 1;
+            %ds.crop=[1 1 60 32];  % x0 y0 x1 y1  cropping will be done after resizing!
+            ds.crop=[];
+            
+            spring=ds;
+
+
+            % nordland winter dataset
+            ds.name = 'winter';
+            ds.imagePath = '../datasets/nordland/64x32-grayscale-1fps/winter';       
+            ds.saveFile = sprintf('%s-%d-%d-%d', ds.name, ds.imageIndices(1), ds.imageSkip, ds.imageIndices(end));
+            % ds.crop=[5 1 64 32];
+            ds.crop=[];
+            
+            winter=ds;        
+
+            obj.params.dataset = [spring, winter];
+
+            % load old results or re-calculate?
+            obj.params.differencematrix.load = 0;
+            obj.params.contrastenhanced.load = 0;
+            obj.params.matching.load = 0;
+            
+            % where to save / load the results
+            obj.params.savePath='results';
+        end
+
+        function hackDefaults(obj)
+            % switches
+            obj.params.DO_PREPROCESSING = 1;
+            obj.params.DO_RESIZE        = 0;
+            obj.params.DO_GRAYLEVEL     = 1;
+            obj.params.DO_PATCHNORMALIZATION    = 1;
+            obj.params.DO_SAVE_PREPROCESSED_IMG = 0;
+            obj.params.DO_DIFF_MATRIX   = 1;
+            obj.params.DO_CONTRAST_ENHANCEMENT  = 1;
+            obj.params.DO_FIND_MATCHES  = 1;
+
+
+            % parameters for preprocessing
+            obj.params.downsample.size = [32 64];  % height, width
+            obj.params.downsample.method = 'lanczos3';
+            obj.params.normalization.sideLength = 8;
+            obj.params.normalization.mode = 1;
+                    
+            
+            % parameters regarding the matching between images
+            obj.params.matching.ds = 10; 
+            obj.params.matching.Rrecent=5;
+            obj.params.matching.vmin = 0.8;
+            obj.params.matching.vskip = 0.1;
+            obj.params.matching.vmax = 1.2;  
+            obj.params.matching.Rwindow = 10;
+            obj.params.matching.save = 1;
+            obj.params.matching.load = 1;
+            
+            % parameters for contrast enhancement on difference matrix  
+            obj.params.contrastEnhancement.R = 10;
+
+            % load old results or re-calculate? save results?
+            obj.params.differenceMatrix.save = 1;
+            obj.params.differenceMatrix.load = 1;
+            
+            obj.params.contrastEnhanced.save = 1;
+            obj.params.contrastEnhanced.load = 1;
+            
+            % suffix appended on files containing the results
+            obj.params.saveSuffix='';
         end
 
         function interactivity(obj, enable)
