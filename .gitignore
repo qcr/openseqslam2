@@ -2,3 +2,6 @@
 ~*
 *~
 *.asv
+
+# Swap files
+*.swp*
