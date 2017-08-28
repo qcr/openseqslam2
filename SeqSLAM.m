@@ -1,18 +1,23 @@
-function SeqSLAM()
+function dbg = SeqSLAM(varargin)
     % Add the toolbox to the path
     run(fullfile(fileparts(which('SeqSLAM')), 'tools', 'toolboxInit'));
 
-    % Run the config GUI to set all required parameters
-    config = SeqSLAMConfig();
-    return;
-    % Abort if no parameters are returned
-    if isempty(config)
-        fprintf('Exited start dialog. Aborting...\n');
-        return;
+    % Add the option to just load defaults and run
+    if length(varargin) > 0 && varargin{1}
+        config = xml2settings('.config/default.xml');
+    else
+        % Run the config GUI to set all required parameters
+        config = SeqSLAMConfig();
+        % Abort if no parameters are returned
+        if isempty(config)
+            fprintf('Exited start dialog. Aborting...\n');
+            db= [];
+            return;
+        end
     end
 
-    % Run SeqSLAM with the parameters
-    results = openSeqSLAM(config);
+    % Run the SeqSLAM process, and get the results
+    results = SeqSLAMRun(config);
 
     % Run the results visualisation GUI
     dbg = SeqSLAMResults(results, config);

@@ -1,14 +1,34 @@
 function empty = emptyConfig()
     % Creates and returns an empty config (creates all of the possible struct
-    % elementS)
+    % elements)
 
     % Reference dataset
     empty.reference.path = [];
     empty.reference.subsample_factor = [];
+    empty.reference.type = [];
+
+    empty.reference.image.ext = [];
+    empty.reference.image.index_start = [];
+    empty.reference.image.index_end = [];
+    empty.reference.image.token_start = [];
+    empty.reference.image.token_end = [];
+    
+    empty.reference.video.ext = [];
+    empty.reference.video.frames = [];
     
     % Query dataset
     empty.query.path = [];
     empty.query.subsample_factor = [];
+    empty.query.type = [];
+
+    empty.query.image.ext = [];
+    empty.query.image.index_start = [];
+    empty.query.image.index_end = [];
+    empty.query.image.token_start = [];
+    empty.query.image.token_end = [];
+    
+    empty.query.video.ext = [];
+    empty.query.video.frames = [];
 
     % Results
     empty.results.path = [];

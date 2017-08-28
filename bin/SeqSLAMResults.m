@@ -1,5 +1,5 @@
-function [results, dbg] = SeqSLAMResults(results, params)
+function results = SeqSLAMResults(results, params)
     % Run the results visualisation GUI
-    dbg = ResultsGUI(results, params);
-
+    resultsui = ResultsGUI(results, params);
+    results = resultsui.results;
 end

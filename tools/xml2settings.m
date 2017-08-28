@@ -24,7 +24,7 @@ function s = xml2settings(xmlLocation)
                     org.apache.xerces.dom.DeferredElementImpl.ELEMENT_NODE
                 continue;
             end
-
+            
             % Get the value
             if strcmpi(es.item(k).getTagName(), 'settings-group')
                 v = readRecursive(es.item(k), ...

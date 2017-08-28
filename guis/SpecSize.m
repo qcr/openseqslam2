@@ -101,6 +101,7 @@ classdef SpecSize < uint16
         end
 
         function sizeWrap(handle, dim, padding)
+            handle.Position(3+dim) = 1000;
             handle.Position(3+dim) = handle.Extent(3+dim) + 2*padding;
         end
     end

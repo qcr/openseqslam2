@@ -9,6 +9,7 @@ classdef GUISettings
         COL_SUCCESS = [0 0.6 0];
         COL_ERROR = 'r';
         COL_LOADING = [0.6 0.6 0.6];
+        COL_DEFAULT = 'k';
 
         % Sizings (static for now)
         FONT_SCALE = 1.0;
@@ -39,6 +40,11 @@ classdef GUISettings
             uipanel.BackgroundColor = GUISettings.BACK_COL;
             uipanel.FontSize = get(groot, 'factoryUipanelFontSize') ...
                 * GUISettings.FONT_SCALE;
+        end
+
+        function setFontScale(uicontrol, scale)
+            uicontrol.FontSize = get(groot, 'factoryUicontrolFontSize') ...
+                * scale;
         end
     end
     

@@ -36,6 +36,11 @@ classdef ConfigIOGUI < handle
         hStart;
 
         config = emptyConfig();
+
+        cachedReference;
+        cachedQuery;
+
+        done = false;
     end
     
     methods
@@ -208,53 +213,11 @@ classdef ConfigIOGUI < handle
                 return;
             end
 
-            % Extract all data from the UI, and store it in the object
-            % TODO NOT DIRTY HACK TO GET THINGS WORKING!!!
-            obj.hackDefaults();
-            obj.hackExtras();
+            % Extract all of the data from the UI, and store in the object
+            obj.strip();
 
-            obj.config.dataset(1).name = 'Query';
-            obj.config.dataset(1).imagePath = obj.hQueryLocation.String;
-            obj.config.dataset(2).name = 'Reference';
-            obj.config.dataset(2).imagePath = obj.hRefLocation.String;
-            obj.config.savePath = obj.hResultsLocation.String;
-            obj.config.dataset(1).savePath = obj.hResultsLocation.String;
-            obj.config.dataset(2).savePath = obj.hResultsLocation.String;
-
-            % Get image indices legitimately
-            % TODO remove hack
-            datasetFN = obj.hQueryLocation.String;
-            [p, n, e] = fileparts(datasetFN);
-            if isdir(datasetFN)
-                dsPath = fullfile([datasetFN filesep() filesep()]);
-                fs = dir([datasetFN filesep() '*.png']);
-                obj.config.dataset(1).imageIndices = ...
-                    1:obj.config.dataset(1).imageSkip:length(fs);
-            elseif any(ismember({VideoReader.getFileFormats().Extension}, ...
-                    e(2:end)))
-                v = VideoReader(datasetFN);
-                frames = floor(v.Duration*v.FrameRate);
-                obj.config.dataset(1).imageIndices = ...
-                    1:obj.config.dataset(1).imageSkip:frames;
-                obj.config.DO_RESIZE = 1;
-            end
-            datasetFN = obj.hRefLocation.String;
-            [p, n, e] = fileparts(datasetFN);
-            if isdir(datasetFN)
-                dsPath = fullfile([datasetFN filesep() filesep()]);
-                fs = dir([datasetFN filesep() '*.png']);
-                obj.config.dataset(2).imageIndices = ...
-                    1:obj.config.dataset(2).imageSkip:length(fs);
-            elseif any(ismember({VideoReader.getFileFormats().Extension}, ...
-                    e(2:end)))
-                v = VideoReader(datasetFN);
-                frames = floor(v.Duration*v.FrameRate);
-                obj.config.dataset(2).imageIndices = ...
-                    1:obj.config.dataset(2).imageSkip:frames;
-                obj.config.DO_RESIZE = 1;
-            end
-
-            % Close the figure
+            % Report that the figure naturally finished, and then close
+            obj.done = true;
             close(obj.hFig);
         end
         
@@ -269,6 +232,7 @@ classdef ConfigIOGUI < handle
             obj.hConfigImport = uicontrol('Style', 'pushbutton');
             GUISettings.applyUIControlStyle(obj.hConfigImport);
             obj.hConfigImport.String = 'Import config';
+
             obj.hConfigExport = uicontrol('Style', 'pushbutton');
             GUISettings.applyUIControlStyle(obj.hConfigExport);
             obj.hConfigExport.String = 'Export config';
@@ -399,7 +363,8 @@ classdef ConfigIOGUI < handle
         function evaluateDataset(obj, path, status)
             obj.interactivity(false); status.Enable = 'on';
 
-            % Perform validation
+            % Perform validation (and save the extension as a record of what
+            % the validation found)
             status.String = 'Validating...'; 
             status.ForegroundColor = GUISettings.COL_LOADING;
             drawnow();
@@ -409,58 +374,36 @@ classdef ConfigIOGUI < handle
                 status.String = 'Error: File does not exist!';
                 status.ForegroundColor = GUISettings.COL_ERROR;
             elseif isdir(path)
-                % Take the most prominent image extension in directory
-                exts = arrayfun(@(x) x.ext, imformats, 'uni', 0);
-                exts = [exts{:}];
-
-                % Process is:
-                % 1) Loop over every image extension
-                % 2) Get the names of all files matching that extension
-                % 3) if number of files is less than pervious max, bail
-                % 4) Use regex to extract the number as a token
-                % 5) Record min and maxes
-                % TODO worry about if numbers not sequential, or matched tokens
-                % aren't consistent (i.e. tokens{:}{1}{1})!
-                dsPath = fullfile(path);
-                ext = '';
-                tokenStart = '';
-                tokenEnd = '';
-                imMin = 0; imMax = 0;
-                exts = {'png'};
-                for k = 1:length(exts)
-                    fns = dir([dsPath filesep() '*.' exts{k}]);
-                    fns = {fns.name};
-
-                    if k > 1 && (length(fns) < imMax - imMin)
-                        continue;
-                    end
-
-                    tokens = regexp(fns, ['^(.*?)(\d+)(.?\.' exts{k} ')'], ...
-                        'tokens');
-                    nums = cellfun(@(x) str2num(x{1}{2}), tokens);
-                    tempMax = max(nums);
-                    tempMin = min(nums);
-                    if (tempMax - tempMin) > (imMax - imMin)
-                        imMax = tempMax;
-                        imMin = tempMin;
-                        ext = exts{k};
-                        tokenStart = tokens{1}{1}{1};
-                        tokenEnd = tokens{1}{1}{3};
-                    end
-                end
+                % Attempt to profile the requested image dataset
+                [ext, a, b, startToken, endToken] = imageDatasetProfile(path);
 
                 % Report the results
-                if (imMin == 0 && imMax == 0) || isempty(ext)
+                if (a == 0 && b == 0) || isempty(ext)
                     status.String = ['Error: no dataset was found (' ...
                         'a filename patterns wasn''t identified)!'];
                     status.ForegroundColor = GUISettings.COL_ERROR;
                 else
                     status.String = ['Success: dataset with filenames ''' ...
-                        tokenStart '[' ...
-                        num2str(imMin, ...
-                            ['%0' num2str(numel(num2str(imMax))) 'd']) ...
-                        '-' num2str(imMax) ']' tokenEnd ''' identified!'];
+                        startToken '[' ...
+                        num2str(a, ['%0' num2str(numel(num2str(b))) 'd']) ...
+                        '-' num2str(b) ']' endToken ''' identified!'];
                     status.ForegroundColor = GUISettings.COL_SUCCESS; 
+
+                    % Save the results
+                    results = [];
+                    results.type = 'image';
+                    results.image.ext = ext;
+                    results.image.index_start = a;
+                    results.image.index_end = b;
+                    results.image.token_start = startToken;
+                    results.image.token_end = endToken;
+                    if status == obj.hRefStatus
+                        obj.cachedReference = [];
+                        obj.cachedReference = results;
+                    elseif status == obj.hQueryStatus
+                        obj.cachedQuery = [];
+                        obj.cachedQuery = results;
+                    end
                 end
             elseif any(ismember({VideoReader.getFileFormats().Extension}, ...
                     e(2:end)))
@@ -471,6 +414,19 @@ classdef ConfigIOGUI < handle
                         int2str(v.Duration/60) 'm ' ...
                         num2str(round(mod(v.Duration,60)), '%02d') 's)!'];
                     status.ForegroundColor = GUISettings.COL_SUCCESS;
+
+                    % Save the results
+                    results = [];
+                    results.type = 'video';
+                    results.video.ext = e(2:end);
+                    results.video.frames = floor(v.Duration * v.FrameRate);
+                    if status == obj.hRefStatus
+                        obj.cachedReference = [];
+                        obj.cachedReference = results;
+                    elseif status == obj.hQueryStatus
+                        obj.cachedQuery = [];
+                        obj.cachedQuery = results;
+                    end
                 else
                     status.String = [ 'Error: an empty video ' ...
                         '(duration of 0 seconds) was read!'];
@@ -801,7 +757,19 @@ classdef ConfigIOGUI < handle
         end
 
         function strip(obj)
-            % Strip data from the UI, and store it in the config struct
+            % Start with the cached data
+            if isfield(obj.cachedReference, 'image')
+                obj.config.reference = obj.cachedReference;
+            elseif isfield(obj.cachedReference, 'video')
+                obj.config.reference = obj.cachedReference;
+            end
+            if isfield(obj.cachedQuery, 'image')
+                obj.config.query = obj.cachedQuery;
+            elseif isfield(obj.cachedQuery, 'video')
+                obj.config.query = obj.cachedQuery;
+            end
+            
+            % Strip data from the UI, and store it over the top
             obj.config.reference.path = obj.hRefLocation.String;
             obj.config.reference.subsample_factor = ...
                 str2num(obj.hRefSampleValue.String);
@@ -814,9 +782,9 @@ classdef ConfigIOGUI < handle
         end
     end
 
-    methods (Static, Access=private)
+    methods (Static)
         function results = containsResults(directory)
-            results = exist(fullfile(directory, 'results.mat'), 'file');
+            results = exist(fullfile(directory, 'config.xml'), 'file');
         end
     end
 end

@@ -34,32 +34,12 @@ function results = openSeqSLAM(params)
     
     
     
-    % begin with preprocessing of the images
-    if params.DO_PREPROCESSING                
-        results = doPreprocessing(params);        
-    end
-        
-    
-    % image difference matrix             
-    if params.DO_DIFF_MATRIX
-        results = doDifferenceMatrix(results, params);
-    end
-    
-    
-    % contrast enhancement
-    if params.DO_CONTRAST_ENHANCEMENT
-        results = doContrastEnhancement(results, params);        
-    else
-        if params.DO_DIFF_MATRIX
-            results.DD = results.D;
-        end
-    end
-    
-    
-    % find the matches
-    if params.DO_FIND_MATCHES
-        results = doFindMatches(results, params);
-    end
+    % Perform each of the actions...
+    %results = doPreprocessing(params);        
+    results = doDifferenceMatrix(results, params);
+    results = doContrastEnhancement(results, params);        
+    %results.DD = results.D; If we skipped contrast enhancement...
+    results = doFindMatches(results, params);
             
 end
 
