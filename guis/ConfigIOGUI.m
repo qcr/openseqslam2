@@ -32,7 +32,7 @@ classdef ConfigIOGUI < handle
         hResultsStatus;
         
         hSettingsSeqSLAM;
-        hSettingsVisualiser;
+        hSettingsVisual;
         hStart;
 
         config = emptyConfig();
@@ -75,7 +75,7 @@ classdef ConfigIOGUI < handle
     end
     
     methods (Access = private)
-        function callbackChooseDataset(obj, src, event, edit, status)
+        function cbChooseDataset(obj, src, event, edit, status)
             obj.interactivity(false);
 
             % Select the format of the dataset
@@ -107,7 +107,7 @@ classdef ConfigIOGUI < handle
             obj.interactivity(true);
         end
 
-        function callbackChooseResults(obj, src, event, edit, status)
+        function cbChooseResults(obj, src, event, edit, status)
             obj.interactivity(false);
 
             % Select the results directory
@@ -118,21 +118,21 @@ classdef ConfigIOGUI < handle
             if (ischar(resultsDir) || isstr(resultsDir)) && ...
                     exist(resultsDir, 'file')
                 edit.String = resultsDir;
-                obj.callbackEvaluateResults(edit, event, status);
+                obj.cbEvaluateResults(edit, event, status);
             end
             
             obj.interactivity(true);
         end
 
-        function callbackEvaluateDataset(obj, src, event, status)
+        function cbEvaluateDataset(obj, src, event, status)
             obj.evaluateDataset(src.String, status);
         end
 
-        function callbackEvaluateResults(obj, src, event, status)
+        function cbEvaluateResults(obj, src, event, status)
             obj.evaluateResults(src.String, status);
         end
 
-        function callbackImport(obj, src, event)
+        function cbImport(obj, src, event)
             % Prompt the user to select and XML file
             [f, p] = uigetfile('*.xml', 'Select an XML configuration file');
             if isnumeric(f) || isnumeric(p)
@@ -163,7 +163,7 @@ classdef ConfigIOGUI < handle
             end
         end
 
-        function callbackExport(obj, src, event)
+        function cbExport(obj, src, event)
             % Prompt user to select where they'd like to export
             [f, p] = uiputfile('*.xml', 'Select export location');
             if isnumeric(f) || isnumeric(p)
@@ -178,7 +178,7 @@ classdef ConfigIOGUI < handle
             obj.dumpConfigToXML(fullfile(p, f));
         end
 
-        function callbackSeqSLAMSettings(obj, src, event)
+        function cbSeqSLAMSettings(obj, src, event)
             obj.interactivity(false);
 
             % Open the GUI, populate it, and wait for the user to finish
@@ -192,7 +192,7 @@ classdef ConfigIOGUI < handle
             obj.interactivity(true);
         end
 
-        function callbackStart(obj, src, event)
+        function cbStart(obj, src, event)
             % Verify that all of the paths are valid
             if ~strncmpi(obj.hRefStatus.String, 'success', 7)
                 h = errordlg( ...
@@ -221,6 +221,20 @@ classdef ConfigIOGUI < handle
             close(obj.hFig);
         end
         
+        function cbVisualSettings(obj, src, event)
+            obj.interactivity(false);
+
+            % Open the GUI, populate it, and wait for the user to finish
+            visualisegui = ConfigVisualGUI();
+            visualisegui.updateConfig(obj.config);
+            uiwait(visualisegui.hFig);
+
+            % Save the parameters returned
+            obj.config = visualisegui.config;
+
+            obj.interactivity(true);
+        end
+
         function createGUI(obj)
             % Create the figure (and hide it)
             obj.hFig = figure('Visible', 'off');
@@ -332,9 +346,9 @@ classdef ConfigIOGUI < handle
             obj.hSettingsSeqSLAM.String = 'SeqSLAM Settings';
             
             % Visualiser settings button
-            obj.hSettingsVisualiser = uicontrol('Style', 'pushbutton');
-            GUISettings.applyUIControlStyle(obj.hSettingsVisualiser);
-            obj.hSettingsVisualiser.String = 'Visualiser Settings';
+            obj.hSettingsVisual = uicontrol('Style', 'pushbutton');
+            GUISettings.applyUIControlStyle(obj.hSettingsVisual);
+            obj.hSettingsVisual.String = 'Visualiser Settings';
             
             % Start button
             obj.hStart = uicontrol('Style', 'pushbutton');
@@ -342,22 +356,23 @@ classdef ConfigIOGUI < handle
             obj.hStart.String = 'Start';
             
             % Callbacks (must be last, otherwise empty objects passed...)
-            obj.hConfigImport.Callback = {@obj.callbackImport};
-            obj.hConfigExport.Callback = {@obj.callbackExport};
-            obj.hRefLocation.Callback = {@obj.callbackEvaluateDataset, ...
+            obj.hConfigImport.Callback = {@obj.cbImport};
+            obj.hConfigExport.Callback = {@obj.cbExport};
+            obj.hRefLocation.Callback = {@obj.cbEvaluateDataset, ...
                 obj.hRefStatus};
-            obj.hRefPicker.Callback = {@obj.callbackChooseDataset, ...
+            obj.hRefPicker.Callback = {@obj.cbChooseDataset, ...
                 obj.hRefLocation, obj.hRefStatus};
-            obj.hQueryLocation.Callback = {@obj.callbackEvaluateDataset, ...
+            obj.hQueryLocation.Callback = {@obj.cbEvaluateDataset, ...
                 obj.hQueryStatus};
-            obj.hQueryPicker.Callback = {@obj.callbackChooseDataset, ...
+            obj.hQueryPicker.Callback = {@obj.cbChooseDataset, ...
                 obj.hQueryLocation, obj.hQueryStatus};
-            obj.hResultsLocation.Callback = {@obj.callbackEvaluateResults, ...
+            obj.hResultsLocation.Callback = {@obj.cbEvaluateResults, ...
                 obj.hResultsStatus};
-            obj.hResultsPicker.Callback = {@obj.callbackChooseResults, ...
+            obj.hResultsPicker.Callback = {@obj.cbChooseResults, ...
                 obj.hResultsLocation, obj.hResultsStatus};
-            obj.hSettingsSeqSLAM.Callback = {@obj.callbackSeqSLAMSettings};
-            obj.hStart.Callback= {@obj.callbackStart};
+            obj.hSettingsSeqSLAM.Callback = {@obj.cbSeqSLAMSettings};
+            obj.hSettingsVisual.Callback = {@obj.cbVisualSettings};
+            obj.hStart.Callback= {@obj.cbStart};
         end
 
         function evaluateDataset(obj, path, status)
@@ -469,89 +484,6 @@ classdef ConfigIOGUI < handle
             obj.interactivity(true);
         end
         
-        function hackExtras(obj)
-            % Nordland spring dataset
-            ds.name = 'spring';
-            ds.imagePath = '../datasets/nordland/64x32-grayscale-1fps/spring';    
-            ds.prefix='images-';
-            ds.extension='.png';
-            ds.suffix='';
-            ds.imageSkip = 100;     % use every n-nth image
-            ds.imageIndices = 1:ds.imageSkip:35700;    
-            ds.savePath = 'results';
-            ds.saveFile = sprintf('%s-%d-%d-%d', ds.name, ds.imageIndices(1), ds.imageSkip, ds.imageIndices(end));
-            
-            ds.preprocessing.save = 1;
-            ds.preprocessing.load = 1;
-            %ds.crop=[1 1 60 32];  % x0 y0 x1 y1  cropping will be done after resizing!
-            ds.crop=[];
-            
-            spring=ds;
-
-
-            % nordland winter dataset
-            ds.name = 'winter';
-            ds.imagePath = '../datasets/nordland/64x32-grayscale-1fps/winter';       
-            ds.saveFile = sprintf('%s-%d-%d-%d', ds.name, ds.imageIndices(1), ds.imageSkip, ds.imageIndices(end));
-            % ds.crop=[5 1 64 32];
-            ds.crop=[];
-            
-            winter=ds;        
-
-            obj.config.dataset = [spring, winter];
-
-            % load old results or re-calculate?
-            obj.config.differencematrix.load = 0;
-            obj.config.contrastenhanced.load = 0;
-            obj.config.matching.load = 0;
-            
-            % where to save / load the results
-            obj.config.savePath='results';
-        end
-
-        function hackDefaults(obj)
-            % switches
-            obj.config.DO_PREPROCESSING = 1;
-            obj.config.DO_RESIZE        = 0;
-            obj.config.DO_GRAYLEVEL     = 1;
-            obj.config.DO_PATCHNORMALIZATION    = 1;
-            obj.config.DO_SAVE_PREPROCESSED_IMG = 0;
-            obj.config.DO_DIFF_MATRIX   = 1;
-            obj.config.DO_CONTRAST_ENHANCEMENT  = 1;
-            obj.config.DO_FIND_MATCHES  = 1;
-
-
-            % parameters for preprocessing
-            obj.config.downsample.size = [32 64];  % height, width
-            obj.config.downsample.method = 'lanczos3';
-            obj.config.normalization.sideLength = 8;
-            obj.config.normalization.mode = 1;
-                    
-            
-            % parameters regarding the matching between images
-            obj.config.matching.ds = 10; 
-            obj.config.matching.Rrecent=5;
-            obj.config.matching.vmin = 0.8;
-            obj.config.matching.vskip = 0.1;
-            obj.config.matching.vmax = 1.2;  
-            obj.config.matching.Rwindow = 10;
-            obj.config.matching.save = 1;
-            obj.config.matching.load = 1;
-            
-            % parameters for contrast enhancement on difference matrix  
-            obj.config.contrastEnhancement.R = 10;
-
-            % load old results or re-calculate? save results?
-            obj.config.differenceMatrix.save = 1;
-            obj.config.differenceMatrix.load = 1;
-            
-            obj.config.contrastEnhanced.save = 1;
-            obj.config.contrastEnhanced.load = 1;
-            
-            % suffix appended on files containing the results
-            obj.config.saveSuffix='';
-        end
-
         function interactivity(obj, enable)
             if enable
                 status = 'on';
@@ -575,7 +507,7 @@ classdef ConfigIOGUI < handle
             obj.hResultsStatus.Enable = status;
 
             obj.hSettingsSeqSLAM.Enable = status;
-            obj.hSettingsVisualiser.Enable = status;
+            obj.hSettingsVisual.Enable = status;
             obj.hStart.Enable = status;
         end
         
@@ -602,7 +534,7 @@ classdef ConfigIOGUI < handle
             % default height of a button)
             maxWidth = max(...
                 [obj.hSettingsSeqSLAM.Extent(3), ...
-                obj.hSettingsVisualiser.Extent(3), ... 
+                obj.hSettingsVisual.Extent(3), ... 
                 obj.hStart.Extent(3)]);
             heightUnit = obj.hStart.Extent(4);
             
@@ -658,7 +590,7 @@ classdef ConfigIOGUI < handle
             
             SpecSize.size(obj.hSettingsSeqSLAM, SpecSize.WIDTH, ...
                 SpecSize.PERCENT, obj.hFig, 0.25);
-            SpecSize.size(obj.hSettingsVisualiser, SpecSize.WIDTH, ...
+            SpecSize.size(obj.hSettingsVisual, SpecSize.WIDTH, ...
                 SpecSize.PERCENT, obj.hFig, 0.25);
             SpecSize.size(obj.hStart, SpecSize.WIDTH, SpecSize.PERCENT, ...
                 obj.hFig, 0.2);
@@ -745,10 +677,10 @@ classdef ConfigIOGUI < handle
                 SpecPosition.LEFT, GUISettings.PAD_MED);
             SpecPosition.positionIn(obj.hSettingsSeqSLAM, obj.hFig, ...
                 SpecPosition.BOTTOM, GUISettings.PAD_MED);
-            SpecPosition.positionRelative(obj.hSettingsVisualiser, ...
+            SpecPosition.positionRelative(obj.hSettingsVisual, ...
                 obj.hSettingsSeqSLAM, SpecPosition.RIGHT_OF, ...
                 GUISettings.PAD_MED);
-            SpecPosition.positionRelative(obj.hSettingsVisualiser, ...
+            SpecPosition.positionRelative(obj.hSettingsVisual, ...
                 obj.hSettingsSeqSLAM, SpecPosition.CENTER_Y);
             SpecPosition.positionIn(obj.hStart, obj.hFig, ...
                 SpecPosition.RIGHT, GUISettings.PAD_MED);

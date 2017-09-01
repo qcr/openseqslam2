@@ -10,8 +10,8 @@ classdef ProgressGUI < handle
         STATE_MATCHING_FILTERING = 6;
         STATE_DONE = 7;
 
-        FIG_WIDTH_FACTOR = 45;
-        FIG_HEIGHT_FACTOR = 30;
+        FIG_WIDTH_FACTOR = 4.5;
+        FIG_HEIGHT_FACTOR = 20;
     end
 
     properties
@@ -30,11 +30,12 @@ classdef ProgressGUI < handle
         hStatus56;
 
         hTitle;
+        hSubtitle;
 
-        hAxQ1;
-        hAxQ2;
-        hAxQ3;
-        hAxQ4;
+        hAxA;
+        hAxB;
+        hAxC;
+        hAxD;
         hAxMain;
 
         hPercent;
@@ -42,7 +43,8 @@ classdef ProgressGUI < handle
         config = emptyConfig();
         progress;
 
-        lastRefresh = cputime();
+        lastPercentRefresh = cputime();
+        lastMainRefresh = cputime();
 
         instance;
 
@@ -58,29 +60,64 @@ classdef ProgressGUI < handle
             % Save the config
             obj.config = config;
 
-            % TODO fix hack!!!
-            obj.config.visualiser.rate = 1;
-
             % Create an initial progress state
             progress = [];
             progress.state = ProgressGUI.STATE_START;
-            obj.refreshUI(progress);
+            obj.refreshMain(progress);
 
             % Create, and attach to, the SeqSLAM instance
             obj.instance = SeqSLAMInstance(config);
-            obj.instance.attachUI(@obj.refreshDue, @obj.refreshUI);
+            obj.instance.attachUI(obj);
 
             % Finally, show the figure when we are done configuring
             obj.hFig.Visible = 'on';
         end
 
-        function due = refreshDue(obj, state)
+        function due = refreshPercentDue(obj, state)
             due = state ~= obj.progress.state || ...
-                cputime() - obj.lastRefresh > obj.config.visualiser.rate || ...
-                cputime() - obj.lastRefresh < 0;
+                cputime() - obj.lastPercentRefresh > ...
+                    obj.config.visual.progress.percent_rate || ...
+                cputime() - obj.lastPercentRefresh < 0;
+        end
+
+        function due = refreshMainDue(obj, state)
+            if (state == ProgressGUI.STATE_PREPROCESS_REF || ...
+                    state == ProgressGUI.STATE_PREPROCESS_QUERY)
+                rate = obj.config.visual.progress.preprocess_rate;
+            elseif (state == ProgressGUI.STATE_DIFF_MATRIX)
+                rate = obj.config.visual.progress.diff_matrix_rate;
+            elseif (state == ProgressGUI.STATE_DIFF_MATRIX_CONTRAST)
+                rate = obj.config.visual.progress.enhance_rate;
+            elseif (state == ProgressGUI.STATE_MATCHING)
+                rate = obj.config.visual.progress.match_rate;
+            else
+                rate = 1;
+            end
+            due = state ~= obj.progress.state || ...
+                cputime() - obj.lastMainRefresh > rate || ...
+                cputime() - obj.lastMainRefresh < 0;
         end
         
-        function refreshUI(obj, progress)
+        function refreshPercent(obj, percent)
+            % Update the percent internally and visually
+            obj.progress.percent = percent;
+            obj.updatePercent();
+
+            % Force a draw
+            drawnow();
+            obj.lastPercentRefresh = cputime();
+        end
+
+        function refreshMain(obj, progress)
+            % Clear the axis if we are entering a new state
+            if ~isempty(obj.progress) && progress.state ~= obj.progress.state
+                cla(obj.hAxA);
+                cla(obj.hAxB);
+                cla(obj.hAxC);
+                cla(obj.hAxD);
+                cla(obj.hAxMain);
+            end
+
             % Save the new progress
             obj.progress = progress;
 
@@ -92,7 +129,7 @@ classdef ProgressGUI < handle
 
             % Force a draw
             drawnow();
-            obj.lastRefresh = cputime();
+            obj.lastMainRefresh = cputime();
         end
 
         function run(obj)
@@ -179,16 +216,38 @@ classdef ProgressGUI < handle
             obj.hStatus56.FontWeight = 'bold';
             obj.hStatus56.String = ' - ';
 			
-            % Title
+            % Title and subtitle
             obj.hTitle = uicontrol('Style', 'text');
             GUISettings.applyUIControlStyle(obj.hTitle);
             GUISettings.setFontScale(obj.hTitle, 2.5);
             obj.hTitle.FontWeight = 'bold';
             obj.hTitle.String = 'Testing 1 2 3';
             
-            % Axes
-            % TODO
+            obj.hSubtitle = uicontrol('Style', 'text');
+            GUISettings.applyUIControlStyle(obj.hSubtitle);
+            GUISettings.setFontScale(obj.hSubtitle, 1.5);
+            obj.hSubtitle.String = 'Testing 1 2 3';
 			
+            % Axes
+            obj.hAxA = axes();
+            GUISettings.applyUIAxesStyle(obj.hAxA);
+            obj.hAxA.Visible = 'off';
+			
+            obj.hAxB = axes();
+            GUISettings.applyUIAxesStyle(obj.hAxB);
+            obj.hAxB.Visible = 'off';
+			
+            obj.hAxC = axes();
+            GUISettings.applyUIAxesStyle(obj.hAxC);
+            obj.hAxC.Visible = 'off';
+			
+            obj.hAxD = axes();
+            GUISettings.applyUIAxesStyle(obj.hAxD);
+            obj.hAxD.Visible = 'off';
+			
+            obj.hAxMain = axes();
+            GUISettings.applyUIAxesStyle(obj.hAxMain);
+
             % Percent
             obj.hPercent = uicontrol('Style', 'text');
             GUISettings.applyUIControlStyle(obj.hPercent);
@@ -201,8 +260,8 @@ classdef ProgressGUI < handle
         function sizeGUI(obj)
             % Statically size for now
             % TODO handle potential resizing gracefully
-            widthUnit = obj.hStatus12.Extent(3);
-            heightUnit = obj.hStatus1.Extent(4);
+            widthUnit = obj.hTitle.Extent(3);
+            heightUnit = obj.hTitle.Extent(4);
 			
             % Size and position the figure
             obj.hFig.Position = [0, 0, ...
@@ -249,10 +308,29 @@ classdef ProgressGUI < handle
             SpecSize.size(obj.hTitle, SpecSize.HEIGHT, SpecSize.WRAP);
             SpecSize.size(obj.hTitle, SpecSize.WIDTH, SpecSize.MATCH, ...
                 obj.hFig, GUISettings.PAD_MED);
+            SpecSize.size(obj.hSubtitle, SpecSize.HEIGHT, SpecSize.WRAP);
+            SpecSize.size(obj.hSubtitle, SpecSize.WIDTH, SpecSize.MATCH, ...
+                obj.hFig, GUISettings.PAD_SMALL);
 			
+            SpecSize.size(obj.hAxA, SpecSize.WIDTH, SpecSize.PERCENT, ...
+                obj.hFig, 0.25);
+            SpecSize.size(obj.hAxA, SpecSize.HEIGHT, SpecSize.RATIO, 3/4);
+            SpecSize.size(obj.hAxB, SpecSize.WIDTH, SpecSize.PERCENT, ...
+                obj.hFig, 0.25);
+            SpecSize.size(obj.hAxB, SpecSize.HEIGHT, SpecSize.RATIO, 3/4);
+            SpecSize.size(obj.hAxC, SpecSize.WIDTH, SpecSize.PERCENT, ...
+                obj.hFig, 0.25);
+            SpecSize.size(obj.hAxC, SpecSize.HEIGHT, SpecSize.RATIO, 3/4);
+            SpecSize.size(obj.hAxD, SpecSize.WIDTH, SpecSize.PERCENT, ...
+                obj.hFig, 0.25);
+            SpecSize.size(obj.hAxD, SpecSize.HEIGHT, SpecSize.RATIO, 3/4);
+            SpecSize.size(obj.hAxMain, SpecSize.WIDTH, SpecSize.PERCENT, ...
+                obj.hFig, 0.7);
+            SpecSize.size(obj.hAxMain, SpecSize.HEIGHT, SpecSize.RATIO, 3/4);
+
             SpecSize.size(obj.hPercent, SpecSize.HEIGHT, SpecSize.WRAP);
-            SpecSize.size(obj.hPercent, SpecSize.WIDTH, SpecSize.MATCH, ...
-                obj.hFig, GUISettings.PAD_MED);
+            SpecSize.size(obj.hPercent, SpecSize.WIDTH, SpecSize.PERCENT, ...
+                obj.hFig, 0.15, GUISettings.PAD_MED);
 			
             % Then, systematically place
             SpecPosition.positionIn(obj.hStatus34, obj.hFig, ...
@@ -306,7 +384,33 @@ classdef ProgressGUI < handle
                 SpecPosition.BELOW, GUISettings.PAD_LARGE);
             SpecPosition.positionIn(obj.hTitle, obj.hFig, ...
                 SpecPosition.LEFT, GUISettings.PAD_LARGE);
-			
+            SpecPosition.positionRelative(obj.hSubtitle, obj.hTitle, ...
+                SpecPosition.BELOW, GUISettings.PAD_MED);
+            SpecPosition.positionIn(obj.hSubtitle, obj.hFig, ...
+                SpecPosition.LEFT, 1.5*GUISettings.PAD_LARGE);
+
+            SpecPosition.positionRelative(obj.hAxA, obj.hSubtitle, ...
+                SpecPosition.BELOW, 8*GUISettings.PAD_LARGE);
+            SpecPosition.positionRelative(obj.hAxA, obj.hSubtitle, ...
+                SpecPosition.LEFT, 12*GUISettings.PAD_LARGE);
+            SpecPosition.positionRelative(obj.hAxB, obj.hSubtitle, ...
+                SpecPosition.BELOW, 8*GUISettings.PAD_LARGE);
+            SpecPosition.positionRelative(obj.hAxB, obj.hSubtitle, ...
+                SpecPosition.RIGHT, 12*GUISettings.PAD_LARGE);
+            SpecPosition.positionRelative(obj.hAxC, obj.hAxA, ...
+                SpecPosition.BELOW, 2*GUISettings.PAD_LARGE);
+            SpecPosition.positionRelative(obj.hAxC, obj.hSubtitle, ...
+                SpecPosition.LEFT, 12*GUISettings.PAD_LARGE);
+            SpecPosition.positionRelative(obj.hAxD, obj.hAxB, ...
+                SpecPosition.BELOW, 2*GUISettings.PAD_LARGE);
+            SpecPosition.positionRelative(obj.hAxD, obj.hSubtitle, ...
+                SpecPosition.RIGHT, 12*GUISettings.PAD_LARGE);
+            
+            SpecPosition.positionRelative(obj.hAxMain, obj.hSubtitle, ...
+                SpecPosition.BELOW, 3*GUISettings.PAD_LARGE);
+            SpecPosition.positionIn(obj.hAxMain, obj.hFig, ...
+                SpecPosition.CENTER_X);
+
             SpecPosition.positionIn(obj.hPercent, obj.hFig, ...
                 SpecPosition.BOTTOM, GUISettings.PAD_MED);
             SpecPosition.positionIn(obj.hPercent, obj.hFig, ...
@@ -322,7 +426,77 @@ classdef ProgressGUI < handle
         end
 
         function updatePlots(obj)
+            if obj.progress.state == ProgressGUI.STATE_PREPROCESS_REF || ...
+                    obj.progress.state == ProgressGUI.STATE_PREPROCESS_QUERY
+                % Plot the 4 images
+                image(obj.hAxA, obj.progress.image_init);
+                image(obj.hAxB, obj.progress.image_grey);
+                image(obj.hAxC, obj.progress.image_crop_resized);
+                image(obj.hAxD, obj.progress.image_out);
 
+                % Style the plots
+                obj.hAxA.Title.String = ['Original (' ...
+                    num2str(size(obj.progress.image_init, 2)) 'x' ...
+                    num2str(size(obj.progress.image_init, 1)) ')'];
+                obj.hAxB.Title.String = ['Greyscale (' ...
+                    num2str(size(obj.progress.image_grey, 2)) 'x' ...
+                    num2str(size(obj.progress.image_grey, 1)) ')'];
+                obj.hAxC.Title.String = ['Resized and cropped (' ...
+                    num2str(size(obj.progress.image_crop_resized, 2)) 'x' ...
+                    num2str(size(obj.progress.image_crop_resized, 1)) ')'];
+                obj.hAxD.Title.String = ['Patch normalised (' ...
+                    num2str(size(obj.progress.image_out, 2)) 'x' ...
+                    num2str(size(obj.progress.image_out, 1)) ')'];
+                GUISettings.axesHide(obj.hAxA);
+                GUISettings.axesHide(obj.hAxB);
+                GUISettings.axesHide(obj.hAxC);
+                GUISettings.axesHide(obj.hAxD);
+
+                % Do the prettying up (don't know why I have to do this after
+                % every plot call Matlab...)
+                obj.hAxMain.Visible = 'off';
+            elseif obj.progress.state == ProgressGUI.STATE_DIFF_MATRIX || ...
+                    obj.progress.state == ProgressGUI.STATE_DIFF_MATRIX_CONTRAST
+                % Draw the difference matrix
+                pcolor(obj.hAxMain, obj.progress.diff_matrix);
+                shading(obj.hAxMain, 'flat');
+
+                % Style the plot
+                GUISettings.axesDiffMatrixStyle(obj.hAxMain, ...
+                    size(obj.progress.diff_matrix));
+
+                % Do the prettying up (don't know why I have to do this after
+                % every plot call Matlab...)
+                obj.hAxA.Visible = 'off';
+                obj.hAxB.Visible = 'off';
+                obj.hAxC.Visible = 'off';
+                obj.hAxD.Visible = 'off';
+            elseif obj.progress.state == ProgressGUI.STATE_MATCHING
+                % Draw the background difference matrix
+                imagesc(obj.hAxMain, obj.progress.diff_matrix);
+                hold(obj.hAxMain, 'on');
+                plot(obj.hAxMain, obj.progress.qs, obj.progress.rs, ...
+                    'Color', GUISettings.COL_ERROR);
+                plot(obj.hAxMain, [obj.progress.q obj.progress.q], ...
+                    [1 size(obj.progress.diff_matrix,1)], 'Color', ...
+                    GUISettings.COL_ERROR, 'LineStyle', '--');
+                hold(obj.hAxMain, 'off');
+
+                % Style the plot
+                GUISettings.axesDiffMatrixStyle(obj.hAxMain, ...
+                    size(obj.progress.diff_matrix));
+
+                % Do the prettying up (don't know why I have to do this after
+                % every plot call Matlab...)
+                obj.hAxA.Visible = 'off';
+                obj.hAxB.Visible = 'off';
+                obj.hAxC.Visible = 'off';
+                obj.hAxD.Visible = 'off';
+            elseif obj.progress.state == ProgressGUI.STATE_MATCHING_FILTERING
+                % TODO can't see any reason to do anything in here (too quick)
+            elseif obj.progress.state == ProgressGUI.STATE_DONE
+                % Should never be plotting here...
+            end
         end
 
         function updateStatusBar(obj)
@@ -375,21 +549,37 @@ classdef ProgressGUI < handle
 
         function updateTitle(obj)
             if obj.progress.state == ProgressGUI.STATE_PREPROCESS_REF
+                obj.hTitle.Visible = 'on';
                 obj.hTitle.String = '1 - Preprocessing Reference Images';
+                obj.hSubtitle.Visible = 'on';
+                obj.hSubtitle.String = obj.progress.image_details;
             elseif obj.progress.state == ProgressGUI.STATE_PREPROCESS_QUERY
+                obj.hTitle.Visible = 'on';
                 obj.hTitle.String = '2 - Preprocessing Query Images';
+                obj.hSubtitle.Visible = 'on';
+                obj.hSubtitle.String = obj.progress.image_details;
             elseif obj.progress.state == ProgressGUI.STATE_DIFF_MATRIX
+                obj.hTitle.Visible = 'on';
                 obj.hTitle.String = '3 - Constructing Difference Matrix';
+                obj.hSubtitle.Visible = 'off';
             elseif obj.progress.state == ProgressGUI.STATE_DIFF_MATRIX_CONTRAST
+                obj.hTitle.Visible = 'on';
                 obj.hTitle.String = '4 - Enhancing Difference Matrix Contrast';
+                obj.hSubtitle.Visible = 'off';
             elseif obj.progress.state == ProgressGUI.STATE_MATCHING
+                obj.hTitle.Visible = 'on';
                 obj.hTitle.String = '5 - Searching for Matches';
+                obj.hSubtitle.Visible = 'off';
             elseif obj.progress.state == ProgressGUI.STATE_MATCHING_FILTERING
+                obj.hTitle.Visible = 'on';
                 obj.hTitle.String = '6 - Filtering Best Matches';
+                obj.hSubtitle.Visible = 'off';
             elseif obj.progress.state == ProgressGUI.STATE_DONE
                 obj.hTitle.String = 'Done!';
+                obj.hSubtitle.Visible = 'off';
             else
-                obj.hTitle.String = '';
+                obj.hTitle.Visible = 'off';
+                obj.hSubtitle.Visible = 'off';
             end
         end
     end

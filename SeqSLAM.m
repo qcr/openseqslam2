@@ -11,13 +11,16 @@ function dbg = SeqSLAM(varargin)
         % Abort if no parameters are returned
         if isempty(config)
             fprintf('Exited start dialog. Aborting...\n');
-            db= [];
+            dbg = [];
             return;
         end
     end
 
     % Run the SeqSLAM process, and get the results
     results = SeqSLAMRun(config);
+    %inst = SeqSLAMInstance(config);
+    %inst.run();
+    %results = inst.results;
 
     % Run the results visualisation GUI
     dbg = SeqSLAMResults(results, config);

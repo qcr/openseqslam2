@@ -76,7 +76,7 @@ classdef ConfigSeqSLAMGUI < handle
     end
 
     methods (Access = private)
-        function callbackDone(obj, src, event)
+        function cbDone(obj, src, event)
             % Strip the UI data, save it in the config, and close the GUI
             obj.strip();
             close(obj.hFig);
@@ -323,7 +323,7 @@ classdef ConfigSeqSLAMGUI < handle
             obj.hDone.String = 'Done';
 
             % Callbacks (must be last, otherwise empty objects passed...)
-            obj.hDone.Callback = {@obj.callbackDone};
+            obj.hDone.Callback = {@obj.cbDone};
         end
 
         function populate(obj)

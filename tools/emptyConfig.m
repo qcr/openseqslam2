@@ -64,4 +64,11 @@ function empty = emptyConfig()
 
     empty.seqslam.matching.criteria.r_window = [];
     empty.seqslam.matching.criteria.u = [];
+
+    % Visual settings (progress UI)
+    empty.visual.progress.percent_rate = [];
+    empty.visual.progress.preprocess_rate = [];
+    empty.visual.progress.diff_matrix_rate = [];
+    empty.visual.progress.enhance_rate = [];
+    empty.visual.progress.match_rate = [];
 end

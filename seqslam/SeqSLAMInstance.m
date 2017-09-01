@@ -5,8 +5,10 @@ classdef SeqSLAMInstance < handle
         results = emptyResults();
 
         listeningUI = false;
-        callbackUIReady;
-        callbackUIUpdate;
+        cbPercentReady;
+        cbPercentUpdate;
+        cbMainReady;
+        cbMainUpdate;
     end
 
     methods
@@ -15,9 +17,15 @@ classdef SeqSLAMInstance < handle
             obj.loadResults();
         end
 
-        function attachUI(obj, readyCallback, updateCallback)
-            obj.callbackUIReady = readyCallback;
-            obj.callbackUIUpdate = updateCallback;
+        function attachUI(obj, ui)
+            if ~strcmp('ProgressGUI', class(ui))
+                return;
+            end
+
+            obj.cbPercentReady = @ui.refreshPercentDue;
+            obj.cbPercentUpdate = @ui.refreshPercent;
+            obj.cbMainReady = @ui.refreshMainDue;
+            obj.cbMainUpdate = @ui.refreshMain;
             obj.listeningUI = true;
         end
 
@@ -39,11 +47,11 @@ classdef SeqSLAMInstance < handle
         function run(obj)
             % Perform each of the 'do' actions, guarding against if they
             % already exist
-            obj.doPreprocess();
-            obj.doDifferenceMatrix();
-            obj.doContrastEnhancement();
-            obj.doMatching();
-            obj.doThresholding();
+            obj.preprocess();
+            obj.differenceMatrix();
+            obj.contrastEnhancement();
+            obj.matching();
+            obj.thresholding();
         end
 
         function saveResults(obj)
@@ -60,22 +68,13 @@ classdef SeqSLAMInstance < handle
     end
 
     methods (Access = private)
-        function doPreprocess(obj)
+        function preprocess(obj)
             % Cache processing settings (mainly to avoid typing...)
             settingsProcess = obj.config.seqslam.image_processing;
 
             % Repeat the same process for both the reference and query dataset
             datasets = {'reference', 'query'};
             for ds = 1:length(datasets)
-                % Report to the UI if necessary
-                if obj.listeningUI && obj.callbackUIReady( ...
-                        ProgressGUI.STATE_PREPROCESS_REF + ds-1)
-                    p = [];
-                    p.state = ProgressGUI.STATE_PREPROCESS_REF + ds-1;
-                    p.percent = 0;
-                    obj.callbackUIUpdate(p);
-                end
-
                 % Cache dataset settings (mainly to avoid typing...)
                 settingsDataset = obj.config.(datasets{ds});
 
@@ -112,54 +111,53 @@ classdef SeqSLAMInstance < handle
                 for k = 1:length(indices)
                     % Load next image
                     if ~isempty(v)
-                        v.CurrentTime = floor(indices(k) / v.FrameRate);
+                        v.CurrentTime = (indices(k)-1) / v.FrameRate;
                         img = v.readFrame();
                     else
                         imgNumStr = num2str(indices(k), ...
                             ['%0' num2str(numel(num2str( ...
                                 settingsDataset.image.index_end))) 'd']);
-                        img = imread([settingsDataset.path filesep() ...
+                        imgStr = [settingsDataset.path filesep() ...
                             settingsDataset.image.token_start ...
                             imgNumStr ...
-                            settingsDataset.image.token_end]);
+                            settingsDataset.image.token_end];
+                        img = imread(imgStr);
                     end
 
-                    % Grayscale
-                    img = rgb2gray(img);
-
-                    % Resize
-                    if ~isempty(settingsProcess.downsample.width) && ...
-                        ~isempty(settingsProcess.downsample.height)
-                        img = imresize(img, ...
-                            [settingsProcess.downsample.height ...
-                                settingsProcess.downsample.width], ...
-                            settingsProcess.downsample.method);
-                    end
-                    
-                    % Crop
-                    crop = settingsProcess.crop.(datasets{ds});
-                    if ~isempty(crop) && length(crop) == 4
-                        img = img(crop(2):crop(4), crop(1):crop(3));
-                    end
-
-                    % Patch Normalisation
-                    if ~isempty(settingsProcess.normalisation.length) && ...
-                        ~isempty(settingsProcess.normalisation.mode)
-                        img = patchNormalise(img, ...
-                            settingsProcess.normalisation.length, ...
-                            settingsProcess.normalisation.mode);
-                    end
+                    % Preprocess the image
+                    state = ProgressGUI.STATE_PREPROCESS_REF + ds-1;
+                    [imgOut, imgs] = obj.preprocessSingle(img, ...
+                        settingsProcess, datasets{ds}, ...
+                        obj.cbMainReady(state));
 
                     % Save the image to the processed image matrix
-                    images(:,:,k) = img;
+                    images(:,:,k) = imgOut;
 
                     % Update the UI if necessary
-                    if obj.listeningUI && obj.callbackUIReady( ...
-                            ProgressGUI.STATE_PREPROCESS_REF + ds-1)
-                        p = [];
-                        p.state = ProgressGUI.STATE_PREPROCESS_REF + ds-1;
-                        p.percent = k/length(indices)*100;
-                        obj.callbackUIUpdate(p);
+                    if obj.uiWaiting(state)
+                        perc = k/length(indices)*100;
+                        if obj.cbMainReady(state) && ~isempty(imgs)
+                            p = [];
+                            p.state = state;
+                            p.percent = perc;
+                            p.image_init = img;
+                            p.image_grey = imgs{1};
+                            p.image_crop_resized = imgs{2};
+                            p.image_out = imgOut;
+                            p.image_num = k;
+                            if ~isempty(v)
+                                p.image_details = ['Frame ' ...
+                                    num2str(indices(k)) ' @ ' ...
+                                    num2str((indices(k)-1)/v.FrameRate) ...
+                                    's (' settingsDataset.path ')'];
+                            else
+                                p.image_details = ['Image ' ...
+                                    num2str(indices(k)) ' (' imgStr ')'];
+                            end
+                            obj.cbMainUpdate(p);
+                        else
+                            obj.cbPercentUpdate(perc);
+                        end
                     end
                 end
 
@@ -168,20 +166,44 @@ classdef SeqSLAMInstance < handle
             end
         end
 
-        function doDifferenceMatrix(obj)
-            % Report to the UI if necessary
-            if obj.listeningUI && obj.callbackUIReady( ...
-                    ProgressGUI.STATE_DIFF_MATRIX)
-                p = [];
-                p.state = ProgressGUI.STATE_DIFF_MATRIX;
-                p.percent = 0;
-                obj.callbackUIUpdate(p);
+        function [imgOut, imgs] = preprocessSingle(obj, img, s, dsName, full)
+            % Grayscale
+            imgG = rgb2gray(img);
+
+            % Resize
+            imgCR = imgG;
+            if ~isempty(s.downsample.width) && ~isempty(s.downsample.height)
+                imgCR = imresize(imgCR, ...
+                    [s.downsample.height s.downsample.width], ...
+                    s.downsample.method);
             end
 
+            % Crop
+            crop = s.crop.(dsName);
+            if ~isempty(crop) && length(crop) == 4
+                imgCR = imgCR(crop(2):crop(4), crop(1):crop(3));
+            end
+
+            % Patch Normalisation
+            if ~isempty(s.normalisation.length) && ...
+                    ~isempty(s.normalisation.mode)
+                imgOut = patchNormalise(imgCR, s.normalisation.length, ...
+                    s.normalisation.mode);
+            end
+
+            % Return the full results only if requested
+            if full
+                imgs = {imgG, imgCR};
+            else
+                imgs = [];
+            end
+        end
+
+        function differenceMatrix(obj)
             % Allocate memory for the difference matrix
             w = size(obj.results.preprocessed.query, 3);
             h = size(obj.results.preprocessed.reference, 3);
-            matrix = zeros(h, w, 'single');
+            matrix = NaN(h, w, 'single');
 
             % Calculate the difference matrix (loop over each query image)
             % TODO LESS DUMB, AND PARALLELISE!!!
@@ -199,12 +221,18 @@ classdef SeqSLAMInstance < handle
                     matrix(y,x) = sum(abs(d(:))) / ps;
 
                     % Report to the UI if necessary
-                    if obj.listeningUI && obj.callbackUIReady( ...
-                            ProgressGUI.STATE_DIFF_MATRIX)
-                        p = [];
-                        p.state = ProgressGUI.STATE_DIFF_MATRIX;
-                        p.percent = ((y-1)*h+x) / (w*h) * 100;
-                        obj.callbackUIUpdate(p);
+                    if obj.uiWaiting(ProgressGUI.STATE_DIFF_MATRIX)
+                        perc = ((y-1)*h+x) / (w*h) * 100;
+                        if obj.cbMainReady( ...
+                                ProgressGUI.STATE_DIFF_MATRIX)
+                            p = [];
+                            p.state = ProgressGUI.STATE_DIFF_MATRIX;
+                            p.percent = perc;
+                            p.diff_matrix = matrix;
+                            obj.cbMainUpdate(p);
+                        else
+                            obj.cbPercentUpdate(perc);
+                        end
                     end
                 end
             end
@@ -213,18 +241,9 @@ classdef SeqSLAMInstance < handle
             obj.results.diff_matrix.base = matrix;
         end
 
-        function doContrastEnhancement(obj)
-            % Report to the UI if necessary
-            if obj.listeningUI && obj.callbackUIReady( ...
-                    ProgressGUI.STATE_DIFF_MATRIX_CONTRAST)
-                p = [];
-                p.state = ProgressGUI.STATE_DIFF_MATRIX_CONTRAST;
-                p.percent = 0;
-                obj.callbackUIUpdate(p);
-            end
-
+        function contrastEnhancement(obj)
             % Allocate memory for contrast enhanced difference matrix
-            matrix = zeros(size(obj.results.diff_matrix.base), 'single');
+            matrix = NaN(size(obj.results.diff_matrix.base), 'single');
 
             % Loop over each row of the difference matrix
             % TODO LESS DUMB, AND PARALLELISE!!!
@@ -241,13 +260,23 @@ classdef SeqSLAMInstance < handle
                         mean(local)) / std(local);
 
                     % Report to the UI if necessary
-                    if obj.listeningUI && obj.callbackUIReady( ...
-                            ProgressGUI.STATE_DIFF_MATRIX_CONTRAST)
-                        p = [];
-                        p.state = ProgressGUI.STATE_DIFF_MATRIX_CONTRAST;
-                        p.percent = ((x-1)*size(matrix,2)+y) / ...
+                    if obj.uiWaiting(ProgressGUI.STATE_DIFF_MATRIX_CONTRAST)
+                        perc = ((x-1)*size(matrix,2)+y) / ...
                             numel(matrix) * 100;
-                        obj.callbackUIUpdate(p);
+                        if obj.cbMainReady( ...
+                                ProgressGUI.STATE_DIFF_MATRIX_CONTRAST)
+                            p = [];
+                            p.state = ProgressGUI.STATE_DIFF_MATRIX_CONTRAST;
+                            p.percent = perc;
+                            mask = isnan(matrix);
+                            temp = matrix;
+                            temp(isnan(temp)) = 0;
+                            p.diff_matrix = temp + ...
+                                mask .* obj.results.diff_matrix.base;
+                            obj.cbMainUpdate(p);
+                        else
+                            obj.cbPercentUpdate(perc);
+                        end
                     end
                 end
             end
@@ -256,16 +285,7 @@ classdef SeqSLAMInstance < handle
             obj.results.diff_matrix.enhanced = matrix - min(min(matrix));
         end
 
-        function doMatching(obj)
-            % Report to the UI if necessary
-            if obj.listeningUI && obj.callbackUIReady( ...
-                    ProgressGUI.STATE_MATCHING)
-                p = [];
-                p.state = ProgressGUI.STATE_MATCHING;
-                p.percent = 0;
-                obj.callbackUIUpdate(p);
-            end
-
+        function matching(obj)
             % Cache settings (save typing...)
             settingsMatch = obj.config.seqslam.matching;
             ds = settingsMatch.d_s;
@@ -288,8 +308,8 @@ classdef SeqSLAMInstance < handle
 
             % Loop from the query image number ds/2+1, through until the 
             % length-ds/2 image number
-            r_scores = zeros(num_rs, 1);
-            dbgI = 0;
+            r_scores = NaN(num_rs, 1);
+            r_trajs = NaN(num_rs, size(r_indices,2));
             for q = (ds/2+1):(num_qs-ds/2)
                 % Set q indices
                 qs = q_indices + q; % We know these are all 'safe'...
@@ -303,32 +323,35 @@ classdef SeqSLAMInstance < handle
                     rs = rs(all(rs > 0 & rs <= num_rs, 2),:);
 
                     % Get the minimum score for this reference image
-                    if isempty(rs)
-                        r_scores(r) = NaN();
-                        obj.results.matches.dbg(r,q).empty = true;
-                    else
+                    % (if there is one)
+                    if ~isempty(rs)
                         s1 = sub2ind(size(obj.results.diff_matrix.enhanced), ...
                             rs(:), qs(1:numel(rs))'); % Indices
                         s2 = obj.results.diff_matrix.enhanced(s1); % Scores
                         s3 = reshape(s2, size(rs)); % Reshaped scores
-                        r_scores(r) = min(sum(s3,2));
-                        obj.results.matches.dbg(r,q).rs = rs;
-                        obj.results.matches.dbg(r,q).qs = qs;
-                        obj.results.matches.dbg(r,q).s1 = s1;
-                        obj.results.matches.dbg(r,q).s2 = s2;
-                        obj.results.matches.dbg(r,q).s3 = s3;
+                        [r_scores(r), ind] = min(sum(s3,2));
+                        r_trajs(r,:) = rs(ind,:);
                     end
 
                     % Report to the UI if necessary
-                    if obj.listeningUI && obj.callbackUIReady( ...
-                            ProgressGUI.STATE_MATCHING)
-                        p = [];
-                        p.state = ProgressGUI.STATE_MATCHING;
-                        p.percent = ((q-1-ds/2)*num_rs + r) / ...
+                    if obj.uiWaiting(ProgressGUI.STATE_MATCHING)
+                        perc = ((q-1-ds/2)*num_rs + r) / ...
                             ((num_qs-ds)*num_rs) * 100;
-                        obj.callbackUIUpdate(p);
+                        if obj.cbMainReady( ...
+                                ProgressGUI.STATE_MATCHING)
+                            p = [];
+                            p.state = ProgressGUI.STATE_MATCHING;
+                            p.percent = perc;
+                            p.q = q;
+                            p.r = r;
+                            p.qs = qs(1,:);
+                            p.rs = r_trajs(r,:);
+                            p.diff_matrix = obj.results.diff_matrix.enhanced;
+                            obj.cbMainUpdate(p);
+                        else
+                            obj.cbPercentUpdate(perc);
+                        end
                     end
-                    dbgI = dbgI + 1;
                 end
 
                 % Get min score, and second smallest outside the window
@@ -347,14 +370,13 @@ classdef SeqSLAMInstance < handle
             obj.results.matches.all = matches;
         end
 
-        function doThresholding(obj)
+        function thresholding(obj)
             % Report to the UI if necessary
-            if obj.listeningUI && obj.callbackUIReady( ...
-                    ProgressGUI.STATE_MATCHING_FILTERING)
+            if obj.uiWaiting(ProgressGUI.STATE_MATCHING_FILTERING)
                 p = [];
                 p.state = ProgressGUI.STATE_MATCHING_FILTERING;
                 p.percent = 0;
-                obj.callbackUIUpdate(p);
+                obj.cbMainUpdate(p);
             end
 
             % Mask out with NaNs those that are below threshold
@@ -368,12 +390,16 @@ classdef SeqSLAMInstance < handle
                 obj.results.matches.all(:,1) .* mask;
 
             % Report to the UI if necessary
-            if obj.listeningUI && obj.callbackUIReady( ...
-                    ProgressGUI.STATE_DONE)
+            if obj.uiWaiting(ProgressGUI.STATE_DONE)
                 p = [];
                 p.state = ProgressGUI.STATE_DONE;
-                obj.callbackUIUpdate(p);
+                obj.cbMainUpdate(p);
             end
+        end
+
+        function ret = uiWaiting(obj, state)
+            ret = obj.listeningUI && (obj.cbPercentReady(state) || ...
+                obj.cbMainReady(state));
         end
     end
 end
