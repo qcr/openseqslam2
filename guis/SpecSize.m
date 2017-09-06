@@ -10,6 +10,7 @@ classdef SpecSize < uint16
         PERCENT (3)
         ABSOLUTE (4)
         WRAP (5)
+        RATIO (6)
     end
     
     methods (Static)
@@ -19,11 +20,10 @@ classdef SpecSize < uint16
             p.addRequired('dim', ...
                 @(x) x == SpecSize.WIDTH || x == SpecSize.HEIGHT);
             p.addRequired('method', ...
-                @(x) x == SpecSize.MATCH || x == SpecSize.PERCENT || ...
-                x == SpecSize.ABSOLUTE || x == SpecSize.WRAP);
+                @(x) x >= SpecSize.MATCH && x <= SpecSize.RATIO);
             p.parse(handle, dim, method);
             
-            if (method == SpecSize.MATCH)
+            if method == SpecSize.MATCH
                 % Expected arguments: handle, dim, method, handleref
                 % Optional arguments: padding
                 if nargin < 4 || ~ishandle(varargin{1})
@@ -37,7 +37,7 @@ classdef SpecSize < uint16
                     padding = varargin{2};
                 end
                 SpecSize.sizeMatch(handle, dim, varargin{1}, padding);
-            elseif (method == SpecSize.PERCENT)
+            elseif method == SpecSize.PERCENT
                 % Expected arguments: handle, dim, method, handleref
                 % Optional arguments: percent, padding
                 if nargin < 4 || ~ishandle(varargin{1})
@@ -59,13 +59,13 @@ classdef SpecSize < uint16
                 end
                 SpecSize.sizePercent(handle, dim, varargin{1}, percent, ...
                     padding);
-            elseif (method == SpecSize.ABSOLUTE)
+            elseif method == SpecSize.ABSOLUTE
                 % Expected arguments: handle, dim, method, value
                 if nargin < 4 || ~isnumeric(varargin{1})
                     error('Invalid: Absolute needs a numeric value');
                 end
                 SpecSize.sizeAbsolute(handle, dim, varargin{1});
-            elseif (method == SpecSize.WRAP)
+            elseif method == SpecSize.WRAP
                 % Expected arguments: handle, dim, method
                 % Optional arguments: padding
                 if nargin > 3 && ~isnumeric(varargin{1})
@@ -76,11 +76,26 @@ classdef SpecSize < uint16
                     padding = varargin{1};
                 end
                 SpecSize.sizeWrap(handle, dim, padding);
+            elseif method == SpecSize.RATIO
+                % Expected arguments: handle, dim, method
+                % Optional arguments: ratio
+                if nargin > 3 && ~isnumeric(varargin{1})
+                    error('Invalid: Ratio must be numeric');
+                elseif nargin < 4
+                    ratio = 1;
+                else
+                    ratio = varargin{1};
+                end
+                SpecSize.sizeRatio(handle, dim, ratio);
             end
         end
     end
 
     methods (Static, Access = private)
+        function sizeAbsolute(handle, dim, value)
+            handle.Position(3+dim) = value; 
+        end
+
         function sizeMatch(handle, dim, handleRef, padding)
            if (nargin < 3)
                padding = 0;
@@ -96,11 +111,12 @@ classdef SpecSize < uint16
                2*padding;
         end
         
-        function sizeAbsolute(handle, dim, value)
-            handle.Position(3+dim) = value; 
+        function sizeRatio(handle, dim, ratio)
+            handle.Position(3+dim) = handle.Position(4-dim) * ratio;
         end
 
         function sizeWrap(handle, dim, padding)
+            handle.Position(3+dim) = 1000;
             handle.Position(3+dim) = handle.Extent(3+dim) + 2*padding;
         end
     end

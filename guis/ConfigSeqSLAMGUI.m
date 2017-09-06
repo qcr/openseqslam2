@@ -55,10 +55,34 @@ classdef ConfigSeqSLAMGUI < handle
         hMatchCriteriaUValue;
         
         hDone;
+
+        config = emptyConfig();
     end
 
     methods
         function obj = ConfigSeqSLAMGUI()
+            % Create and size the GUI
+            obj.createGUI();
+            obj.sizeGUI();
+            
+            % Finally, show the figure when we are done configuring
+            obj.hFig.Visible = 'on';
+        end
+
+        function updateConfig(obj, config)
+            obj.config = config;
+            obj.populate();
+        end
+    end
+
+    methods (Access = private)
+        function cbDone(obj, src, event)
+            % Strip the UI data, save it in the config, and close the GUI
+            obj.strip();
+            close(obj.hFig);
+        end
+
+        function createGUI(obj)
             % Create the figure (and hide it)
             obj.hFig = figure('Visible', 'off');
             GUISettings.applyFigureStyle(obj.hFig);
@@ -197,7 +221,7 @@ classdef ConfigSeqSLAMGUI < handle
 
             obj.hMatch = uipanel();
             GUISettings.applyUIPanelStyle(obj.hMatch);
-            obj.hMatch.Title = 'Difference Matrix Settings:';
+            obj.hMatch.Title = 'Matching Settings:';
 
             obj.hMatchLoad = uicontrol('Style', 'checkbox');
             obj.hMatchLoad.Parent = obj.hMatch;
@@ -298,18 +322,59 @@ classdef ConfigSeqSLAMGUI < handle
             GUISettings.applyUIControlStyle(obj.hDone);
             obj.hDone.String = 'Done';
 
-            % Perform sizing of the GUI
-            obj.sizeGUI();
-            
-            % Finally, show the figure when we are done configuring
-            obj.hFig.Visible = 'on';
+            % Callbacks (must be last, otherwise empty objects passed...)
+            obj.hDone.Callback = {@obj.cbDone};
         end
-    end
 
-    methods (Access = private)
-        % TODO callbacks
+        function populate(obj)
+            % Dump all data from the config struct to the UI
+            obj.hImPrLoad.Value = SafeData.noEmpty( ...
+                obj.config.seqslam.image_processing.load, 0);
 
-        % TODO interactivity (doesn't seem necessary at this point...)
+            obj.hImPrDownSampleW.String = num2str( ...
+                obj.config.seqslam.image_processing.downsample.width);
+            obj.hImPrDownSampleH.String = num2str( ...
+                obj.config.seqslam.image_processing.downsample.height);
+            obj.hImPrDownSampleMethodValue.Value = SafeData.noEmpty( ...
+                find(strcmp(obj.hImPrDownSampleMethodValue.String, ...
+                    obj.config.seqslam.image_processing.downsample.method)), 1);
+
+            obj.hImPrCropRefValue.String = SafeData.vector2str( ...
+                obj.config.seqslam.image_processing.crop.reference);
+            obj.hImPrCropQueryValue.String = SafeData.vector2str( ...
+                obj.config.seqslam.image_processing.crop.query);
+
+            obj.hImPrNormaliseLengthValue.String = num2str( ...
+                obj.config.seqslam.image_processing.normalisation.length);
+            obj.hImPrNormaliseModeValue.String = num2str( ...
+                obj.config.seqslam.image_processing.normalisation.mode);
+
+            obj.hDiffLoad.Value = SafeData.noEmpty( ...
+                obj.config.seqslam.diff_matrix.load, 0);
+
+            obj.hDiffConEnRValue.String = num2str( ...
+                obj.config.seqslam.diff_matrix.contrast.r_window);
+            
+            obj.hMatchLoad.Value = SafeData.noEmpty( ...
+                obj.config.seqslam.matching.load, 0);
+            obj.hMatchDsValue.String = num2str( ...
+                obj.config.seqslam.matching.d_s);
+
+            obj.hMatchTrajVminValue.String = num2str( ...
+                obj.config.seqslam.matching.trajectories.v_min);
+            obj.hMatchTrajVmaxValue.String = num2str( ...
+                obj.config.seqslam.matching.trajectories.v_max);
+            obj.hMatchTrajVstepValue.String = num2str( ...
+                obj.config.seqslam.matching.trajectories.v_step);
+
+            obj.hMatchRrecentValue.String = num2str( ...
+                obj.config.seqslam.matching.r_recent);
+
+            obj.hMatchCriteriaRwindowValue.String = num2str( ...
+                obj.config.seqslam.matching.criteria.r_window);
+            obj.hMatchCriteriaUValue.String = num2str( ...
+                obj.config.seqslam.matching.criteria.u);
+        end
 
         function sizeGUI(obj)
             % Get some reference dimensions (max width of headings, and
@@ -605,6 +670,56 @@ classdef ConfigSeqSLAMGUI < handle
                 SpecPosition.RIGHT, GUISettings.PAD_MED);
             SpecPosition.positionIn(obj.hDone, obj.hFig, ...
                 SpecPosition.BOTTOM, GUISettings.PAD_MED);
+        end
+
+        function strip(obj)
+            % Strip data from the UI, and store it in the config struct
+            obj.config.seqslam.image_processing.load = ...
+                logical(obj.hImPrLoad.Value);
+
+            obj.config.seqslam.image_processing.downsample.width = ...
+                str2num(obj.hImPrDownSampleW.String);
+            obj.config.seqslam.image_processing.downsample.height = ...
+                str2num(obj.hImPrDownSampleH.String);
+            obj.config.seqslam.image_processing.downsample.method = ...
+                obj.hImPrDownSampleMethodValue.String{...
+                    obj.hImPrDownSampleMethodValue.Value};
+
+            obj.config.seqslam.image_processing.crop.reference = ...
+                SafeData.str2vector(obj.hImPrCropRefValue.String);
+            obj.config.seqslam.image_processing.crop.query = ...
+                SafeData.str2vector(obj.hImPrCropQueryValue.String);
+            
+            obj.config.seqslam.image_processing.normalisation.length = ...
+                str2num(obj.hImPrNormaliseLengthValue.String);
+            obj.config.seqslam.image_processing.normalisation.length = ...
+                str2num(obj.hImPrNormaliseLengthValue.String);
+            obj.config.seqslam.image_processing.normalisation.mode = ...
+                str2num(obj.hImPrNormaliseModeValue.String);
+
+            obj.config.seqslam.diff_matrix.load = logical(obj.hDiffLoad.Value);
+
+            obj.config.seqslam.diff_matrix.contrast.r_window = ...
+                str2num(obj.hDiffConEnRValue.String);
+            
+            obj.config.seqslam.matching.load = logical(obj.hMatchLoad.Value);
+
+            obj.config.seqslam.matching.d_s = str2num(obj.hMatchDsValue.String);
+
+            obj.config.seqslam.matching.trajectories.v_min = ...
+                str2num(obj.hMatchTrajVminValue.String);
+            obj.config.seqslam.matching.trajectories.v_max = ...
+                str2num(obj.hMatchTrajVmaxValue.String);
+            obj.config.seqslam.matching.trajectories.v_step = ...
+                str2num(obj.hMatchTrajVstepValue.String);
+            
+            obj.config.seqslam.matching.r_recent = ...
+                str2num(obj.hMatchRrecentValue.String);
+
+            obj.config.seqslam.matching.criteria.r_window = ...
+                str2num(obj.hMatchCriteriaRwindowValue.String);
+            obj.config.seqslam.matching.criteria.u = ...
+                str2num(obj.hMatchCriteriaUValue.String);
         end
     end
 end

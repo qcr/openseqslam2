@@ -1,7 +1,6 @@
 classdef SpecPosition
 
     enumeration
-
         % Positioning options
         LEFT_OF
         RIGHT_OF

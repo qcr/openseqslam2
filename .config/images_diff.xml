@@ -1,0 +1,74 @@
+<?xml version="1.0" encoding="utf-8"?>
+<seqslam-settings>
+   <settings-group name="reference">
+      <setting name="type" type="string" value="image"/>
+      <settings-group name="image">
+         <setting name="ext" type="string" value="png"/>
+         <setting name="index_start" type="numeric" value="1"/>
+         <setting name="index_end" type="numeric" value="35768"/>
+         <setting name="token_start" type="string" value="images-"/>
+         <setting name="token_end" type="string" value=".png"/>
+      </settings-group>
+      <setting name="path" type="string" value="/home/ben/usr/opt/git-repos/seqslam_toolbox/datasets/nordland/fall"/>
+      <setting name="subsample_factor" type="numeric" value="100"/>
+   </settings-group>
+   <settings-group name="query">
+      <setting name="type" type="string" value="image"/>
+      <settings-group name="image">
+         <setting name="ext" type="string" value="png"/>
+         <setting name="index_start" type="numeric" value="1"/>
+         <setting name="index_end" type="numeric" value="35768"/>
+         <setting name="token_start" type="string" value="images-"/>
+         <setting name="token_end" type="string" value=".png"/>
+      </settings-group>
+      <setting name="path" type="string" value="/home/ben/usr/opt/git-repos/seqslam_toolbox/datasets/nordland/winter"/>
+      <setting name="subsample_factor" type="numeric" value="100"/>
+   </settings-group>
+   <settings-group name="results">
+      <setting name="path" type="string" value="/home/ben/usr/opt/git-repos/seqslam_toolbox/results/debug"/>
+   </settings-group>
+   <settings-group name="seqslam">
+      <settings-group name="image_processing">
+         <setting name="load" type="boolean" value="1"/>
+         <settings-group name="downsample">
+            <setting name="width" type="numeric" value="64"/>
+            <setting name="height" type="numeric" value="32"/>
+            <setting name="method" type="string" value="lanczos3"/>
+         </settings-group>
+         <settings-group name="crop"/>
+         <settings-group name="normalisation">
+            <setting name="length" type="numeric" value="8"/>
+            <setting name="mode" type="numeric" value="1"/>
+         </settings-group>
+      </settings-group>
+      <settings-group name="diff_matrix">
+         <setting name="load" type="boolean" value="1"/>
+         <settings-group name="contrast">
+            <setting name="r_window" type="numeric" value="10"/>
+         </settings-group>
+      </settings-group>
+      <settings-group name="matching">
+         <setting name="load" type="boolean" value="1"/>
+         <setting name="d_s" type="numeric" value="10"/>
+         <settings-group name="trajectories">
+            <setting name="v_min" type="numeric" value="0.8"/>
+            <setting name="v_max" type="numeric" value="1.2"/>
+            <setting name="v_step" type="numeric" value="0.1"/>
+         </settings-group>
+         <setting name="r_recent" type="numeric" value="5"/>
+         <settings-group name="criteria">
+            <setting name="r_window" type="numeric" value="10"/>
+            <setting name="u" type="numeric" value="1.111"/>
+         </settings-group>
+      </settings-group>
+   </settings-group>
+   <settings-group name="visual">
+      <settings-group name="progress">
+         <setting name="percent_rate" type="numeric" value="1"/>
+         <setting name="preprocess_rate" type="numeric" value="5"/>
+         <setting name="diff_matrix_rate" type="numeric" value="5"/>
+         <setting name="enhance_rate" type="numeric" value="5"/>
+         <setting name="match_rate" type="numeric" value="5"/>
+      </settings-group>
+   </settings-group>
+</seqslam-settings>
