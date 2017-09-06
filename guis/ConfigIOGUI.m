@@ -435,6 +435,7 @@ classdef ConfigIOGUI < handle
                     results.type = 'video';
                     results.video.ext = e(2:end);
                     results.video.frames = floor(v.Duration * v.FrameRate);
+                    results.video.frame_rate = v.FrameRate;
                     if status == obj.hRefStatus
                         obj.cachedReference = [];
                         obj.cachedReference = results;

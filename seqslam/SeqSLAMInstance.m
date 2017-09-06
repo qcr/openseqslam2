@@ -67,6 +67,41 @@ classdef SeqSLAMInstance < handle
         end
     end
 
+    methods (Static)
+        function [imgOut, imgs] = preprocessSingle(img, s, dsName, full)
+            % Grayscale
+            imgG = rgb2gray(img);
+
+            % Resize
+            imgCR = imgG;
+            if ~isempty(s.downsample.width) && ~isempty(s.downsample.height)
+                imgCR = imresize(imgCR, ...
+                    [s.downsample.height s.downsample.width], ...
+                    s.downsample.method);
+            end
+
+            % Crop
+            crop = s.crop.(dsName);
+            if ~isempty(crop) && length(crop) == 4
+                imgCR = imgCR(crop(2):crop(4), crop(1):crop(3));
+            end
+
+            % Patch Normalisation
+            if ~isempty(s.normalisation.length) && ...
+                    ~isempty(s.normalisation.mode)
+                imgOut = patchNormalise(imgCR, s.normalisation.length, ...
+                    s.normalisation.mode);
+            end
+
+            % Return the full results only if requested
+            if full
+                imgs = {imgG, imgCR};
+            else
+                imgs = [];
+            end
+        end
+    end
+
     methods (Access = private)
         function preprocess(obj)
             % Cache processing settings (mainly to avoid typing...)
@@ -111,24 +146,23 @@ classdef SeqSLAMInstance < handle
                 for k = 1:length(indices)
                     % Load next image
                     if ~isempty(v)
-                        v.CurrentTime = (indices(k)-1) / v.FrameRate;
+                        v.CurrentTime = datasetFrameInfo(indices(k)-1, ...
+                            v.FrameRate, 0);
                         img = v.readFrame();
                     else
-                        imgNumStr = num2str(indices(k), ...
-                            ['%0' num2str(numel(num2str( ...
-                                settingsDataset.image.index_end))) 'd']);
-                        imgStr = [settingsDataset.path filesep() ...
-                            settingsDataset.image.token_start ...
-                            imgNumStr ...
-                            settingsDataset.image.token_end];
-                        img = imread(imgStr);
+                        imgPath = datasetImageInfo(settingsDataset.path, ...
+                            settingsDataset.image.token_start, ...
+                            settingsDataset.image.token_end, ...
+                            indices(k), settingsDataset.image.index_end, ...
+                            0);
+                        img = imread(imgPath);
                     end
 
                     % Preprocess the image
                     state = ProgressGUI.STATE_PREPROCESS_REF + ds-1;
-                    [imgOut, imgs] = obj.preprocessSingle(img, ...
+                    [imgOut, imgs] = SeqSLAMInstance.preprocessSingle(img, ...
                         settingsProcess, datasets{ds}, ...
-                        obj.cbMainReady(state));
+                        obj.listeningUI && obj.cbMainReady(state));
 
                     % Save the image to the processed image matrix
                     images(:,:,k) = imgOut;
@@ -146,13 +180,16 @@ classdef SeqSLAMInstance < handle
                             p.image_out = imgOut;
                             p.image_num = k;
                             if ~isempty(v)
-                                p.image_details = ['Frame ' ...
-                                    num2str(indices(k)) ' @ ' ...
-                                    num2str((indices(k)-1)/v.FrameRate) ...
-                                    's (' settingsDataset.path ')'];
+                                p.image_details = datasetFrameInfo( ...
+                                    indices(k)-1, v.FrameRate, 1, ...
+                                    settingsDataset.path, k);
                             else
-                                p.image_details = ['Image ' ...
-                                    num2str(indices(k)) ' (' imgStr ')'];
+                                p.image_details = datasetImageInfo( ...
+                                    settingsDataset.path, ...
+                                    settingsDataset.image.token_start, ...
+                                    settingsDataset.image.token_end, ...
+                                    indices(k), ...
+                                    settingsDataset.image.index_end, 1, k);
                             end
                             obj.cbMainUpdate(p);
                         else
@@ -161,41 +198,9 @@ classdef SeqSLAMInstance < handle
                     end
                 end
 
-                % Save the processed image matrix to the results
+                % Save the processed image matrix to the results, and indices
                 obj.results.preprocessed.(datasets{ds}) = images;
-            end
-        end
-
-        function [imgOut, imgs] = preprocessSingle(obj, img, s, dsName, full)
-            % Grayscale
-            imgG = rgb2gray(img);
-
-            % Resize
-            imgCR = imgG;
-            if ~isempty(s.downsample.width) && ~isempty(s.downsample.height)
-                imgCR = imresize(imgCR, ...
-                    [s.downsample.height s.downsample.width], ...
-                    s.downsample.method);
-            end
-
-            % Crop
-            crop = s.crop.(dsName);
-            if ~isempty(crop) && length(crop) == 4
-                imgCR = imgCR(crop(2):crop(4), crop(1):crop(3));
-            end
-
-            % Patch Normalisation
-            if ~isempty(s.normalisation.length) && ...
-                    ~isempty(s.normalisation.mode)
-                imgOut = patchNormalise(imgCR, s.normalisation.length, ...
-                    s.normalisation.mode);
-            end
-
-            % Return the full results only if requested
-            if full
-                imgs = {imgG, imgCR};
-            else
-                imgs = [];
+                obj.results.preprocessed.([datasets{ds} '_indices']) = indices;
             end
         end
 

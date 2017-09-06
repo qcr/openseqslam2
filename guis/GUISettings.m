@@ -57,6 +57,7 @@ classdef GUISettings
         end
 
         function axesDiffMatrixStyle(axes, limits)
+            axes.Box = 'off';
             axes.YDir = 'reverse';
             axes.XAxisLocation = 'top';
             axes.YAxisLocation = 'left';

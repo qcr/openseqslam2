@@ -29,6 +29,7 @@ function empty = emptyConfig()
     
     empty.query.video.ext = [];
     empty.query.video.frames = [];
+    empty.query.video.frame_rate = [];
 
     % Results
     empty.results.path = [];

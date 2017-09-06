@@ -4,7 +4,9 @@ function empty = emptyResults()
 
     % Preprocessing
     empty.preprocessed.reference = [];
+    empty.preprocessed.reference_indices = [];
     empty.preprocessed.query = [];
+    empty.preprocessed.query_indices = [];
     
     % Difference matrices
     empty.diff_matrix.base = [];
