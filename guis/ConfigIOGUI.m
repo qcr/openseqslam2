@@ -142,7 +142,7 @@ classdef ConfigIOGUI < handle
                     'No file selected'));
                 return;
             end
-            xmlfile = fullfile(f, p);
+            xmlfile = fullfile(p, f);
             [p, f, e] = fileparts(xmlfile);
             if ~strcmpi(e, '.xml')
                 uiwait(errordlg( ...

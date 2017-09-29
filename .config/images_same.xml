@@ -9,7 +9,7 @@
          <setting name="token_start" type="string" value="images-"/>
          <setting name="token_end" type="string" value=".png"/>
       </settings-group>
-      <setting name="path" type="string" value="/home/ben/usr/opt/git-repos/seqslam_toolbox/datasets/nordland/fall"/>
+      <setting name="path" type="string" value="$TOOLBOX_ROOT/datasets/nordland/fall"/>
       <setting name="subsample_factor" type="numeric" value="100"/>
    </settings-group>
    <settings-group name="query">
@@ -21,11 +21,11 @@
          <setting name="token_start" type="string" value="images-"/>
          <setting name="token_end" type="string" value=".png"/>
       </settings-group>
-      <setting name="path" type="string" value="/home/ben/usr/opt/git-repos/seqslam_toolbox/datasets/nordland/fall"/>
+      <setting name="path" type="string" value="$TOOLBOX_ROOT/datasets/nordland/fall"/>
       <setting name="subsample_factor" type="numeric" value="100"/>
    </settings-group>
    <settings-group name="results">
-      <setting name="path" type="string" value="/home/ben/usr/opt/git-repos/seqslam_toolbox/results/debug"/>
+      <setting name="path" type="string" value="$TOOLBOX_ROOT/results/debug"/>
    </settings-group>
    <settings-group name="seqslam">
       <settings-group name="image_processing">
@@ -64,11 +64,12 @@
    </settings-group>
    <settings-group name="visual">
       <settings-group name="progress">
-         <setting name="percent_rate" type="numeric" value="1"/>
-         <setting name="preprocess_rate" type="numeric" value="5"/>
-         <setting name="diff_matrix_rate" type="numeric" value="5"/>
-         <setting name="enhance_rate" type="numeric" value="5"/>
-         <setting name="match_rate" type="numeric" value="5"/>
+         <setting name="percent_rate" type="numeric" value="0.5"/>
+         <setting name="preprocess_rate" type="numeric" value="1"/>
+         <setting name="diff_matrix_rate" type="numeric" value="0.2"/>
+         <setting name="enhance_rate" type="numeric" value="0.2"/>
+         <setting name="match_rate" type="numeric" value="0.2"/>
       </settings-group>
    </settings-group>
+<
 </seqslam-settings>

@@ -9,6 +9,13 @@ function s = xml2settings(xmlLocation)
     % settings struct
     s = readRecursive(root, emptyConfig());
 
+    % Perform any substitutions
+    % TODO this should be defined MUCH more robustly...
+    VAR_ROOT = '$TOOLBOX_ROOT';
+    s.reference.path = strrep(s.reference.path, VAR_ROOT, toolboxRoot()); 
+    s.query.path = strrep(s.query.path, VAR_ROOT, toolboxRoot()); 
+    s.results.path = strrep(s.results.path, VAR_ROOT, toolboxRoot()); 
+
     function s = readRecursive(currentNode, existing)
         % Start with the existing struct
         s = existing;

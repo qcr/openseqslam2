@@ -429,10 +429,10 @@ classdef ProgressGUI < handle
             if obj.progress.state == ProgressGUI.STATE_PREPROCESS_REF || ...
                     obj.progress.state == ProgressGUI.STATE_PREPROCESS_QUERY
                 % Plot the 4 images
-                image(obj.hAxA, obj.progress.image_init);
-                image(obj.hAxB, obj.progress.image_grey);
-                image(obj.hAxC, obj.progress.image_crop_resized);
-                image(obj.hAxD, obj.progress.image_out);
+                imshow(obj.progress.image_init, 'Parent', obj.hAxA);
+                imshow(obj.progress.image_grey, 'Parent', obj.hAxB);
+                imshow(obj.progress.image_crop_resized, 'Parent', obj.hAxC);
+                imshow(obj.progress.image_out, 'Parent', obj.hAxD);
 
                 % Style the plots
                 obj.hAxA.Title.String = ['Original (' ...

@@ -264,10 +264,12 @@ classdef ResultsGUI < handle
                     obj.hOptsPreDatasetValue.Value}), 1);
 
             % Plot the 4 images
-            cla(obj.hAxA); image(obj.hAxA, img);
-            cla(obj.hAxB); image(obj.hAxB, imgs{1});
-            cla(obj.hAxC); image(obj.hAxC, imgs{2});
-            cla(obj.hAxD); image(obj.hAxD, img_out);
+            cla(obj.hAxA); imshow(img, 'Parent', obj.hAxA);
+            cla(obj.hAxB); imshow(imgs{1}, 'Parent', obj.hAxB);
+            cla(obj.hAxC); imshow(imgs{2}, 'Parent', obj.hAxC);
+            cla(obj.hAxD); imshow(img_out, 'Parent', obj.hAxD);
+            obj.results.dbg0 = imgs{2};
+            obj.results.dbg1 = img_out;
 
             % Style the plots
             obj.hAxA.Title.String = ['Original (' ...
