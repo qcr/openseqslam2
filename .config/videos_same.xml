@@ -62,9 +62,9 @@
       <settings-group name="progress">
          <setting name="percent_rate" type="numeric" value="0.5"/>
          <setting name="preprocess_rate" type="numeric" value="1"/>
-         <setting name="diff_matrix_rate" type="numeric" value="0.2"/>
-         <setting name="enhance_rate" type="numeric" value="0.2"/>
-         <setting name="match_rate" type="numeric" value="0.2"/>
+         <setting name="diff_matrix_rate" type="numeric" value="0.5"/>
+         <setting name="enhance_rate" type="numeric" value="0.5"/>
+         <setting name="match_rate" type="numeric" value="0.5"/>
       </settings-group>
    </settings-group>
 </seqslam-settings>

@@ -268,8 +268,6 @@ classdef ResultsGUI < handle
             cla(obj.hAxB); imshow(imgs{1}, 'Parent', obj.hAxB);
             cla(obj.hAxC); imshow(imgs{2}, 'Parent', obj.hAxC);
             cla(obj.hAxD); imshow(img_out, 'Parent', obj.hAxD);
-            obj.results.dbg0 = imgs{2};
-            obj.results.dbg1 = img_out;
 
             % Style the plots
             obj.hAxA.Title.String = ['Original (' ...

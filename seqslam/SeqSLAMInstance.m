@@ -227,7 +227,7 @@ classdef SeqSLAMInstance < handle
 
                     % Report to the UI if necessary
                     if obj.uiWaiting(ProgressGUI.STATE_DIFF_MATRIX)
-                        perc = ((y-1)*h+x) / (w*h) * 100;
+                        perc = ((y-1)*w+x) / (w*h) * 100;
                         if obj.cbMainReady( ...
                                 ProgressGUI.STATE_DIFF_MATRIX)
                             p = [];
@@ -266,7 +266,7 @@ classdef SeqSLAMInstance < handle
 
                     % Report to the UI if necessary
                     if obj.uiWaiting(ProgressGUI.STATE_DIFF_MATRIX_CONTRAST)
-                        perc = ((x-1)*size(matrix,2)+y) / ...
+                        perc = ((x-1)*size(matrix,1)+y) / ...
                             numel(matrix) * 100;
                         if obj.cbMainReady( ...
                                 ProgressGUI.STATE_DIFF_MATRIX_CONTRAST)
@@ -331,7 +331,7 @@ classdef SeqSLAMInstance < handle
                     % (if there is one)
                     if ~isempty(rs)
                         s1 = sub2ind(size(obj.results.diff_matrix.enhanced), ...
-                            rs(:), qs(1:numel(rs))'); % Indices
+                            rs(:), reshape(qs(1:size(rs,1),:), [], 1)); %Indices
                         s2 = obj.results.diff_matrix.enhanced(s1); % Scores
                         s3 = reshape(s2, size(rs)); % Reshaped scores
                         [r_scores(r), ind] = min(sum(s3,2));
