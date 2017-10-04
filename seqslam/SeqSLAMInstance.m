@@ -145,18 +145,7 @@ classdef SeqSLAMInstance < handle
                 % Loop over all of the image indices
                 for k = 1:length(indices)
                     % Load next image
-                    if ~isempty(v)
-                        v.CurrentTime = datasetFrameInfo(indices(k)-1, ...
-                            v.FrameRate, 0);
-                        img = v.readFrame();
-                    else
-                        imgPath = datasetImageInfo(settingsDataset.path, ...
-                            settingsDataset.image.token_start, ...
-                            settingsDataset.image.token_end, ...
-                            indices(k), settingsDataset.image.index_end, ...
-                            0);
-                        img = imread(imgPath);
-                    end
+                    img = datasetOpenImage(settingsDataset, k, indices, v);
 
                     % Preprocess the image
                     state = ProgressGUI.STATE_PREPROCESS_REF + ds-1;
@@ -184,7 +173,7 @@ classdef SeqSLAMInstance < handle
                                     indices(k)-1, v.FrameRate, 1, ...
                                     settingsDataset.path, k);
                             else
-                                p.image_details = datasetImageInfo( ...
+                                p.image_details = datasetPictureInfo( ...
                                     settingsDataset.path, ...
                                     settingsDataset.image.token_start, ...
                                     settingsDataset.image.token_end, ...
@@ -291,40 +280,52 @@ classdef SeqSLAMInstance < handle
         end
 
         function matching(obj)
+            % ds is split between searching forwards and backwards from the
+            % current query image. If ds is odd, then the search is floor(ds/2)
+            % back and forwards (giving a total trajectory length of ds). If
+            % ds is even, then the search is floor(ds/2) back and floor(ds/2)-1
+            % forwards (giving a total trajectory length of ds).
+
             % Cache settings (save typing...)
             settingsMatch = obj.config.seqslam.matching;
             ds = settingsMatch.d_s;
             num_qs = size(obj.results.diff_matrix.enhanced,2);
             num_rs = size(obj.results.diff_matrix.enhanced,1);
 
-            % Allocate memory for the matching scores
+            % Allocate memory for the matching scores, and the trajectories
             matches = NaN(num_qs,2);
+            trajs = NaN(num_qs, 2, ds); % q trajectories = r & q coords
 
-            % Figure out which relative trajectories are actually going to be
-            % a unique path (so we only ever check a path once)
-            moves = settingsMatch.trajectories.v_min * ds:... 
-                settingsMatch.trajectories.v_max * ds;
-            vs = moves / ds;
+            % Get matrices corresponding to all of the possible relative search
+            % trajectories
+            vs = settingsMatch.trajectories.v_min : ...
+                settingsMatch.trajectories.v_step : ...
+                settingsMatch.trajectories.v_max;
+            qs_rel = repmat([0:ds-1], length(vs), 1) - floor(ds/2);
+            rs_rel = round(repmat(vs', 1, ds) .* qs_rel);
 
-            % Get a matrix of relative x and y indices to test (we are centring
-            % the window around the query image, looking ds/2 forward and back)
-            q_indices = repmat([0:ds], length(vs), 1) - ds/2;
-            r_indices = floor(repmat(vs', 1, ds+1) .* q_indices);
+            % Only bother with the velocities which produce unique trajectories
+            [x, iA, iC] = unique(rs_rel, 'rows', 'stable');
+            qs_rel = qs_rel(iA,:);
+            rs_rel = rs_rel(iA,:);
+            q_rel_min = min(qs_rel(1,:));
+            q_rel_max = max(qs_rel(1,:));
 
-            % Loop from the query image number ds/2+1, through until the 
-            % length-ds/2 image number
+            % Loop through each of the query images that allow the requested
+            % trajectory window of size ds, finding the best trajectory for
+            % each reference image
             r_scores = NaN(num_rs, 1);
-            r_trajs = NaN(num_rs, size(r_indices,2));
-            for q = (ds/2+1):(num_qs-ds/2)
+            r_trajs = NaN(num_rs, ds);
+            for q = (-q_rel_min + 1) : (num_qs - q_rel_max)
                 % Set q indices
-                qs = q_indices + q; % We know these are all 'safe'...
+                qs = qs_rel + q; % We know these are all 'safe'...
                 
                 % Loop through each of the possible references, getting a score
                 % for the best trajectory
                 for r = 1:num_rs
                     % Set r indices (deleting rows where there is an
                     % invalid value)
-                    rs = r_indices + r;
+                    rs = rs_rel + r;
                     rs = rs(all(rs > 0 & rs <= num_rs, 2),:);
 
                     % Get the minimum score for this reference image
@@ -369,10 +370,14 @@ classdef SeqSLAMInstance < handle
 
                 % Store the min index, and the factor to second min
                 matches(q,:) = [min_idx window_min/min_score];
+
+                % Store the found trajectory
+                trajs(q,:,:) = [qs(1,:); r_trajs(min_idx,:)];
             end
 
-            % Save the best match index, and "best factor" for each query
-            obj.results.matches.all = matches;
+            % Save the best match trajectory, index, best factor for each query
+            obj.results.matching.all.trajectories = trajs;
+            obj.results.matching.all.matches = matches;
         end
 
         function thresholding(obj)
@@ -385,14 +390,19 @@ classdef SeqSLAMInstance < handle
             end
 
             % Mask out with NaNs those that are below threshold
-            mask = single(obj.results.matches.all(:,2) > ...
+            mask = single(obj.results.matching.all.matches(:,2) > ...
                     obj.config.seqslam.matching.criteria.u);
             mask(mask == 0) = NaN();
 
-            % Save the thresholded results
-            obj.results.matches.mask = mask;
-            obj.results.matches.thresholded = ...
-                obj.results.matches.all(:,1) .* mask;
+            % Save the thresholding results
+            obj.results.matching.thresholded.mask = mask;
+            obj.results.matching.thresholded.matches = ...
+                obj.results.matching.all.matches(:,1) .* mask;
+            obj.results.matching.thresholded.trajectories = ...
+                obj.results.matching.all.trajectories .* ...
+                repmat(mask, 1, ...
+                    size(obj.results.matching.all.trajectories,2), ...
+                    size(obj.results.matching.all.trajectories,3));
 
             % Report to the UI if necessary
             if obj.uiWaiting(ProgressGUI.STATE_DONE)

@@ -1,4 +1,4 @@
-function [ext, a, b, startToken, endToken] = imageDatasetProfile(directory)
+function [ext, a, b, startToken, endToken] = datasetPictureProfile(directory)
     % TODO this function does NOT handle (or even check) if:
     % - the tokens found in the images differ (i.e. filenames differ besides
     %   number)

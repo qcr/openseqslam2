@@ -390,7 +390,7 @@ classdef ConfigIOGUI < handle
                 status.ForegroundColor = GUISettings.COL_ERROR;
             elseif isdir(path)
                 % Attempt to profile the requested image dataset
-                [ext, a, b, startToken, endToken] = imageDatasetProfile(path);
+                [ext, a, b, startToken, endToken] = datasetPictureProfile(path);
 
                 % Report the results
                 if (a == 0 && b == 0) || isempty(ext)
@@ -498,10 +498,12 @@ classdef ConfigIOGUI < handle
             obj.hRefLocation.Enable = status;
             obj.hRefPicker.Enable = status;
             obj.hRefStatus.Enable = status;
+            obj.hRefSampleValue.Enable = status;
 
             obj.hQueryLocation.Enable = status;
             obj.hQueryPicker.Enable = status;
             obj.hQueryStatus.Enable = status;
+            obj.hQuerySampleValue.Enable = status;
 
             obj.hResultsLocation.Enable = status;
             obj.hResultsPicker.Enable = status;

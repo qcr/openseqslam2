@@ -13,6 +13,9 @@ function empty = emptyResults()
     empty.diff_matrix.enhanced = [];
 
     % Matching
-    empty.matches.all = [];
-    empty.matches.thresholded = [];
+    empty.matching.all.matches = [];
+    empty.matching.all.trajectories = [];
+    empty.matching.thresholded.mask = [];
+    empty.matching.thresholded.matches = [];
+    empty.matching.thresholded.trajectories = [];
 end

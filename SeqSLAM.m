@@ -1,4 +1,4 @@
-function dbg = SeqSLAM(varargin)
+function [results, config] = SeqSLAM(varargin)
     % Add the toolbox to the path
     run(fullfile(fileparts(which('SeqSLAM')), 'tools', 'toolboxInit'));
 
@@ -23,5 +23,5 @@ function dbg = SeqSLAM(varargin)
     %results = inst.results;
 
     % Run the results visualisation GUI
-    dbg = SeqSLAMResults(results, config);
+    results = SeqSLAMResults(results, config);
 end

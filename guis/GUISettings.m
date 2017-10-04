@@ -57,14 +57,28 @@ classdef GUISettings
         end
 
         function axesDiffMatrixStyle(axes, limits)
+            axes.Visible = 'on';
             axes.Box = 'off';
             axes.YDir = 'reverse';
             axes.XAxisLocation = 'top';
             axes.YAxisLocation = 'left';
-            axes.XLim = [1 limits(2)];
-            axes.YLim = [1 limits(1)];
+            axes.XLim = [1 limits(2)] + [-0.5 0.5];
+            axes.YLim = [1 limits(1)] + [-0.5 0.5];
             axes.XLabel.String = 'Query Image #';
             axes.YLabel.String = 'Reference Image #';
+        end
+
+        function axesDiffMatrixFocusStyle(axes, xvals, yvals)
+            axes.Visible = 'on';
+            GUISettings.axesHide(axes);
+            axes.Box = 'on';
+            axes.XColor = 'k';
+            axes.YColor = 'k';
+            axes.YDir = 'reverse';
+            axes.XAxisLocation = 'top';
+            axes.YAxisLocation = 'left';
+            axes.XLim = [min(xvals) max(xvals)] + [-0.5 0.5];
+            axes.YLim = [min(yvals) max(yvals)] + [-0.5 0.5];
         end
 
         function setFontScale(uicontrol, scale)
