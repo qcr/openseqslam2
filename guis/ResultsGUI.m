@@ -58,6 +58,7 @@ classdef ResultsGUI < handle
         listQuery = {};
         listMatches = {};
         
+        selectedDiff = [];
         selectedMatch = [];
     end
 
@@ -99,6 +100,14 @@ classdef ResultsGUI < handle
         function cbChangeImage(obj, src, event)
             % Grey out all of the plots because we have a change
             obj.greyAxes();
+        end
+
+        function cbDiffClicked(obj, src, event)
+            % Figure out which diff was clicked
+            obj.selectedDiff = round(obj.hAxMain.CurrentPoint(1,1:2));
+
+            % Redraw the diff matrix screen
+            obj.drawDiffMatrix();
         end
 
         function cbDiffOptionChange(obj, src, event)
@@ -378,6 +387,11 @@ classdef ResultsGUI < handle
         end
 
         function drawDiffMatrix(obj)
+            % Useful temporaries
+            szDiff = size(obj.results.diff_matrix.enhanced);
+            d = obj.selectedDiff;
+            ds = obj.config.seqslam.matching.d_s;
+
             % Clear the axis to start
             cla(obj.hAxMain);
             hold(obj.hAxMain, 'on');
@@ -392,8 +406,58 @@ classdef ResultsGUI < handle
             hold(obj.hAxMain, 'off');
 
             % Style the plot
-            GUISettings.axesDiffMatrixStyle(obj.hAxMain, ...
-                size(obj.results.diff_matrix.enhanced));
+            GUISettings.axesDiffMatrixStyle(obj.hAxMain, szDiff);
+            arrayfun(@(x) set(x, 'HitTest', 'off'), obj.hAxMain.Children);
+
+            % Update the focus area and plots
+            if ~isempty(d)
+                % Display, and update the title with the details
+                obj.hFocus.Visible = 'on';
+                obj.hFocus.Title = ['Focus: centred on (query #' ... 
+                    num2str(d(1)) ', ref #' num2str(d(2)) ')'];
+
+                % Get the limits of the cutout, and the cutout data
+                rLimits = d(2) - floor(ds/2) + [0 ds-1];
+                qLimits = d(1) - floor(ds/2) + [0 ds-1];
+                rDataLimits = max(rLimits(1),1) : min(rLimits(2), szDiff(1));
+                qDataLimits = max(qLimits(1),1) : min(qLimits(2), szDiff(1));
+
+                % Draw the focus box in the main axis
+                hold(obj.hAxMain, 'on');
+                h = rectangle(obj.hAxMain, 'Position', ...
+                    [qDataLimits(1), rDataLimits(1), ...
+                    range(qDataLimits), range(rDataLimits)]);
+                hold(obj.hAxMain, 'off');
+
+                % Draw the elements of the focus cutout
+                cla(obj.hFocusAx);
+                hold(obj.hFocusAx, 'on');
+                if obj.hOptsDiffContr.Value
+                    imagesc(obj.hFocusAx, qDataLimits, rDataLimits, ...
+                        obj.results.diff_matrix.enhanced(rDataLimits, ...
+                        qDataLimits));
+                else
+                    imagesc(obj.hFocusAx, qDataLimits, rDataLimits, ...
+                        obj.results.diff_matrix.base(rDataLimits, ...
+                        qDataLimits));
+                end
+                h = plot(obj.hFocusAx, d(1), d(2), 'k.');
+                h.MarkerSize = h.MarkerSize * 6;
+                hold(obj.hFocusAx, 'off');
+                GUISettings.axesDiffMatrixFocusStyle(obj.hFocusAx, ...
+                    qLimits, rLimits);
+
+                % Draw the reference and query images
+                imshow(datasetOpenImage(obj.config.('reference'), d(2), ...
+                    obj.results.preprocessed.('reference_indices')), ...
+                    'Parent', obj.hFocusRefAx);
+                imshow(datasetOpenImage(obj.config.('query'), d(1), ...
+                    obj.results.preprocessed.('query_indices')), ...
+                    'Parent', obj.hFocusQueryAx);
+            else
+                obj.hFocus.Visible = 'off';
+                obj.hFocus.Title = ['Focus: Off'];
+            end
         end
 
         function drawMatches(obj)
@@ -449,7 +513,7 @@ classdef ResultsGUI < handle
                 end
                 qLimits = m(1) - floor(ds/2) + [0 ds-1];
 
-                % Draw the elements of the cutout
+                % Draw the elements of the focus cutout
                 cla(obj.hFocusAx);
                 hold(obj.hFocusAx, 'on');
                 if obj.hOptsMatchDiff.Value
@@ -565,6 +629,9 @@ classdef ResultsGUI < handle
 
                     % Turn on the focus box
                     obj.hFocus.Visible = 'on';
+
+                    % Register the callback for the main axis
+                    obj.hAxMain.ButtonDownFcn = {@obj.cbDiffClicked};
 
                     % Draw the content
                     obj.drawDiffMatrix();
