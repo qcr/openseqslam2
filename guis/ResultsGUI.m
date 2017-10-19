@@ -46,6 +46,7 @@ classdef ResultsGUI < handle
         hFocus;
 
         hFocusAx;
+        hFocusButton;
         hFocusRef;
         hFocusRefAx;
         hFocusQuery;
@@ -148,6 +149,23 @@ classdef ResultsGUI < handle
 
         function cbSelectScreen(obj, src, event)
             obj.openScreen(obj.hScreen.Value);
+        end
+
+        function cbShowSequence(obj, src, event)
+            obj.hFocusButton.Enable = 'off';
+
+            % Figure out the rs and qs
+            qs = squeeze( ...
+                obj.results.matching.thresholded.trajectories( ...
+                obj.selectedMatch(1),1,:));
+            rs = squeeze( ...
+                obj.results.matching.thresholded.trajectories( ...
+                obj.selectedMatch(1),2,:));
+
+            % Call the sequence popup (it should block until closed)
+            SequencePopup(qs, rs, obj.config, obj.results);
+
+            obj.hFocusButton.Enable = 'on';
         end
 
         function clearScreen(obj)
@@ -310,6 +328,11 @@ classdef ResultsGUI < handle
             GUISettings.applyUIAxesStyle(obj.hFocusAx);
             obj.hFocusAx.Visible = 'off';
 
+            obj.hFocusButton = uicontrol('Style', 'pushbutton');
+            obj.hFocusButton.Parent = obj.hFocus;
+            GUISettings.applyUIControlStyle(obj.hFocusButton);
+            obj.hFocusButton.String = 'Show sequence';
+
             obj.hFocusRef = uicontrol('Style', 'text');
             obj.hFocusRef.Parent = obj.hFocus;
             GUISettings.applyUIControlStyle(obj.hFocusRef);
@@ -341,6 +364,7 @@ classdef ResultsGUI < handle
             obj.hOptsMatchSeqs.Callback = {@obj.cbMatchesOptionChange};
             obj.hOptsMatchMatches.Callback = {@obj.cbMatchesOptionChange};
             obj.hOptsMatchSelectValue.Callback = {@obj.cbMatchSelected};
+            obj.hFocusButton.Callback = {@obj.cbShowSequence};
         end
 
         function drawPreprocessed(obj)
@@ -526,9 +550,6 @@ classdef ResultsGUI < handle
                         qDataLimits));
                 end
                 if obj.hOptsMatchSeqs.Value
-                    ts = obj.results.matching.thresholded.trajectories;
-                    t = obj.results.matching.thresholded.trajectories( ...
-                        m(1),:,:);
                     h = plot(obj.hFocusAx, squeeze(t(:,1,:)), ...
                         squeeze(t(:,2,:)), 'k-');
                     h.LineWidth = h.LineWidth * 5;
@@ -629,6 +650,7 @@ classdef ResultsGUI < handle
 
                     % Turn on the focus box
                     obj.hFocus.Visible = 'on';
+                    obj.hFocusButton.Visible = 'off';
 
                     % Register the callback for the main axis
                     obj.hAxMain.ButtonDownFcn = {@obj.cbDiffClicked};
@@ -649,6 +671,7 @@ classdef ResultsGUI < handle
 
                     % Turn on the focus box
                     obj.hFocus.Visible = 'on';
+                    obj.hFocusButton.Visible = 'on';
 
                     % Register the callback for the main axis
                     obj.hAxMain.ButtonDownFcn = {@obj.cbMatchClicked};
@@ -753,16 +776,18 @@ classdef ResultsGUI < handle
             SpecSize.size(obj.hFocusAx, SpecSize.WIDTH, SpecSize.PERCENT, ...
                 obj.hFocus, 0.6);
             SpecSize.size(obj.hFocusAx, SpecSize.HEIGHT, SpecSize.RATIO, 3/4);
+            SpecSize.size(obj.hFocusButton, SpecSize.WIDTH, ...
+                SpecSize.PERCENT, obj.hFocus, 0.5)
             SpecSize.size(obj.hFocusRef, SpecSize.WIDTH, SpecSize.WRAP);
             SpecSize.size(obj.hFocusRefAx, SpecSize.WIDTH, SpecSize.PERCENT, ...
                 obj.hFocus, 0.5);
             SpecSize.size(obj.hFocusRefAx, SpecSize.HEIGHT, SpecSize.RATIO, ...
                 3/4);
             SpecSize.size(obj.hFocusQuery, SpecSize.WIDTH, SpecSize.WRAP);
-            SpecSize.size(obj.hFocusQueryAx, SpecSize.WIDTH, SpecSize.PERCENT, ...
-                obj.hFocus, 0.5);
-            SpecSize.size(obj.hFocusQueryAx, SpecSize.HEIGHT, SpecSize.RATIO, ...
-                3/4);
+            SpecSize.size(obj.hFocusQueryAx, SpecSize.WIDTH, ...
+                SpecSize.PERCENT, obj.hFocus, 0.5);
+            SpecSize.size(obj.hFocusQueryAx, SpecSize.HEIGHT, ...
+                SpecSize.RATIO, 3/4);
 
             % Then, systematically place
             SpecPosition.positionIn(obj.hScreen, obj.hFig, ...
@@ -874,13 +899,17 @@ classdef ResultsGUI < handle
                 SpecPosition.TOP, 2*GUISettings.PAD_LARGE);
             SpecPosition.positionIn(obj.hFocusAx, obj.hFocus, ...
                 SpecPosition.CENTER_X);
+            SpecPosition.positionRelative(obj.hFocusButton, obj.hFocusAx, ...
+                SpecPosition.BELOW, GUISettings.PAD_LARGE);
+            SpecPosition.positionIn(obj.hFocusButton, obj.hFocus, ...
+                SpecPosition.CENTER_X);
 
             SpecPosition.positionIn(obj.hFocusQueryAx, ...
                 obj.hFocus, SpecPosition.BOTTOM);
             SpecPosition.positionIn(obj.hFocusQuery, obj.hFocus, ...
                 SpecPosition.CENTER_X);
-            SpecPosition.positionRelative(obj.hFocusQuery, obj.hFocusQueryAx, ...
-                SpecPosition.ABOVE);
+            SpecPosition.positionRelative(obj.hFocusQuery, ...
+                obj.hFocusQueryAx, SpecPosition.ABOVE);
             SpecPosition.positionIn(obj.hFocusQuery, obj.hFocus, ...
                 SpecPosition.LEFT, GUISettings.PAD_MED);
             SpecPosition.positionRelative(obj.hFocusRefAx, obj.hFocusQuery, ...
