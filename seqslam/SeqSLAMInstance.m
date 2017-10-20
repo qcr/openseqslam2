@@ -100,6 +100,22 @@ classdef SeqSLAMInstance < handle
                 imgs = [];
             end
         end
+
+        function thresholded = threshold(matches, u)
+            % Mask out with NaNs those that are below threshold
+            mask = single(matches.matches(:,2) > u);
+            mask(mask == 0) = NaN();
+
+            % Save the thresholding results
+            thresholded.mask = mask;
+            thresholded.matches = ...
+                matches.matches(:,1) .* mask;
+            thresholded.trajectories = ...
+                matches.trajectories .* ...
+                repmat(mask, 1, ...
+                size(matches.trajectories,2), ...
+                size(matches.trajectories,3));
+        end
     end
 
     methods (Access = private)
@@ -141,7 +157,7 @@ classdef SeqSLAMInstance < handle
                 else
                     v = [];
                 end
-                
+
                 % Loop over all of the image indices
                 for k = 1:length(indices)
                     % Load next image
@@ -230,7 +246,7 @@ classdef SeqSLAMInstance < handle
                     end
                 end
             end
-            
+
             % Save the different matrix to the results
             obj.results.diff_matrix.base = matrix;
         end
@@ -248,7 +264,7 @@ classdef SeqSLAMInstance < handle
                     ya = max(1, y-r/2);
                     yb = min(size(matrix,1), y+r/2);
 
-                    % Get enhanced value 
+                    % Get enhanced value
                     local = obj.results.diff_matrix.base(ya:yb,x);
                     matrix(y,x) = (obj.results.diff_matrix.base(y,x) - ...
                         mean(local)) / std(local);
@@ -319,7 +335,7 @@ classdef SeqSLAMInstance < handle
             for q = (-q_rel_min + 1) : (num_qs - q_rel_max)
                 % Set q indices
                 qs = qs_rel + q; % We know these are all 'safe'...
-                
+
                 % Loop through each of the possible references, getting a score
                 % for the best trajectory
                 for r = 1:num_rs
@@ -363,13 +379,13 @@ classdef SeqSLAMInstance < handle
                 % Get min score, and second smallest outside the window
                 [min_score, min_idx] = min(r_scores);
                 is = 1:num_rs;
-                window_min = min(r_scores( ...
+                outside_min = min(r_scores( ...
                     is(is < min_idx-settingsMatch.criteria.r_window/2 | ...
-                        is > min_idx+settingsMatch.criteria.r_window/2) ...
+                    is > min_idx+settingsMatch.criteria.r_window/2) ...
                     ));
 
                 % Store the min index, and the factor to second min
-                matches(q,:) = [min_idx window_min/min_score];
+                matches(q,:) = [min_idx outside_min/min_score];
 
                 % Store the found trajectory
                 trajs(q,:,:) = [qs(1,:); r_trajs(min_idx,:)];
@@ -389,20 +405,10 @@ classdef SeqSLAMInstance < handle
                 obj.cbMainUpdate(p);
             end
 
-            % Mask out with NaNs those that are below threshold
-            mask = single(obj.results.matching.all.matches(:,2) > ...
-                    obj.config.seqslam.matching.criteria.u);
-            mask(mask == 0) = NaN();
-
-            % Save the thresholding results
-            obj.results.matching.thresholded.mask = mask;
-            obj.results.matching.thresholded.matches = ...
-                obj.results.matching.all.matches(:,1) .* mask;
-            obj.results.matching.thresholded.trajectories = ...
-                obj.results.matching.all.trajectories .* ...
-                repmat(mask, 1, ...
-                    size(obj.results.matching.all.trajectories,2), ...
-                    size(obj.results.matching.all.trajectories,3));
+            % Perform the thresholding
+            obj.results.matching.thresholded = SeqSLAMInstance.threshold( ...
+                obj.results.matching.all, ...
+                obj.config.seqslam.matching.criteria.u);
 
             % Report to the UI if necessary
             if obj.uiWaiting(ProgressGUI.STATE_DONE)

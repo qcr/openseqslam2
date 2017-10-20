@@ -39,9 +39,9 @@ classdef ResultsGUI < handle
         hOptsMatchDiff;
         hOptsMatchSeqs;
         hOptsMatchMatches;
-
         hOptsMatchSelect;
         hOptsMatchSelectValue;
+        hOptsMatchTweak;
 
         hFocus;
 
@@ -58,7 +58,7 @@ classdef ResultsGUI < handle
         listReference = {};
         listQuery = {};
         listMatches = {};
-        
+
         selectedDiff = [];
         selectedMatch = [];
     end
@@ -138,7 +138,7 @@ classdef ResultsGUI < handle
         function cbMatchSelected(obj, src, event)
             % Update the selected match
             obj.updateSelectedMatch();
-            
+
             % Redraw the matches screen
             obj.drawMatches();
         end
@@ -166,6 +166,19 @@ classdef ResultsGUI < handle
             SequencePopup(qs, rs, obj.config, obj.results);
 
             obj.hFocusButton.Enable = 'on';
+        end
+
+        function cbTweakMatches(obj, src, event)
+            % Launch the tweaking popup (and wait until done)
+            tweakui = TweakMatchesPopup(obj.config, obj.results);
+            uiwait(tweakui.hFig);
+
+            % Update the results, and update the GUI
+            obj.results = tweakui.results;
+            obj.selectedMatch = [];
+            obj.hOptsMatchSelectValue.Value = 1;
+            obj.updateMatches();
+            obj.drawMatches();
         end
 
         function clearScreen(obj)
@@ -214,7 +227,7 @@ classdef ResultsGUI < handle
             obj.hFig = figure('Visible', 'off');
             GUISettings.applyFigureStyle(obj.hFig);
             obj.hFig.Name = 'SeqSLAM Results';
-			
+
             % Generic elements
             obj.hScreen = uicontrol('Style', 'popupmenu');
             GUISettings.applyUIControlStyle(obj.hScreen);
@@ -230,19 +243,19 @@ classdef ResultsGUI < handle
             obj.hAxA = axes();
             GUISettings.applyUIAxesStyle(obj.hAxA);
             obj.hAxA.Visible = 'off';
-			
+
             obj.hAxB = axes();
             GUISettings.applyUIAxesStyle(obj.hAxB);
             obj.hAxB.Visible = 'off';
-			
+
             obj.hAxC = axes();
             GUISettings.applyUIAxesStyle(obj.hAxC);
             obj.hAxC.Visible = 'off';
-			
+
             obj.hAxD = axes();
             GUISettings.applyUIAxesStyle(obj.hAxD);
             obj.hAxD.Visible = 'off';
-			
+
             obj.hAxMain = axes();
             GUISettings.applyUIAxesStyle(obj.hAxMain);
             obj.hAxMain.Visible = 'off';
@@ -266,7 +279,7 @@ classdef ResultsGUI < handle
             obj.hOptsPreImage.Parent = obj.hOpts;
             GUISettings.applyUIControlStyle(obj.hOptsPreImage);
             obj.hOptsPreImage.String = 'Image:';
-            
+
             obj.hOptsPreImageValue = uicontrol('Style', 'popupmenu');
             obj.hOptsPreImageValue.Parent = obj.hOpts;
             GUISettings.applyUIControlStyle(obj.hOptsPreImageValue);
@@ -276,27 +289,27 @@ classdef ResultsGUI < handle
             obj.hOptsPreRefresh.Parent = obj.hOpts;
             GUISettings.applyUIControlStyle(obj.hOptsPreRefresh);
             obj.hOptsPreRefresh.String = 'Refresh';
-            
+
             obj.hOptsDiffContr = uicontrol('Style', 'checkbox');
             obj.hOptsDiffContr.Parent = obj.hOpts;
             GUISettings.applyUIControlStyle(obj.hOptsDiffContr);
             obj.hOptsDiffContr.String = 'Contrast Enhanced';
-            
+
             obj.hOptsDiffCol = uicontrol('Style', 'text');
             obj.hOptsDiffCol.Parent = obj.hOpts;
             GUISettings.applyUIControlStyle(obj.hOptsDiffCol);
             obj.hOptsDiffCol.String = 'Outlier Fading:';
-            
+
             obj.hOptsDiffColValue = uicontrol('Style', 'slider');
             obj.hOptsDiffColValue.Parent = obj.hOpts;
             GUISettings.applyUIControlStyle(obj.hOptsDiffColValue);
-            
+
             obj.hOptsMatchDiff = uicontrol('Style', 'checkbox');
             obj.hOptsMatchDiff.Parent = obj.hOpts;
             GUISettings.applyUIControlStyle(obj.hOptsMatchDiff);
             obj.hOptsMatchDiff.String = 'Show Difference Matrix';
             obj.hOptsMatchDiff.Value = 1;
-            
+
             obj.hOptsMatchSeqs = uicontrol('Style', 'checkbox');
             obj.hOptsMatchSeqs.Parent = obj.hOpts;
             GUISettings.applyUIControlStyle(obj.hOptsMatchSeqs);
@@ -317,6 +330,11 @@ classdef ResultsGUI < handle
             obj.hOptsMatchSelectValue.Parent = obj.hOpts;
             GUISettings.applyUIControlStyle(obj.hOptsMatchSelectValue);
             obj.hOptsMatchSelectValue.String = '';
+
+            obj.hOptsMatchTweak = uicontrol('Style', 'pushbutton');
+            obj.hOptsMatchTweak.Parent = obj.hOpts;
+            GUISettings.applyUIControlStyle(obj.hOptsMatchTweak);
+            obj.hOptsMatchTweak.String = 'Tweak matching';
 
             % Focus Pane
             obj.hFocus = uipanel();
@@ -364,6 +382,7 @@ classdef ResultsGUI < handle
             obj.hOptsMatchSeqs.Callback = {@obj.cbMatchesOptionChange};
             obj.hOptsMatchMatches.Callback = {@obj.cbMatchesOptionChange};
             obj.hOptsMatchSelectValue.Callback = {@obj.cbMatchSelected};
+            obj.hOptsMatchTweak.Callback = {@obj.cbTweakMatches};
             obj.hFocusButton.Callback = {@obj.cbShowSequence};
         end
 
@@ -379,7 +398,7 @@ classdef ResultsGUI < handle
             [img_out, imgs] = SeqSLAMInstance.preprocessSingle(img, ...
                 obj.config.seqslam.image_processing, ...
                 lower(obj.hOptsPreDatasetValue.String{ ...
-                    obj.hOptsPreDatasetValue.Value}), 1);
+                obj.hOptsPreDatasetValue.Value}), 1);
 
             % Plot the 4 images
             cla(obj.hAxA); imshow(img, 'Parent', obj.hAxA);
@@ -404,7 +423,7 @@ classdef ResultsGUI < handle
             GUISettings.axesHide(obj.hAxB);
             GUISettings.axesHide(obj.hAxC);
             GUISettings.axesHide(obj.hAxD);
-            
+
             % Do the prettying up (don't know why I have to do this after
             % every plot call Matlab...)
             obj.hAxMain.Visible = 'off';
@@ -437,7 +456,7 @@ classdef ResultsGUI < handle
             if ~isempty(d)
                 % Display, and update the title with the details
                 obj.hFocus.Visible = 'on';
-                obj.hFocus.Title = ['Focus: centred on (query #' ... 
+                obj.hFocus.Title = ['Focus: centred on (query #' ...
                     num2str(d(1)) ', ref #' num2str(d(2)) ')'];
 
                 % Get the limits of the cutout, and the cutout data
@@ -501,9 +520,9 @@ classdef ResultsGUI < handle
             if obj.hOptsMatchSeqs.Value
                 arrayfun(@(x) plot(obj.hAxMain, ...
                     squeeze(obj.results.matching.thresholded.trajectories( ...
-                        x,1,:)), ...
+                    x,1,:)), ...
                     squeeze(obj.results.matching.thresholded.trajectories( ...
-                        x,2,:)), ...
+                    x,2,:)), ...
                     '-'), 1:szTrajs(1));
             end
             if obj.hOptsMatchMatches.Value
@@ -555,7 +574,7 @@ classdef ResultsGUI < handle
                     h.LineWidth = h.LineWidth * 5;
                 end
                 if obj.hOptsMatchMatches.Value
-                    h = plot(obj.hFocusAx, m(1), ... 
+                    h = plot(obj.hFocusAx, m(1), ...
                         obj.results.matching.thresholded.matches(m(1)), 'k.');
                     h.MarkerSize = h.MarkerSize * 6;
                 end
@@ -582,18 +601,18 @@ classdef ResultsGUI < handle
             path = obj.config.(ds).path;
             info = obj.config.(ds).(obj.config.(ds).type);
             isVideo = strcmp(obj.config.(ds).type, 'video');
-            
+
             % Populate the list
             l = cell(length(indices),1);
             if isVideo
                 l = arrayfun( ...
                     @(x) datasetFrameInfo(indices(x), info.frame_rate, 1, ...
-                        path, x), ...
+                    path, x), ...
                     1:length(indices), 'UniformOutput', false);
             else
                 l = arrayfun( ...
                     @(x) datasetPictureInfo(path, info.token_start, ...
-                        info.token_end, indices(x), info.index_end, 1, x), ...
+                    info.token_end, indices(x), info.index_end, 1, x), ...
                     1:length(indices), 'UniformOutput', false);
             end
         end
@@ -665,7 +684,7 @@ classdef ResultsGUI < handle
                     obj.hOptsMatchMatches.Visible = 'on';
                     obj.hOptsMatchSelect.Visible = 'on';
                     obj.hOptsMatchSelectValue.Visible = 'on';
-                    
+
                     % Turn on the required axes
                     obj.hAxMain.Visible = 'on';
 
@@ -682,264 +701,270 @@ classdef ResultsGUI < handle
                 case 4
                     % Matches video screen
                     % TODO
+                end
+
+                % Force a draw at the end
+                drawnow();
             end
 
-            % Force a draw at the end
-            drawnow();
-        end
+            function populateDatasetLists(obj)
+                % Get the lists for each of the datasets
+                datasets = lower(obj.hOptsPreDatasetValue.String);
+                obj.listReference = obj.getDatasetList(datasets{1});
+                obj.listQuery = obj.getDatasetList(datasets{2});
+            end
 
-        function populateDatasetLists(obj)
-            % Get the lists for each of the datasets
-            datasets = lower(obj.hOptsPreDatasetValue.String);
-            obj.listReference = obj.getDatasetList(datasets{1});
-            obj.listQuery = obj.getDatasetList(datasets{2});
-        end
+            function populateMatchList(obj)
+                % transforming the query dataset list
+                obj.listMatches = ['All' ...
+                    obj.listQuery(~isnan(obj.results.matching.thresholded.mask))];
+            end
 
-        function populateMatchList(obj)
-            % TODO implement this to pull the match list by masking and
-            % transforming the query dataset list
-            obj.listMatches = ['All' ...
-                obj.listQuery(~isnan(obj.results.matching.thresholded.mask))];
-        end
+            function sizeGUI(obj)
+                % Statically size for now
+                % TODO handle potential resizing gracefully
+                widthUnit = obj.hTitle.Extent(3);
+                heightUnit = obj.hTitle.Extent(4);
 
-        function sizeGUI(obj)
-            % Statically size for now
-            % TODO handle potential resizing gracefully
-            widthUnit = obj.hTitle.Extent(3);
-            heightUnit = obj.hTitle.Extent(4);
-			
-            % Size and position the figure
-            obj.hFig.Position = [0, 0, ...
-                widthUnit * ResultsGUI.FIG_WIDTH_FACTOR, ...
-                heightUnit * ResultsGUI.FIG_HEIGHT_FACTOR];
-            movegui(obj.hFig, 'center');
-			
-            % Now that the figure (space for placing UI elements is set),
-            % size all of the elements
-            SpecSize.size(obj.hScreen, SpecSize.WIDTH, SpecSize.PERCENT, ...
-                obj.hFig, 0.8);
+                % Size and position the figure
+                obj.hFig.Position = [0, 0, ...
+                    widthUnit * ResultsGUI.FIG_WIDTH_FACTOR, ...
+                    heightUnit * ResultsGUI.FIG_HEIGHT_FACTOR];
+                movegui(obj.hFig, 'center');
 
-            SpecSize.size(obj.hTitle, SpecSize.HEIGHT, SpecSize.WRAP);
-            SpecSize.size(obj.hTitle, SpecSize.WIDTH, SpecSize.MATCH, ...
-                obj.hFig, GUISettings.PAD_MED);
+                % Now that the figure (space for placing UI elements is set),
+                % size all of the elements
+                SpecSize.size(obj.hScreen, SpecSize.WIDTH, SpecSize.PERCENT, ...
+                    obj.hFig, 0.8);
 
-            SpecSize.size(obj.hOpts, SpecSize.HEIGHT, SpecSize.ABSOLUTE, ...
-                1.5*heightUnit);
-            SpecSize.size(obj.hOpts, SpecSize.WIDTH, SpecSize.MATCH, ...
-                obj.hFig, GUISettings.PAD_MED);
+                SpecSize.size(obj.hTitle, SpecSize.HEIGHT, SpecSize.WRAP);
+                SpecSize.size(obj.hTitle, SpecSize.WIDTH, SpecSize.MATCH, ...
+                    obj.hFig, GUISettings.PAD_MED);
 
-            SpecSize.size(obj.hOptsPreDataset, SpecSize.WIDTH, SpecSize.WRAP);
-            SpecSize.size(obj.hOptsPreDatasetValue, SpecSize.WIDTH, ...
-                SpecSize.WRAP, GUISettings.PAD_LARGE);
-            SpecSize.size(obj.hOptsPreImage, SpecSize.WIDTH, SpecSize.WRAP);
-            SpecSize.size(obj.hOptsPreImageValue, SpecSize.WIDTH, ...
-                SpecSize.PERCENT, obj.hOpts, 0.6);
-            SpecSize.size(obj.hOptsPreRefresh, SpecSize.WIDTH, SpecSize.WRAP);
+                SpecSize.size(obj.hOpts, SpecSize.HEIGHT, SpecSize.ABSOLUTE, ...
+                    1.5*heightUnit);
+                SpecSize.size(obj.hOpts, SpecSize.WIDTH, SpecSize.MATCH, ...
+                    obj.hFig, GUISettings.PAD_MED);
 
-            SpecSize.size(obj.hOptsDiffContr, SpecSize.WIDTH, ...
-                SpecSize.WRAP, GUISettings.PAD_LARGE);
-            SpecSize.size(obj.hOptsDiffCol, SpecSize.WIDTH, SpecSize.WRAP);
-            SpecSize.size(obj.hOptsDiffColValue, SpecSize.WIDTH, ...
-                SpecSize.PERCENT, obj.hOpts, 0.5);
+                SpecSize.size(obj.hOptsPreDataset, SpecSize.WIDTH, SpecSize.WRAP);
+                SpecSize.size(obj.hOptsPreDatasetValue, SpecSize.WIDTH, ...
+                    SpecSize.WRAP, GUISettings.PAD_LARGE);
+                SpecSize.size(obj.hOptsPreImage, SpecSize.WIDTH, SpecSize.WRAP);
+                SpecSize.size(obj.hOptsPreImageValue, SpecSize.WIDTH, ...
+                    SpecSize.PERCENT, obj.hOpts, 0.6);
+                SpecSize.size(obj.hOptsPreRefresh, SpecSize.WIDTH, SpecSize.WRAP);
 
-            SpecSize.size(obj.hOptsMatchDiff, SpecSize.WIDTH, ...
-                SpecSize.WRAP, GUISettings.PAD_LARGE);
-            SpecSize.size(obj.hOptsMatchSeqs, SpecSize.WIDTH, ...
-                SpecSize.WRAP, GUISettings.PAD_LARGE);
-            SpecSize.size(obj.hOptsMatchMatches, SpecSize.WIDTH, ...
-                SpecSize.WRAP, GUISettings.PAD_LARGE);
-            SpecSize.size(obj.hOptsMatchSelect, SpecSize.WIDTH, ...
-                SpecSize.WRAP, GUISettings.PAD_SMALL);
-            SpecSize.size(obj.hOptsMatchSelectValue, SpecSize.WIDTH, ...
-                SpecSize.PERCENT, obj.hOpts, 0.4);
+                SpecSize.size(obj.hOptsDiffContr, SpecSize.WIDTH, ...
+                    SpecSize.WRAP, GUISettings.PAD_LARGE);
+                SpecSize.size(obj.hOptsDiffCol, SpecSize.WIDTH, SpecSize.WRAP);
+                SpecSize.size(obj.hOptsDiffColValue, SpecSize.WIDTH, ...
+                    SpecSize.PERCENT, obj.hOpts, 0.5);
 
-            SpecSize.size(obj.hAxA, SpecSize.WIDTH, SpecSize.PERCENT, ...
-                obj.hFig, 0.25);
-            SpecSize.size(obj.hAxA, SpecSize.HEIGHT, SpecSize.RATIO, 3/4);
-            SpecSize.size(obj.hAxB, SpecSize.WIDTH, SpecSize.PERCENT, ...
-                obj.hFig, 0.25);
-            SpecSize.size(obj.hAxB, SpecSize.HEIGHT, SpecSize.RATIO, 3/4);
-            SpecSize.size(obj.hAxC, SpecSize.WIDTH, SpecSize.PERCENT, ...
-                obj.hFig, 0.25);
-            SpecSize.size(obj.hAxC, SpecSize.HEIGHT, SpecSize.RATIO, 3/4);
-            SpecSize.size(obj.hAxD, SpecSize.WIDTH, SpecSize.PERCENT, ...
-                obj.hFig, 0.25);
-            SpecSize.size(obj.hAxD, SpecSize.HEIGHT, SpecSize.RATIO, 3/4);
-            SpecSize.size(obj.hAxMain, SpecSize.WIDTH, SpecSize.PERCENT, ...
-                obj.hFig, 0.6);
-            SpecSize.size(obj.hAxMain, SpecSize.HEIGHT, SpecSize.RATIO, 3/4);
+                SpecSize.size(obj.hOptsMatchDiff, SpecSize.WIDTH, ...
+                    SpecSize.WRAP, GUISettings.PAD_LARGE);
+                SpecSize.size(obj.hOptsMatchSeqs, SpecSize.WIDTH, ...
+                    SpecSize.WRAP, GUISettings.PAD_LARGE);
+                SpecSize.size(obj.hOptsMatchMatches, SpecSize.WIDTH, ...
+                    SpecSize.WRAP, GUISettings.PAD_LARGE);
+                SpecSize.size(obj.hOptsMatchSelect, SpecSize.WIDTH, ...
+                    SpecSize.WRAP, GUISettings.PAD_SMALL);
+                SpecSize.size(obj.hOptsMatchSelectValue, SpecSize.WIDTH, ...
+                    SpecSize.PERCENT, obj.hOpts, 0.4);
+                SpecSize.size(obj.hOptsMatchTweak, SpecSize.WIDTH, ...
+                    SpecSize.PERCENT, obj.hOpts, 0.1);
 
-            SpecSize.size(obj.hFocus, SpecSize.WIDTH, SpecSize.PERCENT, ...
-                obj.hFig, 0.3);
-            SpecSize.size(obj.hFocus, SpecSize.HEIGHT, SpecSize.PERCENT, ...
-                obj.hFig, 0.775);
-            SpecSize.size(obj.hFocusAx, SpecSize.WIDTH, SpecSize.PERCENT, ...
-                obj.hFocus, 0.6);
-            SpecSize.size(obj.hFocusAx, SpecSize.HEIGHT, SpecSize.RATIO, 3/4);
-            SpecSize.size(obj.hFocusButton, SpecSize.WIDTH, ...
-                SpecSize.PERCENT, obj.hFocus, 0.5)
-            SpecSize.size(obj.hFocusRef, SpecSize.WIDTH, SpecSize.WRAP);
-            SpecSize.size(obj.hFocusRefAx, SpecSize.WIDTH, SpecSize.PERCENT, ...
-                obj.hFocus, 0.5);
-            SpecSize.size(obj.hFocusRefAx, SpecSize.HEIGHT, SpecSize.RATIO, ...
-                3/4);
-            SpecSize.size(obj.hFocusQuery, SpecSize.WIDTH, SpecSize.WRAP);
-            SpecSize.size(obj.hFocusQueryAx, SpecSize.WIDTH, ...
-                SpecSize.PERCENT, obj.hFocus, 0.5);
-            SpecSize.size(obj.hFocusQueryAx, SpecSize.HEIGHT, ...
-                SpecSize.RATIO, 3/4);
+                SpecSize.size(obj.hAxA, SpecSize.WIDTH, SpecSize.PERCENT, ...
+                    obj.hFig, 0.25);
+                SpecSize.size(obj.hAxA, SpecSize.HEIGHT, SpecSize.RATIO, 3/4);
+                SpecSize.size(obj.hAxB, SpecSize.WIDTH, SpecSize.PERCENT, ...
+                    obj.hFig, 0.25);
+                SpecSize.size(obj.hAxB, SpecSize.HEIGHT, SpecSize.RATIO, 3/4);
+                SpecSize.size(obj.hAxC, SpecSize.WIDTH, SpecSize.PERCENT, ...
+                    obj.hFig, 0.25);
+                SpecSize.size(obj.hAxC, SpecSize.HEIGHT, SpecSize.RATIO, 3/4);
+                SpecSize.size(obj.hAxD, SpecSize.WIDTH, SpecSize.PERCENT, ...
+                    obj.hFig, 0.25);
+                SpecSize.size(obj.hAxD, SpecSize.HEIGHT, SpecSize.RATIO, 3/4);
+                SpecSize.size(obj.hAxMain, SpecSize.WIDTH, SpecSize.PERCENT, ...
+                    obj.hFig, 0.6);
+                SpecSize.size(obj.hAxMain, SpecSize.HEIGHT, SpecSize.RATIO, 3/4);
 
-            % Then, systematically place
-            SpecPosition.positionIn(obj.hScreen, obj.hFig, ...
-                SpecPosition.TOP, GUISettings.PAD_SMALL);
-            SpecPosition.positionIn(obj.hScreen, obj.hFig, ...
-                SpecPosition.CENTER_X);
+                SpecSize.size(obj.hFocus, SpecSize.WIDTH, SpecSize.PERCENT, ...
+                    obj.hFig, 0.3);
+                SpecSize.size(obj.hFocus, SpecSize.HEIGHT, SpecSize.PERCENT, ...
+                    obj.hFig, 0.775);
+                SpecSize.size(obj.hFocusAx, SpecSize.WIDTH, SpecSize.PERCENT, ...
+                    obj.hFocus, 0.6);
+                SpecSize.size(obj.hFocusAx, SpecSize.HEIGHT, SpecSize.RATIO, 3/4);
+                SpecSize.size(obj.hFocusButton, SpecSize.WIDTH, ...
+                    SpecSize.PERCENT, obj.hFocus, 0.5)
+                SpecSize.size(obj.hFocusRef, SpecSize.WIDTH, SpecSize.WRAP);
+                SpecSize.size(obj.hFocusRefAx, SpecSize.WIDTH, SpecSize.PERCENT, ...
+                    obj.hFocus, 0.5);
+                SpecSize.size(obj.hFocusRefAx, SpecSize.HEIGHT, SpecSize.RATIO, ...
+                    3/4);
+                SpecSize.size(obj.hFocusQuery, SpecSize.WIDTH, SpecSize.WRAP);
+                SpecSize.size(obj.hFocusQueryAx, SpecSize.WIDTH, ...
+                    SpecSize.PERCENT, obj.hFocus, 0.5);
+                SpecSize.size(obj.hFocusQueryAx, SpecSize.HEIGHT, ...
+                    SpecSize.RATIO, 3/4);
 
-            SpecPosition.positionRelative(obj.hTitle, obj.hScreen, ...
-                SpecPosition.BELOW, GUISettings.PAD_LARGE);
-            SpecPosition.positionIn(obj.hTitle, obj.hFig, ...
-                SpecPosition.LEFT, GUISettings.PAD_LARGE);
+                % Then, systematically place
+                SpecPosition.positionIn(obj.hScreen, obj.hFig, ...
+                    SpecPosition.TOP, GUISettings.PAD_SMALL);
+                SpecPosition.positionIn(obj.hScreen, obj.hFig, ...
+                    SpecPosition.CENTER_X);
 
-            SpecPosition.positionRelative(obj.hOpts, obj.hTitle, ...
-                SpecPosition.BELOW, GUISettings.PAD_MED);
-            SpecPosition.positionIn(obj.hOpts, obj.hFig, ...
-                SpecPosition.CENTER_X);
-            
-            SpecPosition.positionIn(obj.hOptsPreDataset, obj.hOpts, ...
-                SpecPosition.TOP, 1.75*GUISettings.PAD_LARGE);
-            SpecPosition.positionIn(obj.hOptsPreDataset, obj.hOpts, ...
-                SpecPosition.LEFT, GUISettings.PAD_MED);
-            SpecPosition.positionRelative(obj.hOptsPreDatasetValue, ...
-                obj.hOptsPreDataset, SpecPosition.CENTER_Y);
-            SpecPosition.positionRelative(obj.hOptsPreDatasetValue, ...
-                obj.hOptsPreDataset, SpecPosition.RIGHT_OF, ...
-                GUISettings.PAD_MED);
-            SpecPosition.positionRelative(obj.hOptsPreRefresh, ...
-                obj.hOptsPreDataset, SpecPosition.CENTER_Y);
-            SpecPosition.positionIn(obj.hOptsPreRefresh, obj.hOpts, ...
-                SpecPosition.RIGHT, GUISettings.PAD_MED);
-            SpecPosition.positionRelative(obj.hOptsPreImageValue, ...
-                obj.hOptsPreDataset, SpecPosition.CENTER_Y);
-            SpecPosition.positionRelative(obj.hOptsPreImageValue, ...
-                obj.hOptsPreRefresh, SpecPosition.LEFT_OF, ...
-                GUISettings.PAD_LARGE);
-            SpecPosition.positionRelative(obj.hOptsPreImage, ...
-                obj.hOptsPreDataset, SpecPosition.CENTER_Y);
-            SpecPosition.positionRelative(obj.hOptsPreImage, ...
-                obj.hOptsPreImageValue, SpecPosition.LEFT_OF, ...
-                GUISettings.PAD_MED);
+                SpecPosition.positionRelative(obj.hTitle, obj.hScreen, ...
+                    SpecPosition.BELOW, GUISettings.PAD_LARGE);
+                SpecPosition.positionIn(obj.hTitle, obj.hFig, ...
+                    SpecPosition.LEFT, GUISettings.PAD_LARGE);
 
-            SpecPosition.positionIn(obj.hOptsDiffContr, obj.hOpts, ...
-                SpecPosition.TOP, 1.75*GUISettings.PAD_LARGE);
-            SpecPosition.positionIn(obj.hOptsDiffContr, obj.hOpts, ...
-                SpecPosition.LEFT, GUISettings.PAD_MED);
-            SpecPosition.positionRelative(obj.hOptsDiffCol, ...
-                obj.hOptsDiffContr, SpecPosition.CENTER_Y);
-            SpecPosition.positionRelative(obj.hOptsDiffCol, ...
-                obj.hOptsDiffContr, SpecPosition.RIGHT_OF, ...
-                GUISettings.PAD_LARGE);
-            SpecPosition.positionRelative(obj.hOptsDiffColValue, ...
-                obj.hOptsDiffCol, SpecPosition.CENTER_Y);
-            SpecPosition.positionRelative(obj.hOptsDiffColValue, ...
-                obj.hOptsDiffCol, SpecPosition.RIGHT_OF, ...
-                GUISettings.PAD_LARGE);
+                SpecPosition.positionRelative(obj.hOpts, obj.hTitle, ...
+                    SpecPosition.BELOW, GUISettings.PAD_MED);
+                SpecPosition.positionIn(obj.hOpts, obj.hFig, ...
+                    SpecPosition.CENTER_X);
 
-            SpecPosition.positionIn(obj.hOptsMatchDiff, obj.hOpts, ...
-                SpecPosition.TOP, 1.75*GUISettings.PAD_LARGE);
-            SpecPosition.positionIn(obj.hOptsMatchDiff, obj.hOpts, ...
-                SpecPosition.LEFT, GUISettings.PAD_MED);
-            SpecPosition.positionRelative(obj.hOptsMatchSeqs, ...
-                obj.hOptsMatchDiff, SpecPosition.CENTER_Y);
-            SpecPosition.positionRelative(obj.hOptsMatchSeqs, ...
-                obj.hOptsMatchDiff, SpecPosition.RIGHT_OF, ...
-                GUISettings.PAD_LARGE);
-            SpecPosition.positionRelative(obj.hOptsMatchMatches, ...
-                obj.hOptsMatchSeqs, SpecPosition.CENTER_Y);
-            SpecPosition.positionRelative(obj.hOptsMatchMatches, ...
-                obj.hOptsMatchSeqs, SpecPosition.RIGHT_OF, ...
-                GUISettings.PAD_LARGE);
-            SpecPosition.positionRelative(obj.hOptsMatchSelect, ...
-                obj.hOptsMatchMatches, SpecPosition.CENTER_Y);
-            SpecPosition.positionRelative(obj.hOptsMatchSelect, ...
-                obj.hOptsMatchMatches, SpecPosition.RIGHT_OF, ...
-                GUISettings.PAD_LARGE);
-            SpecPosition.positionRelative(obj.hOptsMatchSelectValue, ...
-                obj.hOptsMatchSelect, SpecPosition.CENTER_Y);
-            SpecPosition.positionRelative(obj.hOptsMatchSelectValue, ...
-                obj.hOptsMatchSelect, SpecPosition.RIGHT_OF, ...
-                GUISettings.PAD_LARGE);
+                SpecPosition.positionIn(obj.hOptsPreDataset, obj.hOpts, ...
+                    SpecPosition.TOP, 1.75*GUISettings.PAD_LARGE);
+                SpecPosition.positionIn(obj.hOptsPreDataset, obj.hOpts, ...
+                    SpecPosition.LEFT, GUISettings.PAD_MED);
+                SpecPosition.positionRelative(obj.hOptsPreDatasetValue, ...
+                    obj.hOptsPreDataset, SpecPosition.CENTER_Y);
+                SpecPosition.positionRelative(obj.hOptsPreDatasetValue, ...
+                    obj.hOptsPreDataset, SpecPosition.RIGHT_OF, ...
+                    GUISettings.PAD_MED);
+                SpecPosition.positionRelative(obj.hOptsPreRefresh, ...
+                    obj.hOptsPreDataset, SpecPosition.CENTER_Y);
+                SpecPosition.positionIn(obj.hOptsPreRefresh, obj.hOpts, ...
+                    SpecPosition.RIGHT, GUISettings.PAD_MED);
+                SpecPosition.positionRelative(obj.hOptsPreImageValue, ...
+                    obj.hOptsPreDataset, SpecPosition.CENTER_Y);
+                SpecPosition.positionRelative(obj.hOptsPreImageValue, ...
+                    obj.hOptsPreRefresh, SpecPosition.LEFT_OF, ...
+                    GUISettings.PAD_LARGE);
+                SpecPosition.positionRelative(obj.hOptsPreImage, ...
+                    obj.hOptsPreDataset, SpecPosition.CENTER_Y);
+                SpecPosition.positionRelative(obj.hOptsPreImage, ...
+                    obj.hOptsPreImageValue, SpecPosition.LEFT_OF, ...
+                    GUISettings.PAD_MED);
 
-            SpecPosition.positionRelative(obj.hAxA, obj.hOpts, ...
-                SpecPosition.BELOW, 8*GUISettings.PAD_LARGE);
-            SpecPosition.positionRelative(obj.hAxA, obj.hOpts, ...
-                SpecPosition.LEFT, 12*GUISettings.PAD_LARGE);
-            SpecPosition.positionRelative(obj.hAxB, obj.hOpts, ...
-                SpecPosition.BELOW, 8*GUISettings.PAD_LARGE);
-            SpecPosition.positionRelative(obj.hAxB, obj.hOpts, ...
-                SpecPosition.RIGHT, 12*GUISettings.PAD_LARGE);
-            SpecPosition.positionRelative(obj.hAxC, obj.hAxA, ...
-                SpecPosition.BELOW, 2*GUISettings.PAD_LARGE);
-            SpecPosition.positionRelative(obj.hAxC, obj.hOpts, ...
-                SpecPosition.LEFT, 12*GUISettings.PAD_LARGE);
-            SpecPosition.positionRelative(obj.hAxD, obj.hAxB, ...
-                SpecPosition.BELOW, 2*GUISettings.PAD_LARGE);
-            SpecPosition.positionRelative(obj.hAxD, obj.hOpts, ...
-                SpecPosition.RIGHT, 12*GUISettings.PAD_LARGE);
+                SpecPosition.positionIn(obj.hOptsDiffContr, obj.hOpts, ...
+                    SpecPosition.TOP, 1.75*GUISettings.PAD_LARGE);
+                SpecPosition.positionIn(obj.hOptsDiffContr, obj.hOpts, ...
+                    SpecPosition.LEFT, GUISettings.PAD_MED);
+                SpecPosition.positionRelative(obj.hOptsDiffCol, ...
+                    obj.hOptsDiffContr, SpecPosition.CENTER_Y);
+                SpecPosition.positionRelative(obj.hOptsDiffCol, ...
+                    obj.hOptsDiffContr, SpecPosition.RIGHT_OF, ...
+                    GUISettings.PAD_LARGE);
+                SpecPosition.positionRelative(obj.hOptsDiffColValue, ...
+                    obj.hOptsDiffCol, SpecPosition.CENTER_Y);
+                SpecPosition.positionRelative(obj.hOptsDiffColValue, ...
+                    obj.hOptsDiffCol, SpecPosition.RIGHT_OF, ...
+                    GUISettings.PAD_LARGE);
 
-            SpecPosition.positionRelative(obj.hAxMain, obj.hOpts, ...
-                SpecPosition.BELOW, 3*GUISettings.PAD_LARGE);
-            SpecPosition.positionIn(obj.hAxMain, obj.hFig, ...
-                SpecPosition.LEFT, 4*GUISettings.PAD_LARGE);
+                SpecPosition.positionIn(obj.hOptsMatchDiff, obj.hOpts, ...
+                    SpecPosition.TOP, 1.75*GUISettings.PAD_LARGE);
+                SpecPosition.positionIn(obj.hOptsMatchDiff, obj.hOpts, ...
+                    SpecPosition.LEFT, GUISettings.PAD_MED);
+                SpecPosition.positionRelative(obj.hOptsMatchSeqs, ...
+                    obj.hOptsMatchDiff, SpecPosition.CENTER_Y);
+                SpecPosition.positionRelative(obj.hOptsMatchSeqs, ...
+                    obj.hOptsMatchDiff, SpecPosition.RIGHT_OF, ...
+                    GUISettings.PAD_LARGE);
+                SpecPosition.positionRelative(obj.hOptsMatchMatches, ...
+                    obj.hOptsMatchSeqs, SpecPosition.CENTER_Y);
+                SpecPosition.positionRelative(obj.hOptsMatchMatches, ...
+                    obj.hOptsMatchSeqs, SpecPosition.RIGHT_OF, ...
+                    GUISettings.PAD_LARGE);
+                SpecPosition.positionRelative(obj.hOptsMatchSelect, ...
+                    obj.hOptsMatchMatches, SpecPosition.CENTER_Y);
+                SpecPosition.positionRelative(obj.hOptsMatchSelect, ...
+                    obj.hOptsMatchMatches, SpecPosition.RIGHT_OF, ...
+                    GUISettings.PAD_LARGE);
+                SpecPosition.positionRelative(obj.hOptsMatchSelectValue, ...
+                    obj.hOptsMatchSelect, SpecPosition.CENTER_Y);
+                SpecPosition.positionRelative(obj.hOptsMatchSelectValue, ...
+                    obj.hOptsMatchSelect, SpecPosition.RIGHT_OF, ...
+                    GUISettings.PAD_LARGE);
+                SpecPosition.positionRelative(obj.hOptsMatchTweak, ...
+                    obj.hOptsMatchSelect, SpecPosition.CENTER_Y);
+                SpecPosition.positionRelative(obj.hOptsMatchTweak, ...
+                    obj.hOptsMatchSelectValue, SpecPosition.RIGHT_OF, ...
+                    2*GUISettings.PAD_LARGE);
 
-            SpecPosition.positionIn(obj.hFocus, obj.hFig, ...
-                SpecPosition.RIGHT, GUISettings.PAD_MED);
-            SpecPosition.positionRelative(obj.hFocus, obj.hOpts, ...
-                SpecPosition.BELOW, 1.5*GUISettings.PAD_LARGE);
-            SpecPosition.positionIn(obj.hFocusAx, obj.hFocus, ...
-                SpecPosition.TOP, 2*GUISettings.PAD_LARGE);
-            SpecPosition.positionIn(obj.hFocusAx, obj.hFocus, ...
-                SpecPosition.CENTER_X);
-            SpecPosition.positionRelative(obj.hFocusButton, obj.hFocusAx, ...
-                SpecPosition.BELOW, GUISettings.PAD_LARGE);
-            SpecPosition.positionIn(obj.hFocusButton, obj.hFocus, ...
-                SpecPosition.CENTER_X);
+                SpecPosition.positionRelative(obj.hAxA, obj.hOpts, ...
+                    SpecPosition.BELOW, 8*GUISettings.PAD_LARGE);
+                SpecPosition.positionRelative(obj.hAxA, obj.hOpts, ...
+                    SpecPosition.LEFT, 12*GUISettings.PAD_LARGE);
+                SpecPosition.positionRelative(obj.hAxB, obj.hOpts, ...
+                    SpecPosition.BELOW, 8*GUISettings.PAD_LARGE);
+                SpecPosition.positionRelative(obj.hAxB, obj.hOpts, ...
+                    SpecPosition.RIGHT, 12*GUISettings.PAD_LARGE);
+                SpecPosition.positionRelative(obj.hAxC, obj.hAxA, ...
+                    SpecPosition.BELOW, 2*GUISettings.PAD_LARGE);
+                SpecPosition.positionRelative(obj.hAxC, obj.hOpts, ...
+                    SpecPosition.LEFT, 12*GUISettings.PAD_LARGE);
+                SpecPosition.positionRelative(obj.hAxD, obj.hAxB, ...
+                    SpecPosition.BELOW, 2*GUISettings.PAD_LARGE);
+                SpecPosition.positionRelative(obj.hAxD, obj.hOpts, ...
+                    SpecPosition.RIGHT, 12*GUISettings.PAD_LARGE);
 
-            SpecPosition.positionIn(obj.hFocusQueryAx, ...
-                obj.hFocus, SpecPosition.BOTTOM);
-            SpecPosition.positionIn(obj.hFocusQuery, obj.hFocus, ...
-                SpecPosition.CENTER_X);
-            SpecPosition.positionRelative(obj.hFocusQuery, ...
-                obj.hFocusQueryAx, SpecPosition.ABOVE);
-            SpecPosition.positionIn(obj.hFocusQuery, obj.hFocus, ...
-                SpecPosition.LEFT, GUISettings.PAD_MED);
-            SpecPosition.positionRelative(obj.hFocusRefAx, obj.hFocusQuery, ...
-                SpecPosition.ABOVE);
-            SpecPosition.positionIn(obj.hFocusRef, obj.hFocus, ...
-                SpecPosition.CENTER_X);
-            SpecPosition.positionRelative(obj.hFocusRef, obj.hFocusRefAx, ...
-                SpecPosition.ABOVE);
-            SpecPosition.positionIn(obj.hFocusRef, obj.hFocus, ...
-                SpecPosition.LEFT, GUISettings.PAD_MED);
-        end
+                SpecPosition.positionRelative(obj.hAxMain, obj.hOpts, ...
+                    SpecPosition.BELOW, 3*GUISettings.PAD_LARGE);
+                SpecPosition.positionIn(obj.hAxMain, obj.hFig, ...
+                    SpecPosition.LEFT, 4*GUISettings.PAD_LARGE);
 
-        function updateMatches(obj)
-            obj.populateMatchList();
-            obj.hOptsMatchSelectValue.String = obj.listMatches;
-        end
+                SpecPosition.positionIn(obj.hFocus, obj.hFig, ...
+                    SpecPosition.RIGHT, GUISettings.PAD_MED);
+                SpecPosition.positionRelative(obj.hFocus, obj.hOpts, ...
+                    SpecPosition.BELOW, 1.5*GUISettings.PAD_LARGE);
+                SpecPosition.positionIn(obj.hFocusAx, obj.hFocus, ...
+                    SpecPosition.TOP, 2*GUISettings.PAD_LARGE);
+                SpecPosition.positionIn(obj.hFocusAx, obj.hFocus, ...
+                    SpecPosition.CENTER_X);
+                SpecPosition.positionRelative(obj.hFocusButton, obj.hFocusAx, ...
+                    SpecPosition.BELOW, GUISettings.PAD_LARGE);
+                SpecPosition.positionIn(obj.hFocusButton, obj.hFocus, ...
+                    SpecPosition.CENTER_X);
 
-        function updateSelectedMatch(obj)
-            v = obj.hOptsMatchSelectValue.Value;
-            if v == 1
-                % Store an empty matrix if all are selected
-                m = [];
-            else
-                % Get the match indices
-                mIs = find(~isnan(obj.results.matching.thresholded.mask));
+                SpecPosition.positionIn(obj.hFocusQueryAx, ...
+                    obj.hFocus, SpecPosition.BOTTOM);
+                SpecPosition.positionIn(obj.hFocusQuery, obj.hFocus, ...
+                    SpecPosition.CENTER_X);
+                SpecPosition.positionRelative(obj.hFocusQuery, ...
+                    obj.hFocusQueryAx, SpecPosition.ABOVE);
+                SpecPosition.positionIn(obj.hFocusQuery, obj.hFocus, ...
+                    SpecPosition.LEFT, GUISettings.PAD_MED);
+                SpecPosition.positionRelative(obj.hFocusRefAx, obj.hFocusQuery, ...
+                    SpecPosition.ABOVE);
+                SpecPosition.positionIn(obj.hFocusRef, obj.hFocus, ...
+                    SpecPosition.CENTER_X);
+                SpecPosition.positionRelative(obj.hFocusRef, obj.hFocusRefAx, ...
+                    SpecPosition.ABOVE);
+                SpecPosition.positionIn(obj.hFocusRef, obj.hFocus, ...
+                    SpecPosition.LEFT, GUISettings.PAD_MED);
+            end
 
-                % Stor the image # for query and reference ([mQ, mR])
-                obj.selectedMatch = [mIs(v-1) ...
-                    obj.results.matching.thresholded.matches(mIs(v-1))];
+            function updateMatches(obj)
+                obj.populateMatchList();
+                obj.hOptsMatchSelectValue.String = obj.listMatches;
+            end
+
+            function updateSelectedMatch(obj)
+                v = obj.hOptsMatchSelectValue.Value;
+                if v == 1
+                    % Store an empty matrix if all are selected
+                    m = [];
+                else
+                    % Get the match indices
+                    mIs = find(~isnan(obj.results.matching.thresholded.mask));
+
+                    % Stor the image # for query and reference ([mQ, mR])
+                    obj.selectedMatch = [mIs(v-1) ...
+                        obj.results.matching.thresholded.matches(mIs(v-1))];
+                end
             end
         end
     end
-end

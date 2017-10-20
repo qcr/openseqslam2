@@ -5,3 +5,6 @@
 
 # Swap files
 *.swp*
+
+# Don't stage temporary debugging files
+tmp*.mat
