@@ -57,6 +57,12 @@ classdef TweakMatchesPopup < handle
             obj.results.matching.thresholded = SeqSLAMInstance.threshold( ...
                 obj.results.matching.all, str2num(obj.hSlidingUValue.String));
 
+            % Apply the new config
+            obj.config.seqslam.matching.criteria.r_window = str2num( ...
+                obj.hSlidingWindowValue.String);
+            obj.config.seqslam.matching.criteria.u = str2num( ...
+                obj.hSlidingUValue.String);
+
             % Close the figure
             close(obj.hFig)
         end
@@ -137,6 +143,7 @@ classdef TweakMatchesPopup < handle
             GUISettings.applyUIControlStyle(obj.hSlidingWindowValue);
             obj.hSlidingWindowValue.String = num2str( ...
                 obj.config.seqslam.matching.criteria.r_window);
+            obj.hSlidingWindowValue.Enable = 'off'; % TODO implement
 
             obj.hSlidingU = uicontrol('Style', 'text');
             obj.hSlidingU.Parent = obj.hFig;

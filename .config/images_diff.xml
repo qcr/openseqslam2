@@ -9,7 +9,7 @@
          <setting name="token_start" type="string" value="images-"/>
          <setting name="token_end" type="string" value=".png"/>
       </settings-group>
-      <setting name="path" type="string" value="$TOOLBOX_ROOT/datasets/nordland/fall"/>
+      <setting name="path" type="string" value="$TOOLBOX_ROOT/datasets/nordland/summer"/>
       <setting name="subsample_factor" type="numeric" value="100"/>
    </settings-group>
    <settings-group name="query">
@@ -21,7 +21,7 @@
          <setting name="token_start" type="string" value="images-"/>
          <setting name="token_end" type="string" value=".png"/>
       </settings-group>
-      <setting name="path" type="string" value="$TOOLBOX_ROOT/datasets/nordland/spring"/>
+      <setting name="path" type="string" value="$TOOLBOX_ROOT/datasets/nordland/winter"/>
       <setting name="subsample_factor" type="numeric" value="100"/>
    </settings-group>
    <settings-group name="results">

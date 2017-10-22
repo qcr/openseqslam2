@@ -7,4 +7,5 @@
 *.swp*
 
 # Don't stage temporary debugging files
-tmp*.mat
+tmp*.*
+dbg*.*

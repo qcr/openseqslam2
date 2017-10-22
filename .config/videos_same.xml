@@ -7,7 +7,7 @@
          <setting name="frames" type="numeric" value="11550"/>
          <setting name="frame_rate" type="numeric" value="29.97"/>
       </settings-group>
-      <setting name="path" type="string" value="$TOOLBOX_ROOT/datasets/michael_short/00005.avi"/>
+      <setting name="path" type="string" value="$TOOLBOX_ROOT/datasets/daynight/day_trunc.avi"/>
       <setting name="subsample_factor" type="numeric" value="100"/>
    </settings-group>
    <settings-group name="query">
@@ -17,7 +17,7 @@
          <setting name="frames" type="numeric" value="11550"/>
          <setting name="frame_rate" type="numeric" value="29.97"/>
       </settings-group>
-      <setting name="path" type="string" value="$TOOLBOX_ROOT/datasets/michael_short/00005.avi"/>
+      <setting name="path" type="string" value="$TOOLBOX_ROOT/datasets/daynight/day_trunc.avi"/>
       <setting name="subsample_factor" type="numeric" value="100"/>
    </settings-group>
    <settings-group name="results">
