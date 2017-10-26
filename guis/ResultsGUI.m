@@ -787,28 +787,6 @@ classdef ResultsGUI < handle
             hold(obj.hAxVideo, 'off');
         end
 
-        function l = getDatasetList(obj, ds)
-            % Get all relevant information for the dataset
-            indices = obj.results.preprocessed.([ds '_indices']);
-            path = obj.config.(ds).path;
-            info = obj.config.(ds).(obj.config.(ds).type);
-            isVideo = strcmp(obj.config.(ds).type, 'video');
-
-            % Populate the list
-            l = cell(length(indices),1);
-            if isVideo
-                l = arrayfun( ...
-                    @(x) datasetFrameInfo(indices(x), info.frame_rate, 1, ...
-                    path, x), ...
-                    1:length(indices), 'UniformOutput', false);
-            else
-                l = arrayfun( ...
-                    @(x) datasetPictureInfo(path, info.token_start, ...
-                    info.token_end, indices(x), info.index_end, 1, x), ...
-                    1:length(indices), 'UniformOutput', false);
-            end
-        end
-
         function greyAxes(obj)
             % Apply alpha to axes
             alpha(obj.hAxA, 0.2);
@@ -914,9 +892,10 @@ classdef ResultsGUI < handle
 
         function populateDatasetLists(obj)
             % Get the lists for each of the datasets
-            datasets = lower(obj.hOptsPreDatasetValue.String);
-            obj.listReference = obj.getDatasetList(datasets{1});
-            obj.listQuery = obj.getDatasetList(datasets{2});
+            obj.listReference = datasetImageList(obj.config.reference, ...
+                obj.results.preprocessed.reference_indices);
+            obj.listQuery = datasetImageList(obj.config.query, ...
+                obj.results.preprocessed.query_indices);
         end
 
         function populateMatchList(obj)

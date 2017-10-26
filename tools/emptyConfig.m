@@ -12,10 +12,10 @@ function empty = emptyConfig()
     empty.reference.image.index_end = [];
     empty.reference.image.token_start = [];
     empty.reference.image.token_end = [];
-    
+
     empty.reference.video.ext = [];
     empty.reference.video.frames = [];
-    
+
     % Query dataset
     empty.query.path = [];
     empty.query.subsample_factor = [];
@@ -26,7 +26,7 @@ function empty = emptyConfig()
     empty.query.image.index_end = [];
     empty.query.image.token_start = [];
     empty.query.image.token_end = [];
-    
+
     empty.query.video.ext = [];
     empty.query.video.frames = [];
     empty.query.video.frame_rate = [];
@@ -44,8 +44,8 @@ function empty = emptyConfig()
     empty.seqslam.image_processing.crop.reference = [];
     empty.seqslam.image_processing.crop.query = [];
 
-    empty.seqslam.image_processing.normalisation.length = [];
-    empty.seqslam.image_processing.normalisation.mode = [];
+    empty.seqslam.image_processing.normalisation.threshold = [];
+    empty.seqslam.image_processing.normalisation.strength = [];
 
     % SeqSLAM settings (difference matrix)
     empty.seqslam.diff_matrix.load = [];
@@ -56,11 +56,11 @@ function empty = emptyConfig()
     empty.seqslam.matching.load = [];
 
     empty.seqslam.matching.d_s = [];
-    
+
     empty.seqslam.matching.trajectories.v_min = [];
     empty.seqslam.matching.trajectories.v_max = [];
     empty.seqslam.matching.trajectories.v_step = [];
-    
+
     empty.seqslam.matching.r_recent = [];
 
     empty.seqslam.matching.criteria.r_window = [];

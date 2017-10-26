@@ -4,7 +4,7 @@ classdef GUISettings
         % Figure properties
         BACK_COL = 'w';
         MAIN_COL = [0.4 0.4 0.4];
-        
+
         % Colouring settings
         COL_SUCCESS = [0 0.6 0];
         COL_ERROR = 'r';
@@ -13,37 +13,37 @@ classdef GUISettings
 
         % Sizings (static for now)
         FONT_SCALE = 1.0;
-        
+
         PAD_SMALL = 5;
         PAD_MED = 10;
         PAD_LARGE = 15;
     end
-    
+
     methods (Static)
-        function applyUIAxesStyle(axes)
-            GUISettings.applyUICommonStyle(axes);
-            axes.Color = GUISettings.BACK_COL;
+        function applyUIAxesStyle(ax)
+            GUISettings.applyUICommonStyle(ax);
+            ax.Color = GUISettings.BACK_COL;
         end
 
-        function applyFigureStyle(figure)
-            GUISettings.applyUICommonStyle(figure);
-            figure.Color = GUISettings.BACK_COL;
-            figure.NumberTitle = 'off';
-            figure.MenuBar = 'none';
-            figure.DockControls = 'off';
+        function applyFigureStyle(fig)
+            GUISettings.applyUICommonStyle(fig);
+            fig.Color = GUISettings.BACK_COL;
+            fig.NumberTitle = 'off';
+            fig.MenuBar = 'none';
+            fig.DockControls = 'off';
         end
-        
-        function applyUIControlStyle(uicontrol)
-            GUISettings.applyUICommonStyle(uicontrol);
-            uicontrol.BackgroundColor = GUISettings.BACK_COL;
-            uicontrol.FontSize = get(groot, 'factoryUicontrolFontSize') ...
+
+        function applyUIControlStyle(control)
+            GUISettings.applyUICommonStyle(control);
+            control.BackgroundColor = GUISettings.BACK_COL;
+            control.FontSize = get(groot, 'factoryUicontrolFontSize') ...
                 * GUISettings.FONT_SCALE;
         end
-        
-        function applyUIPanelStyle(uipanel)
-            GUISettings.applyUICommonStyle(uipanel);
-            uipanel.BackgroundColor = GUISettings.BACK_COL;
-            uipanel.FontSize = get(groot, 'factoryUipanelFontSize') ...
+
+        function applyUIPanelStyle(panel)
+            GUISettings.applyUICommonStyle(panel);
+            panel.BackgroundColor = GUISettings.BACK_COL;
+            panel.FontSize = get(groot, 'factoryUipanelFontSize') ...
                 * GUISettings.FONT_SCALE;
         end
 
@@ -86,7 +86,7 @@ classdef GUISettings
                 * scale;
         end
     end
-    
+
     methods (Static, Access = private)
         function applyUICommonStyle(uielement)
             uielement.Units = 'pixels';

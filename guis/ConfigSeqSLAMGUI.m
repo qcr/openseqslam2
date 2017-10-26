@@ -1,85 +1,274 @@
 classdef ConfigSeqSLAMGUI < handle
+    % TODO on the image preprocessing settings screen selecting the same value
+    % should not cause the disabling, but currently does
 
     properties (Access = private, Constant)
         % Sizing parameters
-        FIG_WIDTH_FACTOR = 2.5;     % Times longest internal heading
-        FIG_HEIGHT_FACTOR = 35;     % Times height of buttons at font size
+        FIG_WIDTH_FACTOR = 12;  % Times longest internal heading
+        FIG_HEIGHT_FACTOR = 40; % Times height of buttons at font size
+
+        % Visual constants
+        IMAGE_FADE = 0.2;
     end
-    
+
     properties
         hFig;
+        hScreen;
 
-        hImPr;
         hImPrLoad;
-        hImPrDownSample;
-        hImPrDownSampleSize;
-        hImPrDownSampleW;
-        hImPrDownSamplex;
-        hImPrDownSampleH;
-        hImPrDownSampleMethod;
-        hImPrDownSampleMethodValue;
-        hImPrCrop;
+        hImPrRef;
+        hImPrRefSample;
+        hImPrRefAxCrop;
+        hImPrRefCropBox;
+        hImPrRefAxResize;
+        hImPrRefAxNorm;
+        hImPrQuery;
+        hImPrQuerySample;
+        hImPrQueryAxCrop;
+        hImPrQueryCropBox;
+        hImPrQueryAxResize;
+        hImPrQueryAxNorm;
+        hImPrRefresh;
         hImPrCropRef;
         hImPrCropRefValue;
         hImPrCropQuery;
         hImPrCropQueryValue;
-        hImPrNormalise;
-        hImPrNormaliseLength;
-        hImPrNormaliseLengthValue;
-        hImPrNormaliseMode;
-        hImPrNormaliseModeValue;
+        hImPrResize;
+        hImPrResizeW;
+        hImPrResizeX;
+        hImPrResizeH;
+        hImPrResizeMethod;
+        hImPrResizeMethodValue;
+        hImPrNorm;
+        hImPrNormThresh;
+        hImPrNormThreshValue;
+        hImPrNormStrength;
+        hImPrNormStrengthValue;
 
-        hDiff;
-        hDiffLoad;
-        hDiffConEn;
-        hDiffConEnR;
-        hDiffConEnRValue;
-
-        hMatch;
-        hMatchLoad;
-        hMatchDs;
-        hMatchDsValue;
-        hMatchTraj;
-        hMatchTrajVmin;
-        hMatchTrajVminValue;
-        hMatchTrajVmax;
-        hMatchTrajVmaxValue;
-        hMatchTrajVstep;
-        hMatchTrajVstepValue;
-        hMatchRrecent;
-        hMatchRrecentValue;
-        hMatchCriteria;
-        hMatchCriteriaRwindow;
-        hMatchCriteriaRwindowValue;
-        hMatchCriteriaU;
-        hMatchCriteriaUValue;
-        
         hDone;
 
         config = emptyConfig();
+
+        indicesRef = [];
+        indicesQuery = [];
+
+        listImagesRef = [];
+        listImagesQuery = [];
+
+        dimRef = [];
+        dimQuery = [];
     end
 
     methods
-        function obj = ConfigSeqSLAMGUI()
+        function obj = ConfigSeqSLAMGUI(config)
+            % Build all required data
+            obj.config = config;
+            obj.generateImageLists();
+
             % Create and size the GUI
             obj.createGUI();
             obj.sizeGUI();
-            
+
+            % Populate the UI, and open the default screen (first)
+            obj.populate();
+            obj.openScreen(obj.hScreen.Value);
+
             % Finally, show the figure when we are done configuring
             obj.hFig.Visible = 'on';
         end
+    end
 
-        function updateConfig(obj, config)
-            obj.config = config;
-            obj.populate();
+    methods (Access = private, Static)
+        function out = constrainInLimits(in, xlims, ylims)
+            % Force the start positions to remain inside left and top limits
+            out(1:2) = max(in(1:2), [xlims(1) ylims(1)]);
+
+            % Adapt width and height so other box edges remain at same place
+            %out(3:4) = in(3:4) - (out(1:2) - in(1:2));
+            out(3:4) = in(3:4);
+
+            % Force width and height to keep box inside right and bottom limits
+            out(3:4) = min(out(3:4), [xlims(2) ylims(2)]-out(1:2));
+
+            % Handle the rounding due to limits being at X.5
+            if out(1) + out(3) == xlims(2)
+                out(3) = out(3) - 0.01;
+            end
+            if out(2) + out(4) == ylims(2)
+                out(4) = out(4) - 0.01;
+            end
         end
     end
 
     methods (Access = private)
         function cbDone(obj, src, event)
+            % Valid the data before proceeding
+            if ~obj.isDataValid([]);
+                return;
+            end
+
             % Strip the UI data, save it in the config, and close the GUI
             obj.strip();
             close(obj.hFig);
+        end
+
+        function cbChangeCrop(obj, src, event)
+            if src == obj.hImPrRefCropBox
+                mask = [0 0; 1 0; 1 0];
+            elseif src == obj.hImPrQueryCropBox
+                mask = [0 0; 0 1; 0 1];
+            end
+            obj.disableProcessingPreviews(mask);
+        end
+
+        function cbChangePreviewImage(obj, src, event)
+            if (src == obj.hImPrRefSample)
+                mask = [1 0; 1 0; 1 0];
+            elseif (src == obj.hImPrQuerySample)
+                mask = [0 1; 0 1; 0 1];
+            end
+            obj.disableProcessingPreviews(mask);
+        end
+
+        function cbChangeResize(obj, src, event)
+            % Disable the appropriate previews
+            obj.disableProcessingPreviews([0 0; 1 1; 1 1]);
+
+            % Force the other resize value to maintain the aspect ratio
+            pos = obj.hImPrRefCropBox.getPosition();
+            ar = pos(3) / pos(4);
+            if src == obj.hImPrResizeW
+                obj.hImPrResizeH.String = num2str(round( ...
+                    str2num(obj.hImPrResizeW.String) / ar));
+            elseif src == obj.hImPrResizeH
+                obj.hImPrResizeW.String = num2str(round( ...
+                    str2num(obj.hImPrResizeH.String) * ar));
+            end
+        end
+
+        function cbChangeNorm(obj, src, event)
+            obj.disableProcessingPreviews([0 0; 0 0; 1 1]);
+        end
+
+        function cbRefreshPreprocessed(obj, src, event)
+            if ~obj.isDataValid(obj.hScreen.Value);
+                return;
+            end
+
+            obj.drawProcessingPreviews();
+        end
+
+        function cbLoadProcessed(obj, src, event)
+            if src.Value == 0
+                % Turn on all of the visual elements
+                obj.hImPrRefSample.Enable = 'on';
+                obj.hImPrQuerySample.Enable = 'on';
+                obj.hImPrRefresh.Enable = 'on';
+                obj.hImPrResizeW.Enable = 'on';
+                obj.hImPrResizeH.Enable = 'on';
+                obj.hImPrResizeMethodValue.Enable = 'on';
+                obj.hImPrNormThreshValue.Enable = 'on';
+                obj.hImPrNormStrengthValue.Enable = 'on';
+
+                % Refresh all of the previews
+                obj.drawProcessingPreviews();
+            else
+                % Turn off of the visual elements
+                obj.hImPrRefSample.Enable = 'off';
+                obj.hImPrQuerySample.Enable = 'off';
+                obj.hImPrRefresh.Enable = 'off';
+                obj.hImPrResizeW.Enable = 'off';
+                obj.hImPrResizeH.Enable = 'off';
+                obj.hImPrResizeMethodValue.Enable = 'off';
+                obj.hImPrNormThreshValue.Enable = 'off';
+                obj.hImPrNormStrengthValue.Enable = 'off';
+
+                % Delete any crop boxes
+                delete(obj.hImPrRefCropBox);
+                delete(obj.hImPrQueryCropBox);
+
+                % Mask over all of the previews
+                obj.disableProcessingPreviews([1 1; 1 1; 1 1])
+            end
+        end
+
+        function clearScreen(obj)
+            % Hide all options
+            obj.hImPrLoad.Visible = 'off';
+            obj.hImPrRef.Visible = 'off';
+            obj.hImPrRefSample.Visible = 'off';
+            obj.hImPrRefAxCrop.Visible = 'off';
+            obj.hImPrRefCropBox.Visible = 'off';
+            obj.hImPrRefAxResize.Visible = 'off';
+            obj.hImPrRefAxNorm.Visible = 'off';
+            obj.hImPrQuery.Visible = 'off';
+            obj.hImPrQuerySample.Visible = 'off';
+            obj.hImPrQueryAxCrop.Visible = 'off';
+            obj.hImPrQueryCropBox.Visible = 'off';
+            obj.hImPrQueryAxResize.Visible = 'off';
+            obj.hImPrQueryAxNorm.Visible = 'off';
+            obj.hImPrRefresh.Visible = 'off';
+            obj.hImPrCropRef.Visible = 'off';
+            obj.hImPrCropRefValue.Visible = 'off';
+            obj.hImPrCropQuery.Visible = 'off';
+            obj.hImPrCropQueryValue.Visible = 'off';
+            obj.hImPrResize.Visible = 'off';
+            obj.hImPrResizeW.Visible = 'off';
+            obj.hImPrResizeX.Visible = 'off';
+            obj.hImPrResizeH.Visible = 'off';
+            obj.hImPrResizeMethod.Visible = 'off';
+            obj.hImPrResizeMethodValue.Visible = 'off';
+            obj.hImPrNorm.Visible = 'off';
+            obj.hImPrNormThresh.Visible = 'off';
+            obj.hImPrNormThreshValue.Visible = 'off';
+            obj.hImPrNormStrength.Visible = 'off';
+            obj.hImPrNormStrengthValue.Visible = 'off';
+
+            % Clear the axes
+            cla(obj.hImPrRefAxCrop);
+            cla(obj.hImPrRefAxResize);
+            cla(obj.hImPrRefAxNorm);
+            cla(obj.hImPrQueryAxCrop);
+            cla(obj.hImPrQueryAxResize);
+            cla(obj.hImPrQueryAxNorm);
+        end
+
+        function posOut = constrainedQueryPosition(obj, posIn)
+            % Force to be within axis limits
+            posOut = ConfigSeqSLAMGUI.constrainInLimits(posIn, ...
+                obj.hImPrQueryAxCrop.XLim, obj.hImPrQueryAxCrop.YLim);
+
+            % Enforce that the aspect ratio must remain the same
+            if abs(posOut(3)/posOut(4) - posIn(3)/posIn(4)) > 0.001
+                newW = posOut(4) * posIn(3)/posIn(4);
+                newH = posOut(3) * posIn(4)/posIn(3);
+                if newW < posOut(3)
+                    posOut(3) = newW;
+                elseif newH < posOut(4)
+                    posOut(4) = newH;
+                end
+            end
+
+            % Update the text boxes
+            pos = SafeData.vector2str(round( ...
+                [posOut(1:2) posOut(1:2)+posOut(3:4)]));
+            obj.hImPrCropQueryValue.String = pos;
+        end
+
+        function posOut = constrainedRefPosition(obj, posIn)
+            % Force to be within axis limits
+            posOut = ConfigSeqSLAMGUI.constrainInLimits(posIn, ...
+                obj.hImPrRefAxCrop.XLim, obj.hImPrRefAxCrop.YLim);
+
+            % Force the other crop box to have the same position
+            % TODO could be more flexible here... but this is easy
+            obj.hImPrQueryCropBox.setPosition(posOut);
+
+            % Update the text boxes
+            pos = SafeData.vector2str(round( ...
+                [posOut(1:2) posOut(1:2)+posOut(3:4)]));
+            obj.hImPrCropRefValue.String = pos;
+            obj.hImPrCropQueryValue.String = pos;
         end
 
         function createGUI(obj)
@@ -89,233 +278,147 @@ classdef ConfigSeqSLAMGUI < handle
             obj.hFig.Name = 'SeqSLAM Settings';
             obj.hFig.Resize = 'off';
 
+            % Create the dropdown list for toggling the setting screens
+            obj.hScreen = uicontrol('Style', 'popupmenu');
+            obj.hScreen.Parent = obj.hFig;
+            GUISettings.applyUIControlStyle(obj.hScreen);
+            obj.hScreen.String = { 'Image Processing' };
+
             % Create the image processing panel
-            obj.hImPr = uipanel();
-            GUISettings.applyUIPanelStyle(obj.hImPr);
-            obj.hImPr.Title = 'Image Processing Settings';
-
             obj.hImPrLoad = uicontrol('Style', 'checkbox');
-            obj.hImPrLoad.Parent = obj.hImPr;
+            obj.hImPrLoad.Parent = obj.hFig;
             GUISettings.applyUIControlStyle(obj.hImPrLoad);
-            obj.hImPrLoad.String = 'Load existing images if available';
-            
-            obj.hImPrDownSample = uicontrol('Style', 'text');
-            obj.hImPrDownSample.Parent = obj.hImPr;
-            GUISettings.applyUIControlStyle(obj.hImPrDownSample);
-            obj.hImPrDownSample.String = 'Downsampling:';
-            obj.hImPrDownSample.HorizontalAlignment = 'left';
+            obj.hImPrLoad.String = 'Load existing';
 
-            obj.hImPrDownSampleSize = uicontrol('Style', 'text');
-            obj.hImPrDownSampleSize.Parent = obj.hImPr;
-            GUISettings.applyUIControlStyle(obj.hImPrDownSampleSize);
-            obj.hImPrDownSampleSize.String = 'Size:';
-            obj.hImPrDownSampleSize.HorizontalAlignment = 'left';
+            obj.hImPrRef = uicontrol('Style', 'text');
+            obj.hImPrRef.Parent = obj.hFig;
+            GUISettings.applyUIControlStyle(obj.hImPrRef);
+            obj.hImPrRef.String = 'Reference Image Preview:';
+            obj.hImPrRef.HorizontalAlignment = 'left';
 
-            obj.hImPrDownSampleW = uicontrol('Style', 'edit');
-            obj.hImPrDownSampleW.Parent = obj.hImPr;
-            GUISettings.applyUIControlStyle(obj.hImPrDownSampleW);
-            obj.hImPrDownSampleW.String = '';
+            obj.hImPrRefSample = uicontrol('Style', 'popupmenu');
+            obj.hImPrRefSample.Parent = obj.hFig;
+            GUISettings.applyUIControlStyle(obj.hImPrRefSample);
+            obj.hImPrRefSample.String = obj.listImagesRef;
 
-            obj.hImPrDownSamplex = uicontrol('Style', 'text');
-            obj.hImPrDownSamplex.Parent = obj.hImPr;
-            GUISettings.applyUIControlStyle(obj.hImPrDownSamplex);
-            obj.hImPrDownSamplex.String = 'x';
+            obj.hImPrRefAxCrop = axes();
+            GUISettings.applyUIAxesStyle(obj.hImPrRefAxCrop);
+            obj.hImPrRefAxCrop.Visible = 'off';
 
-            obj.hImPrDownSampleH = uicontrol('Style', 'edit');
-            obj.hImPrDownSampleH.Parent = obj.hImPr;
-            GUISettings.applyUIControlStyle(obj.hImPrDownSampleH);
-            obj.hImPrDownSampleH.String = '';
-            
-            obj.hImPrDownSampleMethod = uicontrol('Style', 'text');
-            obj.hImPrDownSampleMethod.Parent = obj.hImPr;
-            GUISettings.applyUIControlStyle(obj.hImPrDownSampleMethod);
-            obj.hImPrDownSampleMethod.String = 'Method:';
-            obj.hImPrDownSampleMethod.HorizontalAlignment = 'left';
+            obj.hImPrRefAxResize = axes();
+            GUISettings.applyUIAxesStyle(obj.hImPrRefAxResize);
+            obj.hImPrRefAxResize.Visible = 'off';
 
-            obj.hImPrDownSampleMethodValue = uicontrol('Style', 'popupmenu');
-            obj.hImPrDownSampleMethodValue.Parent = obj.hImPr;
-            GUISettings.applyUIControlStyle(obj.hImPrDownSampleMethodValue);
-            obj.hImPrDownSampleMethodValue.String = {'lanczos3', 'TODO'};
+            obj.hImPrRefAxNorm = axes();
+            GUISettings.applyUIAxesStyle(obj.hImPrRefAxNorm);
+            obj.hImPrRefAxNorm.Visible = 'off';
 
-            obj.hImPrCrop = uicontrol('Style', 'text');
-            obj.hImPrCrop.Parent = obj.hImPr;
-            GUISettings.applyUIControlStyle(obj.hImPrCrop);
-            obj.hImPrCrop.String = 'Cropping (x_l, y_t, x_r, y_b):';
-            obj.hImPrCrop.HorizontalAlignment = 'left';
+            obj.hImPrQuery = uicontrol('Style', 'text');
+            obj.hImPrQuery.Parent = obj.hFig;
+            GUISettings.applyUIControlStyle(obj.hImPrQuery);
+            obj.hImPrQuery.String = 'Query Image Preview:';
+            obj.hImPrQuery.HorizontalAlignment = 'left';
+
+            obj.hImPrQuerySample = uicontrol('Style', 'popupmenu');
+            obj.hImPrQuerySample.Parent = obj.hFig;
+            GUISettings.applyUIControlStyle(obj.hImPrQuerySample);
+            obj.hImPrQuerySample.String = obj.listImagesQuery;
+
+            obj.hImPrQueryAxCrop = axes();
+            GUISettings.applyUIAxesStyle(obj.hImPrQueryAxCrop);
+            obj.hImPrQueryAxCrop.Visible = 'off';
+
+            obj.hImPrQueryAxResize = axes();
+            GUISettings.applyUIAxesStyle(obj.hImPrQueryAxResize);
+            obj.hImPrQueryAxResize.Visible = 'off';
+
+            obj.hImPrQueryAxNorm = axes();
+            GUISettings.applyUIAxesStyle(obj.hImPrQueryAxNorm);
+            obj.hImPrQueryAxNorm.Visible = 'off';
+
+            obj.hImPrRefresh = uicontrol('Style', 'pushbutton');
+            obj.hImPrRefresh.Parent = obj.hFig;
+            GUISettings.applyUIControlStyle(obj.hImPrRefresh);
+            obj.hImPrRefresh.String = 'Refresh previews';
 
             obj.hImPrCropRef = uicontrol('Style', 'text');
-            obj.hImPrCropRef.Parent = obj.hImPr;
+            obj.hImPrCropRef.Parent = obj.hFig;
             GUISettings.applyUIControlStyle(obj.hImPrCropRef);
-            obj.hImPrCropRef.String = 'Reference:';
-            obj.hImPrCropRef.HorizontalAlignment = 'left';
+            obj.hImPrCropRef.String = 'Reference image crop:';
 
             obj.hImPrCropRefValue = uicontrol('Style', 'edit');
-            obj.hImPrCropRefValue.Parent = obj.hImPr;
+            obj.hImPrCropRefValue.Parent = obj.hFig;
             GUISettings.applyUIControlStyle(obj.hImPrCropRefValue);
             obj.hImPrCropRefValue.String = '';
+            obj.hImPrCropRefValue.Enable = 'off';
 
             obj.hImPrCropQuery = uicontrol('Style', 'text');
-            obj.hImPrCropQuery.Parent = obj.hImPr;
+            obj.hImPrCropQuery.Parent = obj.hFig;
             GUISettings.applyUIControlStyle(obj.hImPrCropQuery);
-            obj.hImPrCropQuery.String = 'Query:';
-            obj.hImPrCropQuery.HorizontalAlignment = 'left';
+            obj.hImPrCropQuery.String = 'Query image crop:';
 
             obj.hImPrCropQueryValue = uicontrol('Style', 'edit');
-            obj.hImPrCropQueryValue.Parent = obj.hImPr;
+            obj.hImPrCropQueryValue.Parent = obj.hFig;
             GUISettings.applyUIControlStyle(obj.hImPrCropQueryValue);
             obj.hImPrCropQueryValue.String = '';
+            obj.hImPrCropQueryValue.Enable = 'off';
 
-            obj.hImPrNormalise = uicontrol('Style', 'text');
-            obj.hImPrNormalise.Parent = obj.hImPr;
-            GUISettings.applyUIControlStyle(obj.hImPrNormalise);
-            obj.hImPrNormalise.String = 'Patch Normalisation:';
-            obj.hImPrNormalise.HorizontalAlignment = 'left';
+            obj.hImPrResize = uicontrol('Style', 'text');
+            obj.hImPrResize.Parent = obj.hFig;
+            GUISettings.applyUIControlStyle(obj.hImPrResize);
+            obj.hImPrResize.String = 'Resized dimensions:';
 
-            obj.hImPrNormaliseLength = uicontrol('Style', 'text');
-            obj.hImPrNormaliseLength.Parent = obj.hImPr;
-            GUISettings.applyUIControlStyle(obj.hImPrNormaliseLength);
-            obj.hImPrNormaliseLength.String = 'Side length:';
-            obj.hImPrNormaliseLength.HorizontalAlignment = 'left';
+            obj.hImPrResizeW = uicontrol('Style', 'edit');
+            obj.hImPrResizeW.Parent = obj.hFig;
+            GUISettings.applyUIControlStyle(obj.hImPrResizeW);
+            obj.hImPrResizeW.String = '';
 
-            obj.hImPrNormaliseLengthValue = uicontrol('Style', 'edit');
-            obj.hImPrNormaliseLengthValue.Parent = obj.hImPr;
-            GUISettings.applyUIControlStyle(obj.hImPrNormaliseLengthValue);
-            obj.hImPrNormaliseLengthValue.String = '';
+            obj.hImPrResizeX = uicontrol('Style', 'text');
+            obj.hImPrResizeX.Parent = obj.hFig;
+            GUISettings.applyUIControlStyle(obj.hImPrResizeX);
+            obj.hImPrResizeX.String = 'x';
 
-            obj.hImPrNormaliseMode = uicontrol('Style', 'text');
-            obj.hImPrNormaliseMode.Parent = obj.hImPr;
-            GUISettings.applyUIControlStyle(obj.hImPrNormaliseMode);
-            obj.hImPrNormaliseMode.String = 'Mode:';
-            obj.hImPrNormaliseMode.HorizontalAlignment = 'left';
+            obj.hImPrResizeH = uicontrol('Style', 'edit');
+            obj.hImPrResizeH.Parent = obj.hFig;
+            GUISettings.applyUIControlStyle(obj.hImPrResizeH);
+            obj.hImPrResizeH.String = '';
 
-            obj.hImPrNormaliseModeValue = uicontrol('Style', 'edit');
-            obj.hImPrNormaliseModeValue.Parent = obj.hImPr;
-            GUISettings.applyUIControlStyle(obj.hImPrNormaliseModeValue);
-            obj.hImPrNormaliseModeValue.String = '';
+            obj.hImPrResizeMethod = uicontrol('Style', 'text');
+            obj.hImPrResizeMethod.Parent = obj.hFig;
+            GUISettings.applyUIControlStyle(obj.hImPrResizeMethod);
+            obj.hImPrResizeMethod.String = 'Resize method:';
 
-            obj.hDiff = uipanel();
-            GUISettings.applyUIPanelStyle(obj.hDiff);
-            obj.hDiff.Title = 'Difference Matrix Settings';
+            obj.hImPrResizeMethodValue = uicontrol('Style', 'popupmenu');
+            obj.hImPrResizeMethodValue.Parent = obj.hFig;
+            GUISettings.applyUIControlStyle(obj.hImPrResizeMethodValue);
+            obj.hImPrResizeMethodValue.String = {'lanczos3' 'TODO'};
 
-            obj.hDiffLoad = uicontrol('Style', 'checkbox');
-            obj.hDiffLoad.Parent = obj.hDiff;
-            GUISettings.applyUIControlStyle(obj.hDiffLoad);
-            obj.hDiffLoad.String = 'Load difference matrix if available';
+            obj.hImPrNorm = uicontrol('Style', 'text');
+            obj.hImPrNorm.Parent = obj.hFig;
+            GUISettings.applyUIControlStyle(obj.hImPrNorm);
+            obj.hImPrNorm.String = 'Normalisation:';
 
-            obj.hDiffConEn = uicontrol('Style', 'text');
-            obj.hDiffConEn.Parent = obj.hDiff;
-            GUISettings.applyUIControlStyle(obj.hDiffConEn);
-            obj.hDiffConEn.String = 'Local Contrast Enhancement:';
-            obj.hDiffConEn.HorizontalAlignment = 'left';
+            obj.hImPrNormThresh = uicontrol('Style', 'text');
+            obj.hImPrNormThresh.Parent = obj.hFig;
+            GUISettings.applyUIControlStyle(obj.hImPrNormThresh);
+            obj.hImPrNormThresh.String = 'Edge threshold:';
+            obj.hImPrNormThresh.HorizontalAlignment = 'left';
 
-            obj.hDiffConEnR = uicontrol('Style', 'text');
-            obj.hDiffConEnR.Parent = obj.hDiff;
-            GUISettings.applyUIControlStyle(obj.hDiffConEnR);
-            obj.hDiffConEnR.String = 'Window (R_window)';
-            obj.hDiffConEnR.HorizontalAlignment = 'left';
+            obj.hImPrNormThreshValue = uicontrol('Style', 'edit');
+            obj.hImPrNormThreshValue.Parent = obj.hFig;
+            GUISettings.applyUIControlStyle(obj.hImPrNormThreshValue);
+            obj.hImPrNormThreshValue.String = '';
 
-            obj.hDiffConEnRValue = uicontrol('Style', 'edit');
-            obj.hDiffConEnRValue.Parent = obj.hDiff;
-            GUISettings.applyUIControlStyle(obj.hDiffConEnRValue);
-            obj.hDiffConEnRValue.String = '';
+            obj.hImPrNormStrength = uicontrol('Style', 'text');
+            obj.hImPrNormStrength.Parent = obj.hFig;
+            GUISettings.applyUIControlStyle(obj.hImPrNormStrength);
+            obj.hImPrNormStrength.String = 'Enhance strength:';
+            obj.hImPrNormStrength.HorizontalAlignment = 'left';
 
-            obj.hMatch = uipanel();
-            GUISettings.applyUIPanelStyle(obj.hMatch);
-            obj.hMatch.Title = 'Matching Settings:';
-
-            obj.hMatchLoad = uicontrol('Style', 'checkbox');
-            obj.hMatchLoad.Parent = obj.hMatch;
-            GUISettings.applyUIControlStyle(obj.hMatchLoad);
-            obj.hMatchLoad.String = 'Load matches if available';
-
-            obj.hMatchDs = uicontrol('Style', 'text');
-            obj.hMatchDs.Parent = obj.hMatch;
-            GUISettings.applyUIControlStyle(obj.hMatchDs);
-            obj.hMatchDs.String = 'Search Length (d_s):';
-            obj.hMatchDs.HorizontalAlignment = 'left';
-
-            obj.hMatchDsValue = uicontrol('Style', 'edit');
-            obj.hMatchDsValue.Parent = obj.hMatch;
-            GUISettings.applyUIControlStyle(obj.hMatchDsValue);
-            obj.hMatchDsValue.String = '';
-
-            obj.hMatchTraj = uicontrol('Style', 'text');
-            obj.hMatchTraj.Parent = obj.hMatch;
-            GUISettings.applyUIControlStyle(obj.hMatchTraj);
-            obj.hMatchTraj.String = 'Search trajectories:';
-            obj.hMatchTraj.HorizontalAlignment = 'left';
-
-            obj.hMatchTrajVmin = uicontrol('Style', 'text');
-            obj.hMatchTrajVmin.Parent = obj.hMatch;
-            GUISettings.applyUIControlStyle(obj.hMatchTrajVmin);
-            obj.hMatchTrajVmin.String = 'V_min:';
-            obj.hMatchTrajVmin.HorizontalAlignment = 'left';
-
-            obj.hMatchTrajVminValue = uicontrol('Style', 'edit');
-            obj.hMatchTrajVminValue.Parent = obj.hMatch;
-            GUISettings.applyUIControlStyle(obj.hMatchTrajVminValue);
-            obj.hMatchTrajVminValue.String = '';
-
-            obj.hMatchTrajVmax = uicontrol('Style', 'text');
-            obj.hMatchTrajVmax.Parent = obj.hMatch;
-            GUISettings.applyUIControlStyle(obj.hMatchTrajVmax);
-            obj.hMatchTrajVmax.String = 'V_max:';
-            obj.hMatchTrajVmax.HorizontalAlignment = 'left';
-
-            obj.hMatchTrajVmaxValue = uicontrol('Style', 'edit');
-            obj.hMatchTrajVmaxValue.Parent = obj.hMatch;
-            GUISettings.applyUIControlStyle(obj.hMatchTrajVmaxValue);
-            obj.hMatchTrajVmaxValue.String = '';
-
-            obj.hMatchTrajVstep = uicontrol('Style', 'text');
-            obj.hMatchTrajVstep.Parent = obj.hMatch;
-            GUISettings.applyUIControlStyle(obj.hMatchTrajVstep);
-            obj.hMatchTrajVstep.String = 'V_step:';
-            obj.hMatchTrajVstep.HorizontalAlignment = 'left';
-
-            obj.hMatchTrajVstepValue = uicontrol('Style', 'edit');
-            obj.hMatchTrajVstepValue.Parent = obj.hMatch;
-            GUISettings.applyUIControlStyle(obj.hMatchTrajVstepValue);
-            obj.hMatchTrajVstepValue.String = '';
-
-            obj.hMatchRrecent = uicontrol('Style', 'text');
-            obj.hMatchRrecent.Parent = obj.hMatch;
-            GUISettings.applyUIControlStyle(obj.hMatchRrecent);
-            obj.hMatchRrecent.String = 'Excluded recents (R_recent):';
-            obj.hMatchRrecent.HorizontalAlignment = 'left';
-
-            obj.hMatchRrecentValue = uicontrol('Style', 'edit');
-            obj.hMatchRrecentValue.Parent = obj.hMatch;
-            GUISettings.applyUIControlStyle(obj.hMatchRrecentValue);
-            obj.hMatchRrecentValue.String = '';
-
-            obj.hMatchCriteria = uicontrol('Style', 'text');
-            obj.hMatchCriteria.Parent = obj.hMatch;
-            GUISettings.applyUIControlStyle(obj.hMatchCriteria);
-            obj.hMatchCriteria.String = 'Matching Criteria:';
-            obj.hMatchCriteria.HorizontalAlignment = 'left';
-
-            obj.hMatchCriteriaRwindow = uicontrol('Style', 'text');
-            obj.hMatchCriteriaRwindow.Parent = obj.hMatch;
-            GUISettings.applyUIControlStyle(obj.hMatchCriteriaRwindow);
-            obj.hMatchCriteriaRwindow.String = 'Sliding window (R_window):';
-            obj.hMatchCriteriaRwindow.HorizontalAlignment = 'left';
-
-            obj.hMatchCriteriaRwindowValue = uicontrol('Style', 'edit');
-            obj.hMatchCriteriaRwindowValue.Parent = obj.hMatch;
-            GUISettings.applyUIControlStyle(obj.hMatchCriteriaRwindowValue);
-            obj.hMatchCriteriaRwindowValue.String = '';
-
-            obj.hMatchCriteriaU = uicontrol('Style', 'text');
-            obj.hMatchCriteriaU.Parent = obj.hMatch;
-            GUISettings.applyUIControlStyle(obj.hMatchCriteriaU);
-            obj.hMatchCriteriaU.String = 'Selection factor (u):';
-            obj.hMatchCriteriaU.HorizontalAlignment = 'left';
-
-            obj.hMatchCriteriaUValue = uicontrol('Style', 'edit');
-            obj.hMatchCriteriaUValue.Parent = obj.hMatch;
-            GUISettings.applyUIControlStyle(obj.hMatchCriteriaUValue);
-            obj.hMatchCriteriaUValue.String = '';
+            obj.hImPrNormStrengthValue = uicontrol('Style', 'edit');
+            obj.hImPrNormStrengthValue.Parent = obj.hFig;
+            GUISettings.applyUIControlStyle(obj.hImPrNormStrengthValue);
+            obj.hImPrNormStrengthValue.String = '';
 
             % Done button
             obj.hDone = uicontrol('Style', 'pushbutton');
@@ -323,347 +426,404 @@ classdef ConfigSeqSLAMGUI < handle
             obj.hDone.String = 'Done';
 
             % Callbacks (must be last, otherwise empty objects passed...)
+            obj.hImPrLoad.Callback = {@obj.cbLoadProcessed};
+            obj.hImPrRefSample.Callback = {@obj.cbChangePreviewImage};
+            obj.hImPrQuerySample.Callback = {@obj.cbChangePreviewImage};
+            obj.hImPrRefresh.Callback = {@obj.cbRefreshPreprocessed};
+            obj.hImPrResizeW.Callback = {@obj.cbChangeResize};
+            obj.hImPrResizeH.Callback = {@obj.cbChangeResize};
+            obj.hImPrResizeMethodValue.Callback = {@obj.cbChangeResize};
+            obj.hImPrNormThreshValue.Callback = {@obj.cbChangeNorm};
+            obj.hImPrNormStrengthValue.Callback = {@obj.cbChangeNorm};
             obj.hDone.Callback = {@obj.cbDone};
         end
 
+        function disableProcessingPreviews(obj, mask)
+            axs = [ ...
+                obj.hImPrRefAxCrop   , obj.hImPrQueryAxCrop; ...
+                obj.hImPrRefAxResize , obj.hImPrQueryAxResize; ...
+                obj.hImPrRefAxNorm   , obj.hImPrQueryAxNorm ...
+                ];
+            axs = axs(logical(mask));
+            arrayfun(@(x) alpha(x, ConfigSeqSLAMGUI.IMAGE_FADE), axs);
+        end
+
+        function drawProcessingPreviews(obj)
+            % Strip the UI (we need the config to be up to date)
+            obj.strip();
+
+            % Generate all of the required images
+            refImg = datasetOpenImage(obj.config.reference, ...
+                obj.hImPrRefSample.Value, obj.indicesRef);
+            queryImg = datasetOpenImage(obj.config.query, ...
+                obj.hImPrQuerySample.Value, obj.indicesQuery);
+            [refImgOut, refImgs] = SeqSLAMInstance.preprocessSingle( ...
+                refImg, obj.config.seqslam.image_processing, 'reference', 1);
+            [queryImgOut, queryImgs] = SeqSLAMInstance.preprocessSingle( ...
+                queryImg, obj.config.seqslam.image_processing, 'query', 1);
+
+            % Clear all axes
+            cla(obj.hImPrRefAxCrop);
+            cla(obj.hImPrRefAxResize);
+            cla(obj.hImPrRefAxNorm);
+            cla(obj.hImPrQueryAxCrop);
+            cla(obj.hImPrQueryAxResize);
+            cla(obj.hImPrQueryAxNorm);
+
+            % Show all of the images
+            imshow(refImg, 'Parent', obj.hImPrRefAxCrop);
+            imshow(refImgs{2}, 'Parent', obj.hImPrRefAxResize);
+            imshow(refImgOut, 'Parent', obj.hImPrRefAxNorm);
+            imshow(queryImg, 'Parent', obj.hImPrQueryAxCrop);
+            imshow(queryImgs{2}, 'Parent', obj.hImPrQueryAxResize);
+            imshow(queryImgOut, 'Parent', obj.hImPrQueryAxNorm);
+
+            % Draw the crop-boxes
+            obj.hImPrRefCropBox = imrect(obj.hImPrRefAxCrop, ...
+                [obj.hImPrRefAxCrop.XLim(1) obj.hImPrRefAxCrop.YLim(1) ...
+                diff(obj.hImPrRefAxCrop.XLim) diff(obj.hImPrRefAxCrop.YLim)]);
+            obj.hImPrRefCropBox.setPositionConstraintFcn( ...
+                @obj.constrainedRefPosition);
+            obj.hImPrQueryCropBox = imrect(obj.hImPrQueryAxCrop, ...
+                [obj.hImPrQueryAxCrop.XLim(1) obj.hImPrQueryAxCrop.YLim(1) ...
+                diff(obj.hImPrQueryAxCrop.XLim) diff(obj.hImPrQueryAxCrop.YLim)]);
+            obj.hImPrQueryCropBox.setPositionConstraintFcn( ...
+                @obj.constrainedQueryPosition);
+            obj.hImPrQueryCropBox.setFixedAspectRatioMode(1);
+
+        end
+
+        function generateImageLists(obj)
+            obj.indicesRef = SeqSLAMInstance.indices(obj.config.reference);
+            obj.listImagesRef = datasetImageList(obj.config.reference, ...
+                obj.indicesRef);
+            obj.indicesQuery = SeqSLAMInstance.indices(obj.config.query);
+            obj.listImagesQuery = datasetImageList(obj.config.query, ...
+                obj.indicesQuery);
+        end
+
+        function valid = isDataValid(obj, screen)
+            valid = false;
+            if isempty(screen) || screen == 1
+                % Normalisation threshold
+                v = str2num(obj.hImPrNormThreshValue.String);
+                if v < 0 || v > 1
+                    errordlg( ...
+                        'Normalisation edge threshold must be in range [0, 1]');
+                    return;
+                end
+
+                % Normalisation strength
+                v = str2num(obj.hImPrNormStrengthValue.String);
+                if v < -1 || v > 1
+                    errordlg( ...
+                        'Normalisation strength must be in range [-1, 1]');
+                    return;
+                end
+            end
+
+            valid = true;
+        end
+
+        function openScreen(obj, screen)
+            % Clear everything off the screen
+            obj.clearScreen();
+
+            % Add the appropriate elements for the screen
+            if (screen == 1)
+                % Image preprocessing settings
+                % Show the appropriate options and axes
+                obj.hImPrLoad.Visible = 'on';
+                obj.hImPrRef.Visible = 'on';
+                obj.hImPrRefSample.Visible = 'on';
+                obj.hImPrRefAxCrop.Visible = 'on';
+                obj.hImPrRefCropBox.Visible = 'on';
+                obj.hImPrRefAxResize.Visible = 'on';
+                obj.hImPrRefAxNorm.Visible = 'on';
+                obj.hImPrQuery.Visible = 'on';
+                obj.hImPrQuerySample.Visible = 'on';
+                obj.hImPrQueryAxCrop.Visible = 'on';
+                obj.hImPrQueryCropBox.Visible = 'on';
+                obj.hImPrQueryAxResize.Visible = 'on';
+                obj.hImPrQueryAxNorm.Visible = 'on';
+                obj.hImPrRefresh.Visible = 'on';
+                obj.hImPrCropRef.Visible = 'on';
+                obj.hImPrCropRefValue.Visible = 'on';
+                obj.hImPrCropQuery.Visible = 'on';
+                obj.hImPrCropQueryValue.Visible = 'on';
+                obj.hImPrResize.Visible = 'on';
+                obj.hImPrResizeW.Visible = 'on';
+                obj.hImPrResizeX.Visible = 'on';
+                obj.hImPrResizeH.Visible = 'on';
+                obj.hImPrResizeMethod.Visible = 'on';
+                obj.hImPrResizeMethodValue.Visible = 'on';
+                obj.hImPrNorm.Visible = 'on';
+                obj.hImPrNormThresh.Visible = 'on';
+                obj.hImPrNormThreshValue.Visible = 'on';
+                obj.hImPrNormStrength.Visible = 'on';
+                obj.hImPrNormStrengthValue.Visible = 'on';
+
+                % Force a refresh of all of the previews
+                obj.drawProcessingPreviews();
+
+                % Force the load setting to apply
+                obj.cbLoadProcessed(obj.hImPrLoad, []);
+            elseif (screen == 2)
+                % Difference matrix settings
+                % TODO
+            elseif (screen == 3)
+                % Matching settings
+                % TODO
+            end
+
+            % Force a draw at the end
+            drawnow();
+        end
+
         function populate(obj)
+            % Use the first image in each dataset to get some reference dimensions
+            obj.dimRef = size(datasetOpenImage(obj.config.reference, 1, ...
+                obj.indicesRef));
+            obj.dimQuery = size(datasetOpenImage(obj.config.query, 1, ...
+                obj.indicesQuery));
+
             % Dump all data from the config struct to the UI
             obj.hImPrLoad.Value = SafeData.noEmpty( ...
                 obj.config.seqslam.image_processing.load, 0);
 
-            obj.hImPrDownSampleW.String = num2str( ...
-                obj.config.seqslam.image_processing.downsample.width);
-            obj.hImPrDownSampleH.String = num2str( ...
-                obj.config.seqslam.image_processing.downsample.height);
-            obj.hImPrDownSampleMethodValue.Value = SafeData.noEmpty( ...
-                find(strcmp(obj.hImPrDownSampleMethodValue.String, ...
-                    obj.config.seqslam.image_processing.downsample.method)), 1);
-
-            obj.hImPrCropRefValue.String = SafeData.vector2str( ...
-                obj.config.seqslam.image_processing.crop.reference);
-            obj.hImPrCropQueryValue.String = SafeData.vector2str( ...
-                obj.config.seqslam.image_processing.crop.query);
-
-            obj.hImPrNormaliseLengthValue.String = num2str( ...
-                obj.config.seqslam.image_processing.normalisation.length);
-            obj.hImPrNormaliseModeValue.String = num2str( ...
-                obj.config.seqslam.image_processing.normalisation.mode);
-
-            obj.hDiffLoad.Value = SafeData.noEmpty( ...
-                obj.config.seqslam.diff_matrix.load, 0);
-
-            obj.hDiffConEnRValue.String = num2str( ...
-                obj.config.seqslam.diff_matrix.contrast.r_window);
-            
-            obj.hMatchLoad.Value = SafeData.noEmpty( ...
-                obj.config.seqslam.matching.load, 0);
-            obj.hMatchDsValue.String = num2str( ...
-                obj.config.seqslam.matching.d_s);
-
-            obj.hMatchTrajVminValue.String = num2str( ...
-                obj.config.seqslam.matching.trajectories.v_min);
-            obj.hMatchTrajVmaxValue.String = num2str( ...
-                obj.config.seqslam.matching.trajectories.v_max);
-            obj.hMatchTrajVstepValue.String = num2str( ...
-                obj.config.seqslam.matching.trajectories.v_step);
-
-            obj.hMatchRrecentValue.String = num2str( ...
-                obj.config.seqslam.matching.r_recent);
-
-            obj.hMatchCriteriaRwindowValue.String = num2str( ...
-                obj.config.seqslam.matching.criteria.r_window);
-            obj.hMatchCriteriaUValue.String = num2str( ...
-                obj.config.seqslam.matching.criteria.u);
+            obj.hImPrCropRefValue.String = SafeData.noEmpty( ...
+                obj.config.seqslam.image_processing.crop.reference, ...
+                ['1, 1, ' num2str(obj.dimRef(2)) ', ' num2str(obj.dimRef(1))]);
+            obj.hImPrCropQueryValue.String = SafeData.noEmpty( ...
+                obj.config.seqslam.image_processing.crop.query, ['1, 1, ' ...
+                num2str(obj.dimQuery(2)) ', ' num2str(obj.dimQuery(1))]);
+            obj.hImPrResizeW.String = SafeData.noEmpty( ...
+                obj.config.seqslam.image_processing.downsample.width, ...
+                obj.dimRef(2));
+            obj.hImPrResizeH.String = SafeData.noEmpty( ...
+                obj.config.seqslam.image_processing.downsample.height, ...
+                obj.dimRef(1));
+            obj.hImPrNormThreshValue.String = SafeData.noEmpty( ...
+                obj.config.seqslam.image_processing.normalisation.threshold,...
+                0.5);
+            obj.hImPrNormStrengthValue.String = SafeData.noEmpty( ...
+                obj.config.seqslam.image_processing.normalisation.strength, ...
+                0.5);
         end
 
         function sizeGUI(obj)
             % Get some reference dimensions (max width of headings, and
             % default height of a button
-            maxWidth = max(...
-                [obj.hImPrLoad.Extent(3), ...
-                obj.hDiffLoad.Extent(3), ...
-                obj.hMatchLoad.Extent(3)]);
+            widthUnit = obj.hImPrLoad.Extent(3);
             heightUnit = obj.hDone.Extent(4);
 
             % Size and position of the figure
             obj.hFig.Position = [0, 0, ...
-                maxWidth * ConfigSeqSLAMGUI.FIG_WIDTH_FACTOR, ...
+                widthUnit * ConfigSeqSLAMGUI.FIG_WIDTH_FACTOR, ...
                 heightUnit * ConfigSeqSLAMGUI.FIG_HEIGHT_FACTOR];
             movegui(obj.hFig, 'center');
 
             % Now that the figure (space for placing UI elements is set),
             % size all of the elements
-            SpecSize.size(obj.hImPr, SpecSize.WIDTH, ...
-                SpecSize.MATCH, obj.hFig, GUISettings.PAD_MED);
-            SpecSize.size(obj.hImPr, SpecSize.HEIGHT, ...
-                SpecSize.ABSOLUTE, 12*heightUnit);
-            SpecSize.size(obj.hImPrLoad, SpecSize.WIDTH, ...
-                SpecSize.WRAP, GUISettings.PAD_MED);
-            SpecSize.size(obj.hImPrDownSample, SpecSize.WIDTH, ...
-                SpecSize.WRAP, GUISettings.PAD_SMALL);
-            SpecSize.size(obj.hImPrDownSampleSize, SpecSize.WIDTH, ...
-                SpecSize.WRAP, GUISettings.PAD_SMALL);
-            SpecSize.size(obj.hImPrDownSamplex, SpecSize.WIDTH, ...
-                SpecSize.WRAP, GUISettings.PAD_SMALL);
-            SpecSize.size(obj.hImPrDownSampleMethod, SpecSize.WIDTH, ...
-                SpecSize.WRAP, GUISettings.PAD_SMALL);
-            SpecSize.size(obj.hImPrCrop, SpecSize.WIDTH, ...
-                SpecSize.WRAP, GUISettings.PAD_SMALL);
-            SpecSize.size(obj.hImPrCropRef, SpecSize.WIDTH, ...
-                SpecSize.WRAP, GUISettings.PAD_SMALL);
-            SpecSize.size(obj.hImPrCropQuery, SpecSize.WIDTH, ...
-                SpecSize.WRAP, GUISettings.PAD_SMALL);
-            SpecSize.size(obj.hImPrNormalise, SpecSize.WIDTH, ...
-                SpecSize.WRAP, GUISettings.PAD_SMALL);
-            SpecSize.size(obj.hImPrNormaliseLength, SpecSize.WIDTH, ...
-                SpecSize.WRAP, GUISettings.PAD_SMALL);
-            SpecSize.size(obj.hImPrNormaliseMode, SpecSize.WIDTH, ...
-                SpecSize.WRAP, GUISettings.PAD_SMALL);
-            
-            SpecSize.size(obj.hDiff, SpecSize.WIDTH, ...
-                SpecSize.MATCH, obj.hFig, GUISettings.PAD_MED);
-            SpecSize.size(obj.hDiff, SpecSize.HEIGHT, ...
-                SpecSize.ABSOLUTE, 6*heightUnit);
-            SpecSize.size(obj.hDiffLoad, SpecSize.WIDTH, ...
-                SpecSize.WRAP, GUISettings.PAD_MED);
-            SpecSize.size(obj.hDiffConEn, SpecSize.WIDTH, ...
-                SpecSize.WRAP, GUISettings.PAD_SMALL);
-            SpecSize.size(obj.hDiffConEnR, SpecSize.WIDTH, ...
-                SpecSize.WRAP, GUISettings.PAD_SMALL);
+            SpecSize.size(obj.hScreen, SpecSize.WIDTH, SpecSize.PERCENT, ...
+                obj.hFig, 0.66);
 
-            SpecSize.size(obj.hMatch, SpecSize.WIDTH, ...
-                SpecSize.MATCH, obj.hFig, GUISettings.PAD_MED);
-            SpecSize.size(obj.hMatch, SpecSize.HEIGHT, ...
-                SpecSize.ABSOLUTE, 12*heightUnit);
-            SpecSize.size(obj.hMatchLoad, SpecSize.WIDTH, ...
-                SpecSize.WRAP, GUISettings.PAD_MED);
-            SpecSize.size(obj.hMatchDs, SpecSize.WIDTH, ...
-                SpecSize.WRAP, GUISettings.PAD_SMALL);
-            SpecSize.size(obj.hMatchTraj, SpecSize.WIDTH, ...
-                SpecSize.WRAP, GUISettings.PAD_SMALL);
-            SpecSize.size(obj.hMatchTrajVmin, SpecSize.WIDTH, ...
-                SpecSize.WRAP, GUISettings.PAD_SMALL);
-            SpecSize.size(obj.hMatchTrajVmax, SpecSize.WIDTH, ...
-                SpecSize.WRAP, GUISettings.PAD_SMALL);
-            SpecSize.size(obj.hMatchTrajVstep, SpecSize.WIDTH, ...
-                SpecSize.WRAP, GUISettings.PAD_SMALL);
-            SpecSize.size(obj.hMatchRrecent, SpecSize.WIDTH, ...
-                SpecSize.WRAP, GUISettings.PAD_SMALL);
-            SpecSize.size(obj.hMatchCriteria, SpecSize.WIDTH, ...
-                SpecSize.WRAP, GUISettings.PAD_SMALL);
-            SpecSize.size(obj.hMatchCriteriaRwindow, SpecSize.WIDTH, ...
-                SpecSize.WRAP, GUISettings.PAD_SMALL);
-            SpecSize.size(obj.hMatchCriteriaU, SpecSize.WIDTH, ...
-                SpecSize.WRAP, GUISettings.PAD_SMALL);
+            SpecSize.size(obj.hImPrLoad, SpecSize.WIDTH, SpecSize.WRAP, ...
+                GUISettings.PAD_LARGE);
+            SpecSize.size(obj.hImPrRef, SpecSize.WIDTH, SpecSize.PERCENT, ...
+                obj.hFig, 0.33, GUISettings.PAD_MED);
+            SpecSize.size(obj.hImPrRefSample, SpecSize.WIDTH, ...
+                SpecSize.MATCH, obj.hImPrRef);
+            SpecSize.size(obj.hImPrRefAxCrop, SpecSize.WIDTH, ...
+                SpecSize.MATCH, obj.hImPrRef);
+            SpecSize.size(obj.hImPrRefAxCrop, SpecSize.HEIGHT, ...
+                SpecSize.RATIO, 2/3);
+            SpecSize.size(obj.hImPrRefAxResize, SpecSize.WIDTH, ...
+                SpecSize.MATCH, obj.hImPrRef);
+            SpecSize.size(obj.hImPrRefAxResize, SpecSize.HEIGHT, ...
+                SpecSize.RATIO, 2/3);
+            SpecSize.size(obj.hImPrRefAxNorm, SpecSize.WIDTH, ...
+                SpecSize.MATCH, obj.hImPrRef);
+            SpecSize.size(obj.hImPrRefAxNorm, SpecSize.HEIGHT, ...
+                SpecSize.RATIO, 2/3);
+            SpecSize.size(obj.hImPrQuery, SpecSize.WIDTH, SpecSize.PERCENT, ...
+                obj.hFig, 0.33, GUISettings.PAD_MED);
+            SpecSize.size(obj.hImPrQuerySample, SpecSize.WIDTH, ...
+                SpecSize.MATCH, obj.hImPrQuery);
+            SpecSize.size(obj.hImPrQueryAxCrop, SpecSize.WIDTH, ...
+                SpecSize.MATCH, obj.hImPrQuery);
+            SpecSize.size(obj.hImPrQueryAxCrop, SpecSize.HEIGHT, ...
+                SpecSize.RATIO, 2/3);
+            SpecSize.size(obj.hImPrQueryAxResize, SpecSize.WIDTH, ...
+                SpecSize.MATCH, obj.hImPrQuery);
+            SpecSize.size(obj.hImPrQueryAxResize, SpecSize.HEIGHT, ...
+                SpecSize.RATIO, 2/3);
+            SpecSize.size(obj.hImPrQueryAxNorm, SpecSize.WIDTH, ...
+                SpecSize.MATCH, obj.hImPrQuery);
+            SpecSize.size(obj.hImPrQueryAxNorm, SpecSize.HEIGHT, ...
+                SpecSize.RATIO, 2/3);
+            SpecSize.size(obj.hImPrRefresh, SpecSize.WIDTH, ...
+                SpecSize.PERCENT, obj.hFig, 0.33, GUISettings.PAD_MED);
+            SpecSize.size(obj.hImPrCropRef, SpecSize.WIDTH, SpecSize.MATCH, ...
+                obj.hImPrRefresh);
+            SpecSize.size(obj.hImPrCropRefValue, SpecSize.WIDTH, ...
+                SpecSize.MATCH, obj.hImPrRefresh);
+            SpecSize.size(obj.hImPrCropQuery, SpecSize.WIDTH, ...
+                SpecSize.MATCH, obj.hImPrRefresh);
+            SpecSize.size(obj.hImPrCropQueryValue, SpecSize.WIDTH, ...
+                SpecSize.MATCH, obj.hImPrRefresh);
+            SpecSize.size(obj.hImPrResize, SpecSize.WIDTH, SpecSize.MATCH, ...
+                obj.hImPrRefresh);
+            SpecSize.size(obj.hImPrResizeW, SpecSize.WIDTH, ...
+                SpecSize.PERCENT, obj.hImPrRefresh, 0.4);
+            SpecSize.size(obj.hImPrResizeX, SpecSize.WIDTH, ...
+                SpecSize.PERCENT, obj.hImPrRefresh, 0.2, GUISettings.PAD_MED);
+            SpecSize.size(obj.hImPrResizeH, SpecSize.WIDTH, ...
+                SpecSize.PERCENT, obj.hImPrRefresh, 0.4);
+            SpecSize.size(obj.hImPrResizeMethod, SpecSize.WIDTH, ...
+                SpecSize.MATCH, obj.hImPrRefresh);
+            SpecSize.size(obj.hImPrResizeMethodValue, SpecSize.WIDTH, ...
+                SpecSize.MATCH, obj.hImPrRefresh);
+            SpecSize.size(obj.hImPrNorm, SpecSize.WIDTH, SpecSize.MATCH, ...
+                obj.hImPrRefresh);
+            SpecSize.size(obj.hImPrNormThresh, SpecSize.WIDTH, ...
+                SpecSize.PERCENT, obj.hImPrRefresh, 0.4);
+            SpecSize.size(obj.hImPrNormThreshValue, SpecSize.WIDTH, ...
+                SpecSize.PERCENT, obj.hImPrRefresh, 0.3);
+            SpecSize.size(obj.hImPrNormStrength, SpecSize.WIDTH, ...
+                SpecSize.PERCENT, obj.hImPrRefresh, 0.4);
+            SpecSize.size(obj.hImPrNormStrengthValue, SpecSize.WIDTH, ...
+                SpecSize.PERCENT, obj.hImPrRefresh, 0.3);
 
             SpecSize.size(obj.hDone, SpecSize.WIDTH, ...
                 SpecSize.PERCENT, obj.hFig, 0.25);
 
             % Then, systematically place
-            SpecPosition.positionIn(obj.hImPr, obj.hFig, ...
+            SpecPosition.positionIn(obj.hFig, obj.hFig, ...
+                SpecPosition.TOP, GUISettings.PAD_LARGE);
+            SpecPosition.positionIn(obj.hFig, obj.hFig, ...
                 SpecPosition.CENTER_X);
-            SpecPosition.positionIn(obj.hImPr, obj.hFig, ...
+
+            SpecPosition.positionIn(obj.hScreen, obj.hFig, ...
                 SpecPosition.TOP, GUISettings.PAD_MED);
-            SpecPosition.positionIn(obj.hImPrLoad, obj.hImPr, ...
-                SpecPosition.TOP, heightUnit);
-            SpecPosition.positionIn(obj.hImPrLoad, obj.hImPr, ...
-                SpecPosition.RIGHT, GUISettings.PAD_SMALL);
-            SpecPosition.positionRelative(obj.hImPrDownSample, ...
-                obj.hImPrLoad, SpecPosition.BELOW, GUISettings.PAD_MED);
-            SpecPosition.positionIn(obj.hImPrDownSample, obj.hImPr, ...
+            SpecPosition.positionIn(obj.hScreen, obj.hFig, ...
+                SpecPosition.CENTER_X);
+
+            SpecPosition.positionRelative(obj.hImPrLoad, obj.hScreen, ...
+                SpecPosition.BELOW, GUISettings.PAD_MED);
+            SpecPosition.positionIn(obj.hImPrLoad, obj.hFig, ...
+                SpecPosition.RIGHT, GUISettings.PAD_MED);
+            SpecPosition.positionRelative(obj.hImPrRef, obj.hImPrLoad, ...
+                SpecPosition.BELOW);
+            SpecPosition.positionIn(obj.hImPrRef, obj.hFig, ...
                 SpecPosition.LEFT, GUISettings.PAD_MED);
-            SpecPosition.positionRelative(obj.hImPrDownSampleSize, ...
-                obj.hImPrDownSample, SpecPosition.BELOW, ...
-                GUISettings.PAD_MED);
-            SpecPosition.positionIn(obj.hImPrDownSampleSize, obj.hImPr, ...
-                SpecPosition.LEFT, GUISettings.PAD_LARGE);
-            SpecPosition.positionRelative(obj.hImPrDownSampleW, ...
-                obj.hImPrDownSampleSize, SpecPosition.CENTER_Y);
-            SpecPosition.positionRelative(obj.hImPrDownSampleW, ...
-                obj.hImPrDownSampleSize, SpecPosition.RIGHT_OF, ...
-                GUISettings.PAD_MED);
-            SpecPosition.positionRelative(obj.hImPrDownSamplex, ...
-                obj.hImPrDownSampleSize, SpecPosition.CENTER_Y);
-            SpecPosition.positionRelative(obj.hImPrDownSamplex, ...
-                obj.hImPrDownSampleW, SpecPosition.RIGHT_OF, ...
-                GUISettings.PAD_SMALL);
-            SpecPosition.positionRelative(obj.hImPrDownSampleH, ...
-                obj.hImPrDownSampleSize, SpecPosition.CENTER_Y);
-            SpecPosition.positionRelative(obj.hImPrDownSampleH, ...
-                obj.hImPrDownSamplex, SpecPosition.RIGHT_OF, ...
-                GUISettings.PAD_SMALL);
-            SpecPosition.positionRelative(obj.hImPrDownSampleMethod, ...
-                obj.hImPrDownSampleSize, SpecPosition.CENTER_Y);
-            SpecPosition.positionRelative(obj.hImPrDownSampleMethod, ...
-                obj.hImPrDownSampleH, SpecPosition.RIGHT_OF, ...
+            SpecPosition.positionRelative(obj.hImPrRefSample, obj.hImPrRef, ...
+                SpecPosition.BELOW);
+            SpecPosition.positionRelative(obj.hImPrRefSample, obj.hImPrRef, ...
+                SpecPosition.LEFT);
+            SpecPosition.positionRelative(obj.hImPrRefAxCrop, ...
+                obj.hImPrRefSample, SpecPosition.BELOW, GUISettings.PAD_LARGE);
+            SpecPosition.positionRelative(obj.hImPrRefAxCrop, obj.hImPrRef, ...
+                SpecPosition.LEFT);
+            SpecPosition.positionRelative(obj.hImPrRefAxResize, ...
+                obj.hImPrRefAxCrop, SpecPosition.BELOW, GUISettings.PAD_LARGE);
+            SpecPosition.positionRelative(obj.hImPrRefAxResize, ...
+                obj.hImPrRef, SpecPosition.LEFT);
+            SpecPosition.positionRelative(obj.hImPrRefAxNorm, ...
+                obj.hImPrRefAxResize, SpecPosition.BELOW, ...
                 GUISettings.PAD_LARGE);
-            SpecPosition.positionRelative(obj.hImPrDownSampleMethodValue, ...
-                obj.hImPrDownSampleSize, SpecPosition.CENTER_Y);
-            SpecPosition.positionRelative(obj.hImPrDownSampleMethodValue, ...
-                obj.hImPrDownSampleMethod, SpecPosition.RIGHT_OF, ...
-                GUISettings.PAD_MED);
-            SpecPosition.positionRelative(obj.hImPrCrop, ...
-                obj.hImPrDownSampleSize, SpecPosition.BELOW, ...
-                GUISettings.PAD_MED);
-            SpecPosition.positionIn(obj.hImPrCrop, obj.hImPr, ...
-                SpecPosition.LEFT, GUISettings.PAD_MED);
+            SpecPosition.positionRelative(obj.hImPrRefAxNorm, obj.hImPrRef, ...
+                SpecPosition.LEFT);
+            SpecPosition.positionRelative(obj.hImPrQuery, obj.hImPrRef, ...
+                SpecPosition.CENTER_Y);
+            SpecPosition.positionIn(obj.hImPrQuery, obj.hFig, ...
+                SpecPosition.CENTER_X);
+            SpecPosition.positionRelative(obj.hImPrQuerySample, ...
+                obj.hImPrQuery, SpecPosition.BELOW);
+            SpecPosition.positionRelative(obj.hImPrQuerySample, ...
+                obj.hImPrQuery, SpecPosition.LEFT);
+            SpecPosition.positionRelative(obj.hImPrQueryAxCrop, ...
+                obj.hImPrQuerySample, SpecPosition.BELOW, ...
+                GUISettings.PAD_LARGE);
+            SpecPosition.positionRelative(obj.hImPrQueryAxCrop, ...
+                obj.hImPrQuery, SpecPosition.LEFT);
+            SpecPosition.positionRelative(obj.hImPrQueryAxResize, ...
+                obj.hImPrQueryAxCrop, SpecPosition.BELOW, ...
+                GUISettings.PAD_LARGE);
+            SpecPosition.positionRelative(obj.hImPrQueryAxResize, ...
+                obj.hImPrQuery, SpecPosition.LEFT);
+            SpecPosition.positionRelative(obj.hImPrQueryAxNorm, ...
+                obj.hImPrQueryAxResize, SpecPosition.BELOW, ...
+                GUISettings.PAD_LARGE);
+            SpecPosition.positionRelative(obj.hImPrQueryAxNorm, ...
+                obj.hImPrQuery, SpecPosition.LEFT);
+            SpecPosition.positionRelative(obj.hImPrRefresh, ...
+                obj.hImPrRefSample, SpecPosition.CENTER_Y);
+            SpecPosition.positionIn(obj.hImPrRefresh, obj.hFig, ...
+                SpecPosition.RIGHT, GUISettings.PAD_MED);
             SpecPosition.positionRelative(obj.hImPrCropRef, ...
-                obj.hImPrCrop, SpecPosition.BELOW, ...
-                GUISettings.PAD_MED);
-            SpecPosition.positionIn(obj.hImPrCropRef, obj.hImPr, ...
-                SpecPosition.LEFT, GUISettings.PAD_LARGE);
+                obj.hImPrRefAxCrop, SpecPosition.TOP, GUISettings.PAD_MED);
+            SpecPosition.positionRelative(obj.hImPrCropRef, ...
+                obj.hImPrRefresh, SpecPosition.LEFT);
             SpecPosition.positionRelative(obj.hImPrCropRefValue, ...
-                obj.hImPrCropRef, SpecPosition.CENTER_Y);
+                obj.hImPrCropRef, SpecPosition.BELOW, GUISettings.PAD_MED);
             SpecPosition.positionRelative(obj.hImPrCropRefValue, ...
-                obj.hImPrCropRef, SpecPosition.RIGHT_OF, ...
-                GUISettings.PAD_MED);
+                obj.hImPrRefresh, SpecPosition.LEFT);
             SpecPosition.positionRelative(obj.hImPrCropQuery, ...
-                obj.hImPrCropRef, SpecPosition.CENTER_Y);
+                obj.hImPrCropRefValue, SpecPosition.BELOW, ...
+                GUISettings.PAD_LARGE);
             SpecPosition.positionRelative(obj.hImPrCropQuery, ...
-                obj.hImPrCropRefValue, SpecPosition.RIGHT_OF, ...
-                GUISettings.PAD_LARGE);
+                obj.hImPrRefresh, SpecPosition.LEFT);
             SpecPosition.positionRelative(obj.hImPrCropQueryValue, ...
-                obj.hImPrCropRef, SpecPosition.CENTER_Y);
+                obj.hImPrCropQuery, SpecPosition.BELOW, GUISettings.PAD_MED);
             SpecPosition.positionRelative(obj.hImPrCropQueryValue, ...
-                obj.hImPrCropQuery, SpecPosition.RIGHT_OF, ...
+                obj.hImPrRefresh, SpecPosition.LEFT);
+            SpecPosition.positionRelative(obj.hImPrResize, ...
+                obj.hImPrRefAxResize, SpecPosition.TOP, GUISettings.PAD_MED);
+            SpecPosition.positionRelative(obj.hImPrResize, obj.hImPrRefresh, ...
+                SpecPosition.LEFT);
+            SpecPosition.positionRelative(obj.hImPrResizeW, obj.hImPrResize, ...
+                SpecPosition.BELOW, GUISettings.PAD_MED);
+            SpecPosition.positionRelative(obj.hImPrResizeW, ...
+                obj.hImPrRefresh, SpecPosition.LEFT);
+            SpecPosition.positionRelative(obj.hImPrResizeX, ...
+                obj.hImPrResizeW, SpecPosition.CENTER_Y);
+            SpecPosition.positionRelative(obj.hImPrResizeX, ...
+                obj.hImPrResizeW, SpecPosition.RIGHT_OF, GUISettings.PAD_SMALL);
+            SpecPosition.positionRelative(obj.hImPrResizeH, ...
+                obj.hImPrResizeW, SpecPosition.CENTER_Y);
+            SpecPosition.positionRelative(obj.hImPrResizeH, ...
+                obj.hImPrResizeX, SpecPosition.RIGHT_OF, GUISettings.PAD_SMALL);
+            SpecPosition.positionRelative(obj.hImPrResizeMethod, ...
+                obj.hImPrResizeW, SpecPosition.BELOW, GUISettings.PAD_LARGE);
+            SpecPosition.positionRelative(obj.hImPrResizeMethod, ...
+                obj.hImPrRefresh, SpecPosition.LEFT);
+            SpecPosition.positionRelative(obj.hImPrResizeMethodValue, ...
+                obj.hImPrResizeMethod, SpecPosition.BELOW, GUISettings.PAD_MED);
+            SpecPosition.positionRelative(obj.hImPrResizeMethodValue, ...
+                obj.hImPrRefresh, SpecPosition.LEFT);
+            SpecPosition.positionRelative(obj.hImPrNorm, obj.hImPrRefAxNorm, ...
+                SpecPosition.TOP, GUISettings.PAD_MED);
+            SpecPosition.positionRelative(obj.hImPrNorm, obj.hImPrRefresh, ...
+                SpecPosition.LEFT);
+            SpecPosition.positionRelative(obj.hImPrNormThresh, ...
+                obj.hImPrNorm, SpecPosition.BELOW, GUISettings.PAD_LARGE);
+            SpecPosition.positionRelative(obj.hImPrNormThresh, ...
+                obj.hImPrRefresh, SpecPosition.LEFT);
+            SpecPosition.positionRelative(obj.hImPrNormThreshValue, ...
+                obj.hImPrNormThresh, SpecPosition.CENTER_Y);
+            SpecPosition.positionRelative(obj.hImPrNormThreshValue, ...
+                obj.hImPrNormThresh, SpecPosition.RIGHT_OF, ...
                 GUISettings.PAD_MED);
-            SpecPosition.positionRelative(obj.hImPrNormalise, ...
-                obj.hImPrCropRef, SpecPosition.BELOW, ...
-                GUISettings.PAD_MED);
-            SpecPosition.positionIn(obj.hImPrNormalise, obj.hImPr, ...
-                SpecPosition.LEFT, GUISettings.PAD_MED);
-            SpecPosition.positionRelative(obj.hImPrNormaliseLength, ...
-                obj.hImPrNormalise, SpecPosition.BELOW, ...
-                GUISettings.PAD_MED);
-            SpecPosition.positionIn(obj.hImPrNormaliseLength, obj.hImPr, ...
-                SpecPosition.LEFT, GUISettings.PAD_LARGE);
-            SpecPosition.positionRelative(obj.hImPrNormaliseLengthValue, ...
-                obj.hImPrNormaliseLength, SpecPosition.CENTER_Y);
-            SpecPosition.positionRelative(obj.hImPrNormaliseLengthValue, ...
-                obj.hImPrNormaliseLength, SpecPosition.RIGHT_OF, ...
-                GUISettings.PAD_MED);
-            SpecPosition.positionRelative(obj.hImPrNormaliseMode, ...
-                obj.hImPrNormaliseLength, SpecPosition.CENTER_Y);
-            SpecPosition.positionRelative(obj.hImPrNormaliseMode, ...
-                obj.hImPrNormaliseLengthValue, SpecPosition.RIGHT_OF, ...
+            SpecPosition.positionRelative(obj.hImPrNormStrength, ...
+                obj.hImPrNormThresh, SpecPosition.BELOW, ...
                 GUISettings.PAD_LARGE);
-            SpecPosition.positionRelative(obj.hImPrNormaliseModeValue, ...
-                obj.hImPrNormaliseLength, SpecPosition.CENTER_Y);
-            SpecPosition.positionRelative(obj.hImPrNormaliseModeValue, ...
-                obj.hImPrNormaliseMode, SpecPosition.RIGHT_OF, ...
-                GUISettings.PAD_MED);
-
-            SpecPosition.positionIn(obj.hDiff, obj.hFig, ...
-                SpecPosition.CENTER_X);
-            SpecPosition.positionRelative(obj.hDiff, obj.hImPr, ...
-                SpecPosition.BELOW, GUISettings.PAD_LARGE);
-            SpecPosition.positionIn(obj.hDiffLoad, obj.hDiff, ...
-                SpecPosition.TOP, heightUnit);
-            SpecPosition.positionIn(obj.hDiffLoad, obj.hDiff, ...
-                SpecPosition.RIGHT, GUISettings.PAD_SMALL);
-            SpecPosition.positionRelative(obj.hDiffConEn, ...
-                obj.hDiffLoad, SpecPosition.BELOW, ...
-                GUISettings.PAD_MED);
-            SpecPosition.positionIn(obj.hDiffConEn, obj.hDiff, ...
-                SpecPosition.LEFT, GUISettings.PAD_MED);
-            SpecPosition.positionRelative(obj.hDiffConEnR, ...
-                obj.hDiffConEn, SpecPosition.BELOW, ...
-                GUISettings.PAD_MED);
-            SpecPosition.positionIn(obj.hDiffConEnR, obj.hDiff, ...
-                SpecPosition.LEFT, GUISettings.PAD_LARGE);
-            SpecPosition.positionRelative(obj.hDiffConEnRValue, ...
-                obj.hDiffConEnR, SpecPosition.CENTER_Y);
-            SpecPosition.positionRelative(obj.hDiffConEnRValue, ...
-                obj.hDiffConEnR, SpecPosition.RIGHT_OF, ...
-                GUISettings.PAD_MED);
-
-            SpecPosition.positionIn(obj.hMatch, obj.hFig, ...
-                SpecPosition.CENTER_X);
-            SpecPosition.positionRelative(obj.hMatch, obj.hDiff, ...
-                SpecPosition.BELOW, GUISettings.PAD_LARGE);
-            SpecPosition.positionIn(obj.hMatchLoad, obj.hMatch, ...
-                SpecPosition.TOP, heightUnit);
-            SpecPosition.positionIn(obj.hMatchLoad, obj.hMatch, ...
-                SpecPosition.RIGHT, GUISettings.PAD_SMALL);
-            SpecPosition.positionRelative(obj.hMatchDs, ...
-                obj.hMatchLoad, SpecPosition.BELOW, ...
-                GUISettings.PAD_MED);
-            SpecPosition.positionIn(obj.hMatchDs, obj.hMatchLoad, ...
-                SpecPosition.LEFT, GUISettings.PAD_MED);
-            SpecPosition.positionRelative(obj.hMatchDsValue, ...
-                obj.hMatchDs, SpecPosition.CENTER_Y);
-            SpecPosition.positionRelative(obj.hMatchDsValue, ...
-                obj.hMatchDs, SpecPosition.RIGHT_OF, ...
-                GUISettings.PAD_MED);
-            SpecPosition.positionRelative(obj.hMatchTraj, ...
-                obj.hMatchDs, SpecPosition.BELOW, ...
-                GUISettings.PAD_MED);
-            SpecPosition.positionIn(obj.hMatchTraj, obj.hMatchDs, ...
-                SpecPosition.LEFT, GUISettings.PAD_MED);
-            SpecPosition.positionRelative(obj.hMatchTrajVmin, ...
-                obj.hMatchTraj, SpecPosition.BELOW, ...
-                GUISettings.PAD_MED);
-            SpecPosition.positionIn(obj.hMatchTrajVmin, obj.hMatchDs, ...
-                SpecPosition.LEFT, GUISettings.PAD_LARGE);
-            SpecPosition.positionRelative(obj.hMatchTrajVminValue, ...
-                obj.hMatchTrajVmin, SpecPosition.CENTER_Y);
-            SpecPosition.positionRelative(obj.hMatchTrajVminValue, ...
-                obj.hMatchTrajVmin, SpecPosition.RIGHT_OF, ...
-                GUISettings.PAD_MED);
-            SpecPosition.positionRelative(obj.hMatchTrajVmax, ...
-                obj.hMatchTrajVminValue, SpecPosition.CENTER_Y);
-            SpecPosition.positionRelative(obj.hMatchTrajVmax, ...
-                obj.hMatchTrajVminValue, SpecPosition.RIGHT_OF, ...
-                GUISettings.PAD_LARGE);
-            SpecPosition.positionRelative(obj.hMatchTrajVmaxValue, ...
-                obj.hMatchTrajVmax, SpecPosition.CENTER_Y);
-            SpecPosition.positionRelative(obj.hMatchTrajVmaxValue, ...
-                obj.hMatchTrajVmax, SpecPosition.RIGHT_OF, ...
-                GUISettings.PAD_MED);
-            SpecPosition.positionRelative(obj.hMatchTrajVstep, ...
-                obj.hMatchTrajVmaxValue, SpecPosition.CENTER_Y);
-            SpecPosition.positionRelative(obj.hMatchTrajVstep, ...
-                obj.hMatchTrajVmaxValue, SpecPosition.RIGHT_OF, ...
-                GUISettings.PAD_LARGE);
-            SpecPosition.positionRelative(obj.hMatchTrajVstepValue, ...
-                obj.hMatchTrajVstep, SpecPosition.CENTER_Y);
-            SpecPosition.positionRelative(obj.hMatchTrajVstepValue, ...
-                obj.hMatchTrajVstep, SpecPosition.RIGHT_OF, ...
-                GUISettings.PAD_MED);
-            SpecPosition.positionRelative(obj.hMatchRrecent, ...
-                obj.hMatchTrajVmin, SpecPosition.BELOW, ...
-                GUISettings.PAD_MED);
-            SpecPosition.positionIn(obj.hMatchRrecent, obj.hMatchTrajVstepValue, ...
-                SpecPosition.LEFT, GUISettings.PAD_MED);
-            SpecPosition.positionRelative(obj.hMatchRrecentValue, ...
-                obj.hMatchRrecent, SpecPosition.CENTER_Y);
-            SpecPosition.positionRelative(obj.hMatchRrecentValue, ...
-                obj.hMatchRrecent, SpecPosition.RIGHT_OF, ...
-                GUISettings.PAD_MED);
-            SpecPosition.positionRelative(obj.hMatchCriteria, ...
-                obj.hMatchRrecent, SpecPosition.BELOW, ...
-                GUISettings.PAD_MED);
-            SpecPosition.positionIn(obj.hMatchCriteria, obj.hMatchRrecent, ...
-                SpecPosition.LEFT, GUISettings.PAD_MED);
-            SpecPosition.positionRelative(obj.hMatchCriteriaRwindow, ...
-                obj.hMatchCriteria, SpecPosition.BELOW, ...
-                GUISettings.PAD_MED);
-            SpecPosition.positionIn(obj.hMatchCriteriaRwindow, obj.hMatchRrecent, ...
-                SpecPosition.LEFT, GUISettings.PAD_LARGE);
-            SpecPosition.positionRelative(obj.hMatchCriteriaRwindowValue, ...
-                obj.hMatchCriteriaRwindow, SpecPosition.CENTER_Y);
-            SpecPosition.positionRelative(obj.hMatchCriteriaRwindowValue, ...
-                obj.hMatchCriteriaRwindow, SpecPosition.RIGHT_OF, ...
-                GUISettings.PAD_MED);
-            SpecPosition.positionRelative(obj.hMatchCriteriaU, ...
-                obj.hMatchCriteriaRwindowValue, SpecPosition.CENTER_Y);
-            SpecPosition.positionRelative(obj.hMatchCriteriaU, ...
-                obj.hMatchCriteriaRwindowValue, SpecPosition.RIGHT_OF, ...
-                GUISettings.PAD_LARGE);
-            SpecPosition.positionRelative(obj.hMatchCriteriaUValue, ...
-                obj.hMatchCriteriaU, SpecPosition.CENTER_Y);
-            SpecPosition.positionRelative(obj.hMatchCriteriaUValue, ...
-                obj.hMatchCriteriaU, SpecPosition.RIGHT_OF, ...
+            SpecPosition.positionRelative(obj.hImPrNormStrength, ...
+                obj.hImPrRefresh, SpecPosition.LEFT);
+            SpecPosition.positionRelative(obj.hImPrNormStrengthValue, ...
+                obj.hImPrNormStrength, SpecPosition.CENTER_Y);
+            SpecPosition.positionRelative(obj.hImPrNormStrengthValue, ...
+                obj.hImPrNormStrength, SpecPosition.RIGHT_OF, ...
                 GUISettings.PAD_MED);
 
             SpecPosition.positionIn(obj.hDone, obj.hFig, ...
@@ -676,50 +836,21 @@ classdef ConfigSeqSLAMGUI < handle
             % Strip data from the UI, and store it in the config struct
             obj.config.seqslam.image_processing.load = ...
                 logical(obj.hImPrLoad.Value);
-
-            obj.config.seqslam.image_processing.downsample.width = ...
-                str2num(obj.hImPrDownSampleW.String);
-            obj.config.seqslam.image_processing.downsample.height = ...
-                str2num(obj.hImPrDownSampleH.String);
-            obj.config.seqslam.image_processing.downsample.method = ...
-                obj.hImPrDownSampleMethodValue.String{...
-                    obj.hImPrDownSampleMethodValue.Value};
-
             obj.config.seqslam.image_processing.crop.reference = ...
                 SafeData.str2vector(obj.hImPrCropRefValue.String);
             obj.config.seqslam.image_processing.crop.query = ...
                 SafeData.str2vector(obj.hImPrCropQueryValue.String);
-            
-            obj.config.seqslam.image_processing.normalisation.length = ...
-                str2num(obj.hImPrNormaliseLengthValue.String);
-            obj.config.seqslam.image_processing.normalisation.length = ...
-                str2num(obj.hImPrNormaliseLengthValue.String);
-            obj.config.seqslam.image_processing.normalisation.mode = ...
-                str2num(obj.hImPrNormaliseModeValue.String);
-
-            obj.config.seqslam.diff_matrix.load = logical(obj.hDiffLoad.Value);
-
-            obj.config.seqslam.diff_matrix.contrast.r_window = ...
-                str2num(obj.hDiffConEnRValue.String);
-            
-            obj.config.seqslam.matching.load = logical(obj.hMatchLoad.Value);
-
-            obj.config.seqslam.matching.d_s = str2num(obj.hMatchDsValue.String);
-
-            obj.config.seqslam.matching.trajectories.v_min = ...
-                str2num(obj.hMatchTrajVminValue.String);
-            obj.config.seqslam.matching.trajectories.v_max = ...
-                str2num(obj.hMatchTrajVmaxValue.String);
-            obj.config.seqslam.matching.trajectories.v_step = ...
-                str2num(obj.hMatchTrajVstepValue.String);
-            
-            obj.config.seqslam.matching.r_recent = ...
-                str2num(obj.hMatchRrecentValue.String);
-
-            obj.config.seqslam.matching.criteria.r_window = ...
-                str2num(obj.hMatchCriteriaRwindowValue.String);
-            obj.config.seqslam.matching.criteria.u = ...
-                str2num(obj.hMatchCriteriaUValue.String);
+            obj.config.seqslam.image_processing.downsample.width = ...
+                str2num(obj.hImPrResizeW.String);
+            obj.config.seqslam.image_processing.downsample.height = ...
+                str2num(obj.hImPrResizeH.String);
+            obj.config.seqslam.image_processing.downsample.method = ...
+                obj.hImPrResizeMethodValue.String{ ...
+                obj.hImPrResizeMethodValue.Value};
+            obj.config.seqslam.image_processing.normalisation.threshold = ...
+                str2num(obj.hImPrNormThreshValue.String);
+            obj.config.seqslam.image_processing.normalisation.strength = ...
+                str2num(obj.hImPrNormStrengthValue.String);
         end
     end
 end

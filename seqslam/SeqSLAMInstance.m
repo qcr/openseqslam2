@@ -72,25 +72,25 @@ classdef SeqSLAMInstance < handle
             % Grayscale
             imgG = rgb2gray(img);
 
-            % Resize
+            % Crop
             imgCR = imgG;
+            crop = s.crop.(dsName);
+            if ~isempty(crop) && length(crop) == 4
+                imgCR = imgCR(crop(2):crop(4), crop(1):crop(3));
+            end
+
+            % Resize
             if ~isempty(s.downsample.width) && ~isempty(s.downsample.height)
                 imgCR = imresize(imgCR, ...
                     [s.downsample.height s.downsample.width], ...
                     s.downsample.method);
             end
 
-            % Crop
-            crop = s.crop.(dsName);
-            if ~isempty(crop) && length(crop) == 4
-                imgCR = imgCR(crop(2):crop(4), crop(1):crop(3));
-            end
-
             % Patch Normalisation
-            if ~isempty(s.normalisation.length) && ...
-                    ~isempty(s.normalisation.mode)
-                imgOut = patchNormalise(imgCR, s.normalisation.length, ...
-                    s.normalisation.mode);
+            if ~isempty(s.normalisation.threshold) && ...
+                    ~isempty(s.normalisation.strength)
+                imgOut = patchNormalise(imgCR, s.normalisation.threshold, ...
+                    s.normalisation.strength);
             end
 
             % Return the full results only if requested
@@ -98,6 +98,17 @@ classdef SeqSLAMInstance < handle
                 imgs = {imgG, imgCR};
             else
                 imgs = [];
+            end
+        end
+
+        function indices = indices(datasetConfig)
+            if strcmpi(datasetConfig.type, 'image')
+                indices = datasetConfig.image.index_start:...
+                    datasetConfig.subsample_factor:...
+                    datasetConfig.image.index_end;
+            elseif strcmpi(datasetConfig.type, 'video')
+                indices = 1:datasetConfig.subsample_factor:...
+                    datasetConfig.video.frames;
             end
         end
 
@@ -129,15 +140,10 @@ classdef SeqSLAMInstance < handle
                 % Cache dataset settings (mainly to avoid typing...)
                 settingsDataset = obj.config.(datasets{ds});
 
+                % Get the indices
+                indices = SeqSLAMInstance.indices(settingsDataset);
+
                 % Allocate memory for all of the processed images
-                if strcmpi(settingsDataset.type, 'image')
-                    indices = settingsDataset.image.index_start:...
-                        settingsDataset.subsample_factor:...
-                        settingsDataset.image.index_end;
-                elseif strcmpi(settingsDataset.type, 'video')
-                    indices = 1:settingsDataset.subsample_factor:...
-                        settingsDataset.video.frames;
-                end
                 nImages = length(indices);
                 c = settingsProcess.crop.(datasets{ds});
                 if isempty(c)

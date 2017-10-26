@@ -1,36 +1,36 @@
 classdef ConfigIOGUI < handle
-   
+
     properties (Access = private, Constant)
         % Sizing parameters
         FIG_WIDTH_FACTOR = 5;       % Times largest button on bottom row
         FIG_HEIGHT_FACTOR = 20;     % Times height of buttons at font size
     end
-    
+
     properties
         hFig;
-        
+
         hConfigImport;
         hConfigExport;
-        
+
         hRef;
         hRefLocation;
         hRefPicker;
         hRefStatus;
         hRefSample;
         hRefSampleValue;
-        
+
         hQuery;
         hQueryLocation;
         hQueryPicker;
         hQueryStatus;
         hQuerySample;
         hQuerySampleValue;
-        
+
         hResults;
         hResultsLocation;
         hResultsPicker;
         hResultsStatus;
-        
+
         hSettingsSeqSLAM;
         hSettingsVisual;
         hStart;
@@ -42,13 +42,13 @@ classdef ConfigIOGUI < handle
 
         done = false;
     end
-    
+
     methods
         function obj = ConfigIOGUI()
             % Create and size the GUI
             obj.createGUI();
             obj.sizeGUI();
-            
+
             % Finally, show the figure when we are done configuring
             obj.hFig.Visible = 'on';
         end
@@ -73,7 +73,7 @@ classdef ConfigIOGUI < handle
             success = true;
         end
     end
-    
+
     methods (Access = private)
         function cbChooseDataset(obj, src, event, edit, status)
             obj.interactivity(false);
@@ -83,7 +83,7 @@ classdef ConfigIOGUI < handle
             choice = questdlg(...
                 'Is the dataset a collection of images or a video?', ...
                 'Dataset Format?', 'Images', 'Video', 'Cancel', 'Cancel');
-            
+
             % Select the dataset
             dataSet = '';
             if (strcmp(choice,'Images'))
@@ -103,7 +103,7 @@ classdef ConfigIOGUI < handle
                 edit.String = dataSet;
                 obj.evaluateDataset(edit.String, status);
             end
-            
+
             obj.interactivity(true);
         end
 
@@ -120,16 +120,22 @@ classdef ConfigIOGUI < handle
                 edit.String = resultsDir;
                 obj.cbEvaluateResults(edit, event, status);
             end
-            
+
             obj.interactivity(true);
         end
 
         function cbEvaluateDataset(obj, src, event, status)
             obj.evaluateDataset(src.String, status);
+
+            % Update the state of the SeqSLAM settings and start buttons
+            obj.updateButtons();
         end
 
         function cbEvaluateResults(obj, src, event, status)
             obj.evaluateResults(src.String, status);
+
+            % Update the state of the SeqSLAM settings and start buttons
+            obj.updateButtons();
         end
 
         function cbImport(obj, src, event)
@@ -138,7 +144,7 @@ classdef ConfigIOGUI < handle
             if isnumeric(f) || isnumeric(p)
                 uiwait(errordlg( ...
                     ['No file was selected, ' ...
-                        'no configuration was loaded'], ...
+                    'no configuration was loaded'], ...
                     'No file selected'));
                 return;
             end
@@ -147,7 +153,7 @@ classdef ConfigIOGUI < handle
             if ~strcmpi(e, '.xml')
                 uiwait(errordlg( ...
                     ['No *.xml file was selected, ' ...
-                        'no configuration was loaded'], ...
+                    'no configuration was loaded'], ...
                     'No *.xml file selected'));
                 return;
             end
@@ -157,7 +163,7 @@ classdef ConfigIOGUI < handle
             if ~s
                 uiwait(errordlg( ...
                     ['Import failed, ' ...
-                        'are you sure this is a valid config file?'], ...
+                    'are you sure this is a valid config file?'], ...
                     'Import from *.xml file failed'));
                 return;
             end
@@ -169,7 +175,7 @@ classdef ConfigIOGUI < handle
             if isnumeric(f) || isnumeric(p)
                 uiwait(errordlg( ...
                     ['No save location was selected, ' ...
-                        'configuration was not exported'], ...
+                    'configuration was not exported'], ...
                     'No save location selected'));
                 return;
             end
@@ -182,6 +188,7 @@ classdef ConfigIOGUI < handle
             obj.interactivity(false);
 
             % Open the GUI, populate it, and wait for the user to finish
+            obj.strip();
             seqslamgui = ConfigSeqSLAMGUI();
             seqslamgui.updateConfig(obj.config);
             uiwait(seqslamgui.hFig);
@@ -193,26 +200,6 @@ classdef ConfigIOGUI < handle
         end
 
         function cbStart(obj, src, event)
-            % Verify that all of the paths are valid
-            if ~strncmpi(obj.hRefStatus.String, 'success', 7)
-                h = errordlg( ...
-                    'Please enter a valid reference dataset location', ...
-                    'Invalid reference dataset location', 'modal');
-                return;
-            end
-            if ~strncmpi(obj.hQueryStatus.String, 'success', 7)
-                h = errordlg( ...
-                    'Please enter a valid query dataset location', ...
-                    'Invalid query dataset location', 'modal');
-                return;
-            end
-            if ~strncmpi(obj.hResultsStatus.String, 'success', 7)
-                h = errordlg( ...
-                    'Please enter a valid location to store results', ...
-                    'Invalid results location', 'modal');
-                return;
-            end
-
             % Extract all of the data from the UI, and store in the object
             obj.strip();
 
@@ -220,7 +207,7 @@ classdef ConfigIOGUI < handle
             obj.done = true;
             close(obj.hFig);
         end
-        
+
         function cbVisualSettings(obj, src, event)
             obj.interactivity(false);
 
@@ -250,30 +237,30 @@ classdef ConfigIOGUI < handle
             obj.hConfigExport = uicontrol('Style', 'pushbutton');
             GUISettings.applyUIControlStyle(obj.hConfigExport);
             obj.hConfigExport.String = 'Export config';
-            
+
             % Reference dataset elements (title, path edit, file select
             % button, selection status)
             obj.hRef = uipanel();
             GUISettings.applyUIPanelStyle(obj.hRef);
             obj.hRef.Title = 'Reference Dataset Location';
-            
+
             obj.hRefLocation = uicontrol('Style', 'edit');
             obj.hRefLocation.Parent = obj.hRef;
             GUISettings.applyUIControlStyle(obj.hRefLocation);
             obj.hRefLocation.String = '';
-            
+
             obj.hRefPicker = uicontrol('Style', 'pushbutton');
             obj.hRefPicker.Parent = obj.hRef;
             GUISettings.applyUIControlStyle(obj.hRefPicker);
             obj.hRefPicker.String = '...';
-            
+
             obj.hRefStatus = uicontrol('Style', 'text');
             obj.hRefStatus.Parent = obj.hRef;
             GUISettings.applyUIControlStyle(obj.hRefStatus);
             obj.hRefStatus.FontAngle = 'italic';
             obj.hRefStatus.HorizontalAlignment = 'right';
             obj.hRefStatus.String = '';
-            
+
             obj.hRefSample = uicontrol('Style', 'text');
             obj.hRefSample.Parent = obj.hRef;
             GUISettings.applyUIControlStyle(obj.hRefSample);
@@ -289,24 +276,24 @@ classdef ConfigIOGUI < handle
             obj.hQuery = uipanel();
             GUISettings.applyUIPanelStyle(obj.hQuery);
             obj.hQuery.Title = 'Query Dataset Location';
-            
+
             obj.hQueryLocation = uicontrol('Style', 'edit');
             obj.hQueryLocation.Parent = obj.hQuery;
             GUISettings.applyUIControlStyle(obj.hQueryLocation);
             obj.hQueryLocation.String = '';
-            
+
             obj.hQueryPicker = uicontrol('Style', 'pushbutton');
             obj.hQueryPicker.Parent = obj.hQuery;
             GUISettings.applyUIControlStyle(obj.hQueryPicker);
             obj.hQueryPicker.String = '...';
-            
+
             obj.hQueryStatus = uicontrol('Style', 'text');
             obj.hQueryStatus.Parent = obj.hQuery;
             GUISettings.applyUIControlStyle(obj.hQueryStatus);
             obj.hQueryStatus.FontAngle = 'italic';
             obj.hQueryStatus.HorizontalAlignment = 'right';
             obj.hQueryStatus.String = '';
-            
+
             obj.hQuerySample = uicontrol('Style', 'text');
             obj.hQuerySample.Parent = obj.hQuery;
             GUISettings.applyUIControlStyle(obj.hQuerySample);
@@ -317,44 +304,44 @@ classdef ConfigIOGUI < handle
             GUISettings.applyUIControlStyle(obj.hQuerySampleValue);
             obj.hQuerySampleValue.String = '';
 
-            % Results elements (title, path edit, file select button, 
+            % Results elements (title, path edit, file select button,
             % selection status)
             obj.hResults = uipanel();
             GUISettings.applyUIPanelStyle(obj.hResults);
             obj.hResults.Title = 'Results Save Location';
-            
+
             obj.hResultsLocation = uicontrol('Style', 'edit');
             obj.hResultsLocation.Parent = obj.hResults;
             GUISettings.applyUIControlStyle(obj.hResultsLocation);
             obj.hResultsLocation.String = '';
-            
+
             obj.hResultsPicker = uicontrol('Style', 'pushbutton');
             obj.hResultsPicker.Parent = obj.hResults;
             GUISettings.applyUIControlStyle(obj.hResultsPicker);
             obj.hResultsPicker.String = '...';
-            
+
             obj.hResultsStatus = uicontrol('Style', 'text');
             obj.hResultsStatus.Parent = obj.hResults;
             GUISettings.applyUIControlStyle(obj.hResultsStatus);
             obj.hResultsStatus.FontAngle = 'italic';
             obj.hResultsStatus.HorizontalAlignment = 'right';
             obj.hResultsStatus.String = '';
-            
+
             % SeqSLAM settings button
             obj.hSettingsSeqSLAM = uicontrol('Style', 'pushbutton');
             GUISettings.applyUIControlStyle(obj.hSettingsSeqSLAM);
             obj.hSettingsSeqSLAM.String = 'SeqSLAM Settings';
-            
+
             % Visualiser settings button
             obj.hSettingsVisual = uicontrol('Style', 'pushbutton');
             GUISettings.applyUIControlStyle(obj.hSettingsVisual);
             obj.hSettingsVisual.String = 'Visualiser Settings';
-            
+
             % Start button
             obj.hStart = uicontrol('Style', 'pushbutton');
             GUISettings.applyUIControlStyle(obj.hStart);
             obj.hStart.String = 'Start';
-            
+
             % Callbacks (must be last, otherwise empty objects passed...)
             obj.hConfigImport.Callback = {@obj.cbImport};
             obj.hConfigExport.Callback = {@obj.cbExport};
@@ -380,7 +367,7 @@ classdef ConfigIOGUI < handle
 
             % Perform validation (and save the extension as a record of what
             % the validation found)
-            status.String = 'Validating...'; 
+            status.String = 'Validating...';
             status.ForegroundColor = GUISettings.COL_LOADING;
             drawnow();
             [p, n, e] = fileparts(path);
@@ -402,7 +389,7 @@ classdef ConfigIOGUI < handle
                         startToken '[' ...
                         num2str(a, ['%0' num2str(numel(num2str(b))) 'd']) ...
                         '-' num2str(b) ']' endToken ''' identified!'];
-                    status.ForegroundColor = GUISettings.COL_SUCCESS; 
+                    status.ForegroundColor = GUISettings.COL_SUCCESS;
 
                     % Save the results
                     results = [];
@@ -484,14 +471,14 @@ classdef ConfigIOGUI < handle
 
             obj.interactivity(true);
         end
-        
+
         function interactivity(obj, enable)
             if enable
                 status = 'on';
             else
                 status = 'off';
             end
-            
+
             obj.hConfigImport.Enable = status;
             obj.hConfigExport.Enable = status;
 
@@ -513,7 +500,7 @@ classdef ConfigIOGUI < handle
             obj.hSettingsVisual.Enable = status;
             obj.hStart.Enable = status;
         end
-        
+
         function populate(obj)
             % Dump all data from the config struct into the UI
             obj.hRefLocation.String = obj.config.reference.path;
@@ -537,23 +524,23 @@ classdef ConfigIOGUI < handle
             % default height of a button)
             maxWidth = max(...
                 [obj.hSettingsSeqSLAM.Extent(3), ...
-                obj.hSettingsVisual.Extent(3), ... 
+                obj.hSettingsVisual.Extent(3), ...
                 obj.hStart.Extent(3)]);
             heightUnit = obj.hStart.Extent(4);
-            
+
             % Size and position the figure
             obj.hFig.Position = [0, 0, ...
                 maxWidth * ConfigIOGUI.FIG_WIDTH_FACTOR, ...
                 heightUnit * ConfigIOGUI.FIG_HEIGHT_FACTOR];
             movegui(obj.hFig, 'center');
-              
+
             % Now that the figure (space for placing UI elements is set),
             % size all of the elements
             SpecSize.size(obj.hConfigImport, SpecSize.WIDTH, ...
                 SpecSize.PERCENT, obj.hFig, 0.25);
             SpecSize.size(obj.hConfigExport, SpecSize.WIDTH, ...
                 SpecSize.PERCENT, obj.hFig, 0.25);
-            
+
             SpecSize.size(obj.hRef, SpecSize.WIDTH, ...
                 SpecSize.MATCH, obj.hFig, GUISettings.PAD_MED);
             SpecSize.size(obj.hRef, SpecSize.HEIGHT, ...
@@ -566,7 +553,7 @@ classdef ConfigIOGUI < handle
                 SpecSize.MATCH, obj.hRef, GUISettings.PAD_MED);
             SpecSize.size(obj.hRefSample, SpecSize.WIDTH, ...
                 SpecSize.WRAP, GUISettings.PAD_SMALL);
-            
+
             SpecSize.size(obj.hQuery, SpecSize.WIDTH, ...
                 SpecSize.MATCH, obj.hFig, GUISettings.PAD_MED);
             SpecSize.size(obj.hQuery, SpecSize.HEIGHT, ...
@@ -579,7 +566,7 @@ classdef ConfigIOGUI < handle
                 SpecSize.MATCH, obj.hQuery, GUISettings.PAD_MED);
             SpecSize.size(obj.hQuerySample, SpecSize.WIDTH, ...
                 SpecSize.WRAP, GUISettings.PAD_SMALL);
-            
+
             SpecSize.size(obj.hResults, SpecSize.WIDTH, ...
                 SpecSize.MATCH, obj.hFig, GUISettings.PAD_MED);
             SpecSize.size(obj.hResults, SpecSize.HEIGHT, ...
@@ -590,14 +577,14 @@ classdef ConfigIOGUI < handle
                 SpecSize.PERCENT, obj.hResults, 0.1, GUISettings.PAD_SMALL);
             SpecSize.size(obj.hResultsStatus, SpecSize.WIDTH, ...
                 SpecSize.MATCH, obj.hResults, GUISettings.PAD_MED);
-            
+
             SpecSize.size(obj.hSettingsSeqSLAM, SpecSize.WIDTH, ...
                 SpecSize.PERCENT, obj.hFig, 0.25);
             SpecSize.size(obj.hSettingsVisual, SpecSize.WIDTH, ...
                 SpecSize.PERCENT, obj.hFig, 0.25);
             SpecSize.size(obj.hStart, SpecSize.WIDTH, SpecSize.PERCENT, ...
                 obj.hFig, 0.2);
-            
+
             % Then, systematically place
             SpecPosition.positionIn(obj.hConfigExport, obj.hFig, ...
                 SpecPosition.RIGHT, GUISettings.PAD_MED);
@@ -608,7 +595,7 @@ classdef ConfigIOGUI < handle
                 GUISettings.PAD_MED);
             SpecPosition.positionRelative(obj.hConfigImport, ...
                 obj.hConfigExport, SpecPosition.CENTER_Y);
-            
+
             SpecPosition.positionIn(obj.hRef, obj.hFig, ...
                 SpecPosition.CENTER_X);
             SpecPosition.positionRelative(obj.hRef, obj.hConfigImport, ...
@@ -658,7 +645,7 @@ classdef ConfigIOGUI < handle
                 obj.hQuerySample, SpecPosition.CENTER_Y);
             SpecPosition.positionRelative(obj.hQuerySampleValue, ...
                 obj.hQuerySample, SpecPosition.RIGHT_OF, GUISettings.PAD_MED);
-            
+
             SpecPosition.positionIn(obj.hResults, obj.hFig, ...
                 SpecPosition.CENTER_X);
             SpecPosition.positionRelative(obj.hResults, obj.hQuery, ...
@@ -675,7 +662,7 @@ classdef ConfigIOGUI < handle
                 SpecPosition.RIGHT, GUISettings.PAD_LARGE);
             SpecPosition.positionRelative(obj.hResultsStatus, ...
                 obj.hResultsPicker, SpecPosition.BELOW, 0.5*heightUnit);
-            
+
             SpecPosition.positionIn(obj.hSettingsSeqSLAM, obj.hFig, ...
                 SpecPosition.LEFT, GUISettings.PAD_MED);
             SpecPosition.positionIn(obj.hSettingsSeqSLAM, obj.hFig, ...
@@ -703,7 +690,7 @@ classdef ConfigIOGUI < handle
             elseif isfield(obj.cachedQuery, 'video')
                 obj.config.query = obj.cachedQuery;
             end
-            
+
             % Strip data from the UI, and store it over the top
             obj.config.reference.path = obj.hRefLocation.String;
             obj.config.reference.subsample_factor = ...
@@ -714,6 +701,18 @@ classdef ConfigIOGUI < handle
                 str2num(obj.hQuerySampleValue.String);
 
             obj.config.results.path = obj.hResultsLocation.String;
+        end
+
+        function updateButtons(obj)
+            if ~strncmpi(obj.hRefStatus.String, 'success', 7) || ...
+                    ~strncmpi(obj.hQueryStatus.String, 'success', 7) || ...
+                    ~strncmpi(obj.hResultsStatus.String, 'success', 7)
+                obj.hSettingsSeqSLAM.Enable = 'off';
+                obj.hStart.Enable = 'off';
+            else
+                obj.hSettingsSeqSLAM.Enable = 'on';
+                obj.hStart.Enable = 'on';
+            end
         end
     end
 
