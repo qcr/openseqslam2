@@ -189,8 +189,7 @@ classdef ConfigIOGUI < handle
 
             % Open the GUI, populate it, and wait for the user to finish
             obj.strip();
-            seqslamgui = ConfigSeqSLAMGUI();
-            seqslamgui.updateConfig(obj.config);
+            seqslamgui = ConfigSeqSLAMGUI(obj.config);
             uiwait(seqslamgui.hFig);
 
             % Save the parameters returned

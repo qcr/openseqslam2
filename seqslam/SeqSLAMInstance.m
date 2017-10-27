@@ -310,7 +310,7 @@ classdef SeqSLAMInstance < handle
 
             % Cache settings (save typing...)
             settingsMatch = obj.config.seqslam.matching;
-            ds = settingsMatch.d_s;
+            ds = settingsMatch.trajectory.d_s;
             num_qs = size(obj.results.diff_matrix.enhanced,2);
             num_rs = size(obj.results.diff_matrix.enhanced,1);
 
@@ -320,9 +320,9 @@ classdef SeqSLAMInstance < handle
 
             % Get matrices corresponding to all of the possible relative search
             % trajectories
-            vs = settingsMatch.trajectories.v_min : ...
-                settingsMatch.trajectories.v_step : ...
-                settingsMatch.trajectories.v_max;
+            vs = settingsMatch.trajectory.v_min : ...
+                settingsMatch.trajectory.v_step : ...
+                settingsMatch.trajectory.v_max;
             qs_rel = repmat([0:ds-1], length(vs), 1) - floor(ds/2);
             rs_rel = round(repmat(vs', 1, ds) .* qs_rel);
 

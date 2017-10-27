@@ -55,13 +55,12 @@ function empty = emptyConfig()
     % SeqSLAM settings (matching)
     empty.seqslam.matching.load = [];
 
-    empty.seqslam.matching.d_s = [];
+    empty.seqslam.matching.trajectory.d_s = [];
+    empty.seqslam.matching.trajectory.v_min = [];
+    empty.seqslam.matching.trajectory.v_max = [];
+    empty.seqslam.matching.trajectory.v_step = [];
 
-    empty.seqslam.matching.trajectories.v_min = [];
-    empty.seqslam.matching.trajectories.v_max = [];
-    empty.seqslam.matching.trajectories.v_step = [];
-
-    empty.seqslam.matching.r_recent = [];
+    %empty.seqslam.matching.r_recent = [];
 
     empty.seqslam.matching.criteria.r_window = [];
     empty.seqslam.matching.criteria.u = [];

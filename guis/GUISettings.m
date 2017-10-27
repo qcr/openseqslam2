@@ -20,9 +20,11 @@ classdef GUISettings
     end
 
     methods (Static)
-        function applyUIAxesStyle(ax)
-            GUISettings.applyUICommonStyle(ax);
-            ax.Color = GUISettings.BACK_COL;
+        function applyAnnotationStyle(ann)
+            GUISettings.applyUICommonStyle(ann);
+            ann.EdgeColor = 'none';
+            ann.FontSize = get(groot, 'factoryTextboxshapeFontSize') * ...
+                GUISettings.FONT_SCALE;
         end
 
         function applyFigureStyle(fig)
@@ -33,18 +35,23 @@ classdef GUISettings
             fig.DockControls = 'off';
         end
 
+        function applyUIAxesStyle(ax)
+            GUISettings.applyUICommonStyle(ax);
+            ax.Color = GUISettings.BACK_COL;
+        end
+
         function applyUIControlStyle(control)
             GUISettings.applyUICommonStyle(control);
             control.BackgroundColor = GUISettings.BACK_COL;
-            control.FontSize = get(groot, 'factoryUicontrolFontSize') ...
-                * GUISettings.FONT_SCALE;
+            control.FontSize = get(groot, 'factoryUicontrolFontSize') * ...
+                GUISettings.FONT_SCALE;
         end
 
         function applyUIPanelStyle(panel)
             GUISettings.applyUICommonStyle(panel);
             panel.BackgroundColor = GUISettings.BACK_COL;
-            panel.FontSize = get(groot, 'factoryUipanelFontSize') ...
-                * GUISettings.FONT_SCALE;
+            panel.FontSize = get(groot, 'factoryUipanelFontSize') * ...
+                GUISettings.FONT_SCALE;
         end
 
         function axesHide(axes)
