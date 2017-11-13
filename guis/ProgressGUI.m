@@ -43,8 +43,8 @@ classdef ProgressGUI < handle
         config = emptyConfig();
         progress;
 
-        lastPercentRefresh = cputime();
-        lastMainRefresh = cputime();
+        lastPercentRefresh = 0;
+        lastMainRefresh = 0;
 
         instance;
 
@@ -63,6 +63,7 @@ classdef ProgressGUI < handle
             % Create an initial progress state
             progress = [];
             progress.state = ProgressGUI.STATE_START;
+            progress.percent = 0;
             obj.refreshMain(progress);
 
             % Create, and attach to, the SeqSLAM instance
@@ -73,31 +74,29 @@ classdef ProgressGUI < handle
             obj.hFig.Visible = 'on';
         end
 
-        function due = refreshPercentDue(obj, state)
+        function due = refreshPercentDue(obj, state, perc)
+            rate = obj.config.visual.progress.percent_freq;
             due = state ~= obj.progress.state || ...
-                cputime() - obj.lastPercentRefresh > ...
-                    obj.config.visual.progress.percent_rate || ...
-                cputime() - obj.lastPercentRefresh < 0;
+                floor(perc / rate) > floor(obj.lastPercentRefresh / rate);
         end
 
-        function due = refreshMainDue(obj, state)
+        function due = refreshMainDue(obj, state, perc)
             if (state == ProgressGUI.STATE_PREPROCESS_REF || ...
                     state == ProgressGUI.STATE_PREPROCESS_QUERY)
-                rate = obj.config.visual.progress.preprocess_rate;
+                rate = obj.config.visual.progress.preprocess_freq;
             elseif (state == ProgressGUI.STATE_DIFF_MATRIX)
-                rate = obj.config.visual.progress.diff_matrix_rate;
+                rate = obj.config.visual.progress.diff_matrix_freq;
             elseif (state == ProgressGUI.STATE_DIFF_MATRIX_CONTRAST)
-                rate = obj.config.visual.progress.enhance_rate;
+                rate = obj.config.visual.progress.enhance_freq;
             elseif (state == ProgressGUI.STATE_MATCHING)
-                rate = obj.config.visual.progress.match_rate;
+                rate = obj.config.visual.progress.match_freq;
             else
                 rate = 1;
             end
             due = state ~= obj.progress.state || ...
-                cputime() - obj.lastMainRefresh > rate || ...
-                cputime() - obj.lastMainRefresh < 0;
+                floor(perc / rate) > floor(obj.lastMainRefresh / rate);
         end
-        
+
         function refreshPercent(obj, percent)
             % Update the percent internally and visually
             obj.progress.percent = percent;
@@ -105,7 +104,7 @@ classdef ProgressGUI < handle
 
             % Force a draw
             drawnow();
-            obj.lastPercentRefresh = cputime();
+            obj.lastPercentRefresh = percent;
         end
 
         function refreshMain(obj, progress)
@@ -129,7 +128,7 @@ classdef ProgressGUI < handle
 
             % Force a draw
             drawnow();
-            obj.lastMainRefresh = cputime();
+            obj.lastMainRefresh = progress.percent;
         end
 
         function run(obj)
@@ -148,103 +147,103 @@ classdef ProgressGUI < handle
             obj.hFig = figure('Visible', 'off');
             GUISettings.applyFigureStyle(obj.hFig);
             obj.hFig.Name = 'SeqSLAM Progress';
-			
+
             % Status bar elements
             obj.hStatus1 = uicontrol('Style', 'text');
             GUISettings.applyUIControlStyle(obj.hStatus1);
             GUISettings.setFontScale(obj.hStatus1, 1.5);
             obj.hStatus1.FontWeight = 'bold';
             obj.hStatus1.String = '1';
-			
+
             obj.hStatus2 = uicontrol('Style', 'text');
             GUISettings.applyUIControlStyle(obj.hStatus2);
             GUISettings.setFontScale(obj.hStatus2, 1.5);
             obj.hStatus2.FontWeight = 'bold';
             obj.hStatus2.String = '2';
-			
+
             obj.hStatus3 = uicontrol('Style', 'text');
             GUISettings.applyUIControlStyle(obj.hStatus3);
             GUISettings.setFontScale(obj.hStatus3, 1.5);
             obj.hStatus3.FontWeight = 'bold';
             obj.hStatus3.String = '3';
-			
+
             obj.hStatus4 = uicontrol('Style', 'text');
             GUISettings.applyUIControlStyle(obj.hStatus4);
             GUISettings.setFontScale(obj.hStatus4, 1.5);
             obj.hStatus4.FontWeight = 'bold';
             obj.hStatus4.String = '4';
-			
+
             obj.hStatus5 = uicontrol('Style', 'text');
             GUISettings.applyUIControlStyle(obj.hStatus5);
             GUISettings.setFontScale(obj.hStatus5, 1.5);
             obj.hStatus5.FontWeight = 'bold';
             obj.hStatus5.String = '5';
-			
+
             obj.hStatus6 = uicontrol('Style', 'text');
             GUISettings.applyUIControlStyle(obj.hStatus6);
             GUISettings.setFontScale(obj.hStatus6, 1.5);
             obj.hStatus6.FontWeight = 'bold';
             obj.hStatus6.String = '6';
-			
+
             obj.hStatus12 = uicontrol('Style', 'text');
             GUISettings.applyUIControlStyle(obj.hStatus12);
             GUISettings.setFontScale(obj.hStatus12, 1.5);
             obj.hStatus12.FontWeight = 'bold';
             obj.hStatus12.String = ' - ';
-			
+
             obj.hStatus23 = uicontrol('Style', 'text');
             GUISettings.applyUIControlStyle(obj.hStatus23);
             GUISettings.setFontScale(obj.hStatus23, 1.5);
             obj.hStatus23.FontWeight = 'bold';
             obj.hStatus23.String = ' - ';
-			
+
             obj.hStatus34 = uicontrol('Style', 'text');
             GUISettings.applyUIControlStyle(obj.hStatus34);
             GUISettings.setFontScale(obj.hStatus34, 1.5);
             obj.hStatus34.FontWeight = 'bold';
             obj.hStatus34.String = ' - ';
-			
+
             obj.hStatus45 = uicontrol('Style', 'text');
             GUISettings.applyUIControlStyle(obj.hStatus45);
             GUISettings.setFontScale(obj.hStatus45, 1.5);
             obj.hStatus45.FontWeight = 'bold';
             obj.hStatus45.String = ' - ';
-			
+
             obj.hStatus56 = uicontrol('Style', 'text');
             GUISettings.applyUIControlStyle(obj.hStatus56);
             GUISettings.setFontScale(obj.hStatus56, 1.5);
             obj.hStatus56.FontWeight = 'bold';
             obj.hStatus56.String = ' - ';
-			
+
             % Title and subtitle
             obj.hTitle = uicontrol('Style', 'text');
             GUISettings.applyUIControlStyle(obj.hTitle);
             GUISettings.setFontScale(obj.hTitle, 2.5);
             obj.hTitle.FontWeight = 'bold';
             obj.hTitle.String = 'Testing 1 2 3';
-            
+
             obj.hSubtitle = uicontrol('Style', 'text');
             GUISettings.applyUIControlStyle(obj.hSubtitle);
             GUISettings.setFontScale(obj.hSubtitle, 1.5);
             obj.hSubtitle.String = 'Testing 1 2 3';
-			
+
             % Axes
             obj.hAxA = axes();
             GUISettings.applyUIAxesStyle(obj.hAxA);
             obj.hAxA.Visible = 'off';
-			
+
             obj.hAxB = axes();
             GUISettings.applyUIAxesStyle(obj.hAxB);
             obj.hAxB.Visible = 'off';
-			
+
             obj.hAxC = axes();
             GUISettings.applyUIAxesStyle(obj.hAxC);
             obj.hAxC.Visible = 'off';
-			
+
             obj.hAxD = axes();
             GUISettings.applyUIAxesStyle(obj.hAxD);
             obj.hAxD.Visible = 'off';
-			
+
             obj.hAxMain = axes();
             GUISettings.applyUIAxesStyle(obj.hAxMain);
 
@@ -262,13 +261,13 @@ classdef ProgressGUI < handle
             % TODO handle potential resizing gracefully
             widthUnit = obj.hTitle.Extent(3);
             heightUnit = obj.hTitle.Extent(4);
-			
+
             % Size and position the figure
             obj.hFig.Position = [0, 0, ...
                 widthUnit * ProgressGUI.FIG_WIDTH_FACTOR, ...
                 heightUnit * ProgressGUI.FIG_HEIGHT_FACTOR];
             movegui(obj.hFig, 'center');
-			
+
             % Now that the figure (space for placing UI elements is set),
             % size all of the elements
             SpecSize.size(obj.hStatus1, SpecSize.HEIGHT, SpecSize.WRAP);
@@ -304,14 +303,14 @@ classdef ProgressGUI < handle
             SpecSize.size(obj.hStatus56, SpecSize.HEIGHT, SpecSize.WRAP);
             SpecSize.size(obj.hStatus56, SpecSize.WIDTH, SpecSize.PERCENT, ...
                 obj.hFig, 0.08);
-			
+
             SpecSize.size(obj.hTitle, SpecSize.HEIGHT, SpecSize.WRAP);
             SpecSize.size(obj.hTitle, SpecSize.WIDTH, SpecSize.MATCH, ...
                 obj.hFig, GUISettings.PAD_MED);
             SpecSize.size(obj.hSubtitle, SpecSize.HEIGHT, SpecSize.WRAP);
             SpecSize.size(obj.hSubtitle, SpecSize.WIDTH, SpecSize.MATCH, ...
                 obj.hFig, GUISettings.PAD_SMALL);
-			
+
             SpecSize.size(obj.hAxA, SpecSize.WIDTH, SpecSize.PERCENT, ...
                 obj.hFig, 0.25);
             SpecSize.size(obj.hAxA, SpecSize.HEIGHT, SpecSize.RATIO, 3/4);
@@ -331,7 +330,7 @@ classdef ProgressGUI < handle
             SpecSize.size(obj.hPercent, SpecSize.HEIGHT, SpecSize.WRAP);
             SpecSize.size(obj.hPercent, SpecSize.WIDTH, SpecSize.PERCENT, ...
                 obj.hFig, 0.15, GUISettings.PAD_MED);
-			
+
             % Then, systematically place
             SpecPosition.positionIn(obj.hStatus34, obj.hFig, ...
                 SpecPosition.TOP, GUISettings.PAD_MED);
@@ -358,7 +357,7 @@ classdef ProgressGUI < handle
                 SpecPosition.CENTER_Y);
             SpecPosition.positionRelative(obj.hStatus1, obj.hStatus12, ...
                 SpecPosition.LEFT_OF, GUISettings.PAD_MED);
-			
+
             SpecPosition.positionRelative(obj.hStatus4, obj.hStatus34, ...
                 SpecPosition.CENTER_Y);
             SpecPosition.positionRelative(obj.hStatus4, obj.hStatus34, ...
@@ -379,7 +378,7 @@ classdef ProgressGUI < handle
                 SpecPosition.CENTER_Y);
             SpecPosition.positionRelative(obj.hStatus6, obj.hStatus56, ...
                 SpecPosition.RIGHT_OF, GUISettings.PAD_MED);
-			
+
             SpecPosition.positionRelative(obj.hTitle, obj.hStatus34, ...
                 SpecPosition.BELOW, GUISettings.PAD_LARGE);
             SpecPosition.positionIn(obj.hTitle, obj.hFig, ...
@@ -405,7 +404,7 @@ classdef ProgressGUI < handle
                 SpecPosition.BELOW, 2*GUISettings.PAD_LARGE);
             SpecPosition.positionRelative(obj.hAxD, obj.hSubtitle, ...
                 SpecPosition.RIGHT, 12*GUISettings.PAD_LARGE);
-            
+
             SpecPosition.positionRelative(obj.hAxMain, obj.hSubtitle, ...
                 SpecPosition.BELOW, 3*GUISettings.PAD_LARGE);
             SpecPosition.positionIn(obj.hAxMain, obj.hFig, ...
@@ -429,10 +428,10 @@ classdef ProgressGUI < handle
             if obj.progress.state == ProgressGUI.STATE_PREPROCESS_REF || ...
                     obj.progress.state == ProgressGUI.STATE_PREPROCESS_QUERY
                 % Plot the 4 images
-                image(obj.hAxA, obj.progress.image_init);
-                image(obj.hAxB, obj.progress.image_grey);
-                image(obj.hAxC, obj.progress.image_crop_resized);
-                image(obj.hAxD, obj.progress.image_out);
+                imshow(obj.progress.image_init, 'Parent', obj.hAxA);
+                imshow(obj.progress.image_grey, 'Parent', obj.hAxB);
+                imshow(obj.progress.image_crop_resized, 'Parent', obj.hAxC);
+                imshow(obj.progress.image_out, 'Parent', obj.hAxD);
 
                 % Style the plots
                 obj.hAxA.Title.String = ['Original (' ...
