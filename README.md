@@ -14,7 +14,6 @@ An official SeqSLAM Toolbox for MATLAB.
 
 ## TODO List (roughly ordered by value):
 
-* Rebrand to OpenSeqSLAM2.0
 * Annotations for the SeqSLAM configuration visual helpers
 * Integrate absolute thresholding method (both in settings, and dynamic adjusting)
 * Writing and reading of results from a directory (including logic for choosing whether to load existing or not)

@@ -363,7 +363,7 @@ classdef ResultsGUI < handle
             % Create the figure (and hide it)
             obj.hFig = figure('Visible', 'off');
             GUISettings.applyFigureStyle(obj.hFig);
-            obj.hFig.Name = 'SeqSLAM Results';
+            obj.hFig.Name = 'OpenSeqSLAM2.0 Results';
 
             % Generic elements
             obj.hScreen = uicontrol('Style', 'popupmenu');

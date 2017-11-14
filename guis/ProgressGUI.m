@@ -146,7 +146,7 @@ classdef ProgressGUI < handle
             % Create the figure (and hide it)
             obj.hFig = figure('Visible', 'off');
             GUISettings.applyFigureStyle(obj.hFig);
-            obj.hFig.Name = 'SeqSLAM Progress';
+            obj.hFig.Name = 'OpenSeqSLAM2.0 Progress';
 
             % Status bar elements
             obj.hStatus1 = uicontrol('Style', 'text');

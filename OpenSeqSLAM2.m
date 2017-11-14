@@ -1,4 +1,4 @@
-function [results, config] = SeqSLAM(varargin)
+function [results, config] = OpenSeqSLAM2(varargin)
     % Add the toolbox to the path
     run(fullfile(fileparts(which('SeqSLAM')), 'tools', 'toolboxInit'));
 

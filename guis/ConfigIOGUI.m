@@ -225,7 +225,7 @@ classdef ConfigIOGUI < handle
             % Create the figure (and hide it)
             obj.hFig = figure('Visible', 'off');
             GUISettings.applyFigureStyle(obj.hFig);
-            obj.hFig.Name = 'SeqSLAM Configuration';
+            obj.hFig.Name = 'OpenSeqSLAM2.0 Configuration';
             obj.hFig.Resize = 'off';
 
             % Buttons for exporting and importing parameters
