@@ -32,7 +32,6 @@ classdef ConfigIOGUI < handle
         hResultsStatus;
 
         hSettingsSeqSLAM;
-        hSettingsVisual;
         hStart;
 
         config = emptyConfig();
@@ -207,20 +206,6 @@ classdef ConfigIOGUI < handle
             close(obj.hFig);
         end
 
-        function cbVisualSettings(obj, src, event)
-            obj.interactivity(false);
-
-            % Open the GUI, populate it, and wait for the user to finish
-            visualisegui = ConfigVisualGUI();
-            visualisegui.updateConfig(obj.config);
-            uiwait(visualisegui.hFig);
-
-            % Save the parameters returned
-            obj.config = visualisegui.config;
-
-            obj.interactivity(true);
-        end
-
         function createGUI(obj)
             % Create the figure (and hide it)
             obj.hFig = figure('Visible', 'off');
@@ -331,11 +316,6 @@ classdef ConfigIOGUI < handle
             GUISettings.applyUIControlStyle(obj.hSettingsSeqSLAM);
             obj.hSettingsSeqSLAM.String = 'SeqSLAM Settings';
 
-            % Visualiser settings button
-            obj.hSettingsVisual = uicontrol('Style', 'pushbutton');
-            GUISettings.applyUIControlStyle(obj.hSettingsVisual);
-            obj.hSettingsVisual.String = 'Visualiser Settings';
-
             % Start button
             obj.hStart = uicontrol('Style', 'pushbutton');
             GUISettings.applyUIControlStyle(obj.hStart);
@@ -357,7 +337,6 @@ classdef ConfigIOGUI < handle
             obj.hResultsPicker.Callback = {@obj.cbChooseResults, ...
                 obj.hResultsLocation, obj.hResultsStatus};
             obj.hSettingsSeqSLAM.Callback = {@obj.cbSeqSLAMSettings};
-            obj.hSettingsVisual.Callback = {@obj.cbVisualSettings};
             obj.hStart.Callback= {@obj.cbStart};
         end
 
@@ -496,7 +475,6 @@ classdef ConfigIOGUI < handle
             obj.hResultsStatus.Enable = status;
 
             obj.hSettingsSeqSLAM.Enable = status;
-            obj.hSettingsVisual.Enable = status;
             obj.hStart.Enable = status;
         end
 
@@ -521,15 +499,12 @@ classdef ConfigIOGUI < handle
         function sizeGUI(obj)
             % Get some reference dimensions (max width of 3 buttons, and
             % default height of a button)
-            maxWidth = max(...
-                [obj.hSettingsSeqSLAM.Extent(3), ...
-                obj.hSettingsVisual.Extent(3), ...
-                obj.hStart.Extent(3)]);
+            widthUnit = obj.hSettingsSeqSLAM.Extent(3);
             heightUnit = obj.hStart.Extent(4);
 
             % Size and position the figure
             obj.hFig.Position = [0, 0, ...
-                maxWidth * ConfigIOGUI.FIG_WIDTH_FACTOR, ...
+                widthUnit * ConfigIOGUI.FIG_WIDTH_FACTOR, ...
                 heightUnit * ConfigIOGUI.FIG_HEIGHT_FACTOR];
             movegui(obj.hFig, 'center');
 
@@ -578,8 +553,6 @@ classdef ConfigIOGUI < handle
                 SpecSize.MATCH, obj.hResults, GUISettings.PAD_MED);
 
             SpecSize.size(obj.hSettingsSeqSLAM, SpecSize.WIDTH, ...
-                SpecSize.PERCENT, obj.hFig, 0.25);
-            SpecSize.size(obj.hSettingsVisual, SpecSize.WIDTH, ...
                 SpecSize.PERCENT, obj.hFig, 0.25);
             SpecSize.size(obj.hStart, SpecSize.WIDTH, SpecSize.PERCENT, ...
                 obj.hFig, 0.2);
@@ -666,11 +639,6 @@ classdef ConfigIOGUI < handle
                 SpecPosition.LEFT, GUISettings.PAD_MED);
             SpecPosition.positionIn(obj.hSettingsSeqSLAM, obj.hFig, ...
                 SpecPosition.BOTTOM, GUISettings.PAD_MED);
-            SpecPosition.positionRelative(obj.hSettingsVisual, ...
-                obj.hSettingsSeqSLAM, SpecPosition.RIGHT_OF, ...
-                GUISettings.PAD_MED);
-            SpecPosition.positionRelative(obj.hSettingsVisual, ...
-                obj.hSettingsSeqSLAM, SpecPosition.CENTER_Y);
             SpecPosition.positionIn(obj.hStart, obj.hFig, ...
                 SpecPosition.RIGHT, GUISettings.PAD_MED);
             SpecPosition.positionRelative(obj.hStart, ...

@@ -10,8 +10,6 @@ The second release of OpenSeqSLAM, repackaged as an easy to use and configure to
 * Matching performs terribly on day night video dataset (could simply be poor parameter choices)
 * Changing crop box doesn't fade corresponding previews (SeqSLAM configuration GUI)
 * Crop boxes reset to full size when refreshing previews (SeqSLAM configuration GUI)
-* Remove blank difference matrix screen (SeqSLAM configuration GUI)
-* Remove visualiser settings button (initial configuration GUI)
 
 
 ## TODO List (roughly ordered by value):

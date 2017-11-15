@@ -5,7 +5,6 @@ classdef ConfigSeqSLAMGUI < handle
     properties (Access = private, Constant)
         SCREENS = { ...
             'Image preprocessing', ...
-            'Difference Matrix', ...
             'Sequence Matching', ...
             'Miscellaneous'};
 
@@ -671,7 +670,7 @@ classdef ConfigSeqSLAMGUI < handle
 
             obj.hMscDiffEnh = annotation(obj.hMscDiff, 'textbox');
             obj.hMscDiffEnh.String = ...
-                'Local Constrast Enhancement Window ($R_{window}$):';
+                'Enhancement Window Size ($R_{window}$):';
             GUISettings.applyAnnotationStyle(obj.hMscDiffEnh);
 
             obj.hMscDiffEnhValue = uicontrol('Style', 'edit');
@@ -1035,9 +1034,6 @@ classdef ConfigSeqSLAMGUI < handle
                 % Force the load setting to apply
                 obj.cbLoadProcessed(obj.hImPrLoad, []);
             elseif (screen == 2)
-                % Difference matrix settings
-                % TODO
-            elseif (screen == 3)
                 % Matching settings
                 % Show the appropriate options and axes
                 obj.hMatchLoad.Visible = 'on';
@@ -1068,7 +1064,7 @@ classdef ConfigSeqSLAMGUI < handle
                 % Force the calling of any necessary callbacks
                 obj.cbSelectMatchMethod(obj.hMatchCriMethodValue, []);
                 obj.cbLoadMatch(obj.hMatchLoad, []);
-            elseif (screen == 4)
+            elseif (screen == 3)
                 % Other settings
                 obj.hMscDiff.Visible = 'on';
                 obj.hMscVis.Visible = 'on';
