@@ -422,7 +422,7 @@ classdef SeqSLAMInstance < handle
             % Perform the thresholding
             obj.results.matching.thresholded = SeqSLAMInstance.threshold( ...
                 obj.results.matching.all, ...
-                obj.config.seqslam.matching.criteria.u);
+                obj.config.seqslam.matching.method_window.u);
 
             % Report to the UI if necessary
             if obj.listeningUI

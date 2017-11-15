@@ -9,10 +9,11 @@ classdef GUISettings
         COL_SUCCESS = [0 0.6 0];
         COL_ERROR = 'r';
         COL_LOADING = [0.6 0.6 0.6];
-        COL_DEFAULT = 'k';
+        COL_DEFAULT = [0 0 0];
 
         % Sizings (static for now)
         FONT_SCALE = 1.0;
+        LATEX_FACTOR = 1.25;
 
         PAD_SMALL = 5;
         PAD_MED = 10;
@@ -24,7 +25,11 @@ classdef GUISettings
             GUISettings.applyUICommonStyle(ann);
             ann.EdgeColor = 'none';
             ann.FontSize = get(groot, 'factoryTextboxshapeFontSize') * ...
-                GUISettings.FONT_SCALE;
+                GUISettings.FONT_SCALE*GUISettings.LATEX_FACTOR;
+
+            % Force the string to adopt a more consistent style when using
+            % LaTex interpreter
+            ann.Interpreter = 'latex';
         end
 
         function applyFigureStyle(fig)

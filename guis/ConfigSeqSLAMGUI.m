@@ -66,10 +66,14 @@ classdef ConfigSeqSLAMGUI < handle
         hMatchTrajVstepValue;
         hMatchCriTitle;
         hMatchCriAx;
+        hMatchCriMethod;
+        hMatchCriMethodValue;
         hMatchCriWindow;
         hMatchCriWindowValue;
         hMatchCriU;
         hMatchCriUValue;
+        hMatchCriThreshold;
+        hMatchCriThresholdValue;
 
         hMscDiff;
         hMscDiffLoad;
@@ -100,6 +104,10 @@ classdef ConfigSeqSLAMGUI < handle
 
         dimRef = [];
         dimQuery = [];
+
+        dataTraj = [];
+        dataWindow = [];
+        dataThresh = [];
     end
 
     methods
@@ -269,6 +277,28 @@ classdef ConfigSeqSLAMGUI < handle
             end
         end
 
+        function cbSelectMatchMethod(obj, src, event)
+            % Enable the correct visual elements (1 is the default)
+            if obj.hMatchCriMethodValue.Value == 2
+                obj.hMatchCriWindow.Visible = 'off';
+                obj.hMatchCriWindowValue.Visible = 'off';
+                obj.hMatchCriU.Visible = 'off';
+                obj.hMatchCriUValue.Visible = 'off';
+                obj.hMatchCriThreshold.Visible = 'on';
+                obj.hMatchCriThresholdValue.Visible = 'on';
+            else
+                obj.hMatchCriWindow.Visible = 'on';
+                obj.hMatchCriWindowValue.Visible = 'on';
+                obj.hMatchCriU.Visible = 'on';
+                obj.hMatchCriUValue.Visible = 'on';
+                obj.hMatchCriThreshold.Visible = 'off';
+                obj.hMatchCriThresholdValue.Visible = 'off';
+            end
+
+            % Refresh the diagrams
+            obj.cbRefreshDiagrams(src, event);
+        end
+
         function clearScreen(obj)
             % Hide all options
             obj.hImPrLoad.Visible = 'off';
@@ -312,10 +342,14 @@ classdef ConfigSeqSLAMGUI < handle
             obj.hMatchTrajVstepValue.Visible = 'off';
             obj.hMatchCriTitle.Visible = 'off';
             obj.hMatchCriAx.Visible = 'off';
+            obj.hMatchCriMethod.Visible = 'off';
+            obj.hMatchCriMethodValue.Visible = 'off';
             obj.hMatchCriWindow.Visible = 'off';
             obj.hMatchCriWindowValue.Visible = 'off';
             obj.hMatchCriU.Visible = 'off';
             obj.hMatchCriUValue.Visible = 'off';
+            obj.hMatchCriThreshold.Visible = 'off';
+            obj.hMatchCriThresholdValue.Visible = 'off';
 
             obj.hMscDiff.Visible = 'off';
             obj.hMscVis.Visible = 'off';
@@ -543,8 +577,8 @@ classdef ConfigSeqSLAMGUI < handle
             obj.hMatchTrajAx.Visible = 'off';
 
             obj.hMatchTrajLength = annotation(obj.hFig, 'textbox');
+            obj.hMatchTrajLength.String = 'Trajectory length ($d_s$):';
             GUISettings.applyAnnotationStyle(obj.hMatchTrajLength);
-            obj.hMatchTrajLength.String = 'Trajectory length (d_s):';
 
             obj.hMatchTrajLengthValue = uicontrol('Style', 'edit');
             obj.hMatchTrajLengthValue.Parent = obj.hFig;
@@ -552,8 +586,8 @@ classdef ConfigSeqSLAMGUI < handle
             obj.hMatchTrajLengthValue.String = '';
 
             obj.hMatchTrajVmin = annotation(obj.hFig, 'textbox');
+            obj.hMatchTrajVmin.String = 'Trajectory $v_{min}$:';
             GUISettings.applyAnnotationStyle(obj.hMatchTrajVmin);
-            obj.hMatchTrajVmin.String = 'Trajectory v_{min}:';
 
             obj.hMatchTrajVminValue = uicontrol('Style', 'edit');
             obj.hMatchTrajVminValue.Parent = obj.hFig;
@@ -561,8 +595,8 @@ classdef ConfigSeqSLAMGUI < handle
             obj.hMatchTrajVminValue.String = '';
 
             obj.hMatchTrajVmax = annotation(obj.hFig, 'textbox');
+            obj.hMatchTrajVmax.String = 'Trajectory $v_{max}$:';
             GUISettings.applyAnnotationStyle(obj.hMatchTrajVmax);
-            obj.hMatchTrajVmax.String = 'Trajectory v_{max}:';
 
             obj.hMatchTrajVmaxValue = uicontrol('Style', 'edit');
             obj.hMatchTrajVmaxValue.Parent = obj.hFig;
@@ -570,8 +604,8 @@ classdef ConfigSeqSLAMGUI < handle
             obj.hMatchTrajVmaxValue.String = '';
 
             obj.hMatchTrajVstep = annotation(obj.hFig, 'textbox');
+            obj.hMatchTrajVstep.String = 'Trajectory $v_{step}$:';
             GUISettings.applyAnnotationStyle(obj.hMatchTrajVstep);
-            obj.hMatchTrajVstep.String = 'Trajectory v_{step}:';
 
             obj.hMatchTrajVstepValue = uicontrol('Style', 'edit');
             obj.hMatchTrajVstepValue.Parent = obj.hFig;
@@ -588,9 +622,19 @@ classdef ConfigSeqSLAMGUI < handle
             obj.hMatchCriAx.XAxisLocation = 'top';
             obj.hMatchCriAx.Visible = 'off';
 
+            obj.hMatchCriMethod = annotation(obj.hFig, 'textbox');
+            obj.hMatchCriMethod.String = 'Selection Method:';
+            GUISettings.applyAnnotationStyle(obj.hMatchCriMethod);
+
+            obj.hMatchCriMethodValue = uicontrol('Style', 'popupmenu');
+            obj.hMatchCriMethodValue.Parent = obj.hFig;
+            GUISettings.applyUIControlStyle(obj.hMatchCriMethodValue);
+            obj.hMatchCriMethodValue.String = ...
+                { 'Windowed Uniqueness' 'Basic Thresholding' };
+
             obj.hMatchCriWindow = annotation(obj.hFig, 'textbox');
+            obj.hMatchCriWindow.String = 'Exclusion window ($r_{window}$):';
             GUISettings.applyAnnotationStyle(obj.hMatchCriWindow);
-            obj.hMatchCriWindow.String = 'Exclusion window (r_{window}):';
 
             obj.hMatchCriWindowValue = uicontrol('Style', 'edit');
             obj.hMatchCriWindowValue.Parent = obj.hFig;
@@ -598,13 +642,23 @@ classdef ConfigSeqSLAMGUI < handle
             obj.hMatchCriWindowValue.String = '';
 
             obj.hMatchCriU = annotation(obj.hFig, 'textbox');
+            obj.hMatchCriU.String = ...
+                'Uniqueness factor ($\mu = \frac{min_2}{min_1}$):';
             GUISettings.applyAnnotationStyle(obj.hMatchCriU);
-            obj.hMatchCriU.String = 'Uniqueness factor (\mu):';
 
             obj.hMatchCriUValue = uicontrol('Style', 'edit');
             obj.hMatchCriUValue.Parent = obj.hFig;
             GUISettings.applyUIControlStyle(obj.hMatchCriUValue);
             obj.hMatchCriUValue.String = '';
+
+            obj.hMatchCriThreshold = annotation(obj.hFig, 'textbox');
+            obj.hMatchCriThreshold.String = 'Threshold ($\lambda$):';
+            GUISettings.applyAnnotationStyle(obj.hMatchCriThreshold);
+
+            obj.hMatchCriThresholdValue = uicontrol('Style', 'edit');
+            obj.hMatchCriThresholdValue.Parent = obj.hFig;
+            GUISettings.applyUIControlStyle(obj.hMatchCriThresholdValue);
+            obj.hMatchCriThresholdValue.String = '';
 
             obj.hMscDiff = uipanel();
             GUISettings.applyUIPanelStyle(obj.hMscDiff);
@@ -616,8 +670,9 @@ classdef ConfigSeqSLAMGUI < handle
             obj.hMscDiffLoad.String = 'Load existing';
 
             obj.hMscDiffEnh = annotation(obj.hMscDiff, 'textbox');
+            obj.hMscDiffEnh.String = ...
+                'Local Constrast Enhancement Window ($R_{window}$):';
             GUISettings.applyAnnotationStyle(obj.hMscDiffEnh);
-            obj.hMscDiffEnh.String = 'Local Constrast Enhancement Window (R_{window}):';
 
             obj.hMscDiffEnhValue = uicontrol('Style', 'edit');
             obj.hMscDiffEnhValue.Parent = obj.hMscDiff;
@@ -712,8 +767,10 @@ classdef ConfigSeqSLAMGUI < handle
             obj.hMatchTrajVminValue.Callback = {@obj.cbRefreshDiagrams};
             obj.hMatchTrajVmaxValue.Callback = {@obj.cbRefreshDiagrams};
             obj.hMatchTrajVstepValue.Callback = {@obj.cbRefreshDiagrams};
+            obj.hMatchCriMethodValue.Callback = {@obj.cbSelectMatchMethod};
             obj.hMatchCriWindowValue.Callback = {@obj.cbRefreshDiagrams};
             obj.hMatchCriUValue.Callback = {@obj.cbRefreshDiagrams};
+            obj.hMatchCriThresholdValue.Callback = {@obj.cbRefreshDiagrams};
             obj.hDone.Callback = {@obj.cbDone};
         end
 
@@ -737,56 +794,127 @@ classdef ConfigSeqSLAMGUI < handle
             rwin = str2num(obj.hMatchCriWindowValue.String);
 
             % Draw the trajectory preview diagram
-            center = ds * 0.6 + 0.5;
+            FACTOR = 1.5;
+            sz = round(0.5*ds*FACTOR) * 2 - 1;  % Ensure there is always a middle
+            center = ceil(0.5*sz);
+            offBack = floor((ds-1)/2);
+            offFront = floor(ds/2);
+            if (sz ~= length(obj.dataTraj))
+                obj.dataTraj = rand(sz);
+            end
             cla(obj.hMatchTrajAx);
             hold(obj.hMatchTrajAx, 'on');
             obj.hMatchTrajAx.Visible = 'off';
-            imagesc(rand(center*2), 'Parent', obj.hMatchTrajAx);
+            h = imagesc(obj.dataTraj, 'Parent', obj.hMatchTrajAx);
+            h.AlphaData = 0.5;
             h = plot(obj.hMatchTrajAx, center, center, 'k.');
             h.MarkerSize = h.MarkerSize * 6;
             for k = [vmin:vstep:vmax vmax]
                 th = atan(k);
-                if k == vmin || k == vmax
-                    spec = 'k';
-                else
-                    spec = 'k:';
-                end
                 h =plot(obj.hMatchTrajAx, ...
-                    [center center]+[-1 1].*(ds/2*cos(th)), ...
-                    [center center]+[-1 1].*(ds/2*sin(th)), spec);
-                h.LineWidth = h.LineWidth * 3;
+                    [center-offBack center+offFront], ...
+                    [center-offBack*sin(th) center+offFront*sin(th)], 'k');
+                if k == vmin || k == vmax
+                    h.LineWidth = h.LineWidth * 3;
+                end
             end
+
+            % Add text annotations to the trajectory preview diagram
+            h = text(obj.hMatchTrajAx, center+offFront, ...
+                center+offFront*sin(atan(vmin)), '$v_{min}$', ...
+                'interpreter', 'latex', 'HorizontalAlignment', 'left', ...
+                'VerticalAlignment', 'bottom');
+            h.FontSize = h.FontSize * GUISettings.LATEX_FACTOR * 1.25;
+            h = text(obj.hMatchTrajAx, center+offFront, ...
+                center+offFront*sin(atan(vmax)), '$v_{max}$', ...
+                'interpreter', 'latex', 'HorizontalAlignment', 'left', ...
+                'VerticalAlignment', 'top');
+            h.FontSize = h.FontSize * GUISettings.LATEX_FACTOR * 1.25;
+            h = text(obj.hMatchTrajAx, center+offFront, ...
+                center+offFront*mean([sin(atan(vmin)) sin(atan(vmax))]), ...
+                '$v_{step}$', 'interpreter', 'latex', 'HorizontalAlignment', ...
+                'left', 'VerticalAlignment', 'middle');
+            h.FontSize = h.FontSize * GUISettings.LATEX_FACTOR * 1.25;
+            plot(obj.hMatchTrajAx, [center-offBack center+offFront], ...
+                [sz sz], 'k');
+            h = plot(obj.hMatchTrajAx, center-offBack, sz, 'k<');
+            h.MarkerFaceColor = 'k';
+            h = plot(obj.hMatchTrajAx, center+offFront, sz, 'k>');
+            h.MarkerFaceColor = 'k';
+            h = text(obj.hMatchTrajAx, center, sz-0.5, '$d_s$', ...
+                'interpreter', 'latex', 'HorizontalAlignment', 'center', ...
+                'VerticalAlignment', 'bottom');
+            h.FontSize = h.FontSize * GUISettings.LATEX_FACTOR * 1.25;
             hold(obj.hMatchTrajAx, 'off');
 
-            % Add annotations to the trajectory preview diagram
-            % TODO
+            % Draw match selection diagram for the chosen method
+            if (obj.hMatchCriMethodValue.Value == 2)
+                % Draw the thresholded selction method diagram
+                if (length(obj.dataThresh) ~= 100)
+                    data = -1 * rand(1, 100);
+                end
+                cla(obj.hMatchCriAx);
+                hold(obj.hMatchCriAx, 'on');
+                h = plot(obj.hMatchCriAx, obj.dataThresh, 'k.');
+                h.MarkerSize = h.MarkerSize * 2;
+                r = rectangle(obj.hMatchCriAx, 'Position', ...
+                    [0 -1 100 0.4]);
+                r.FaceColor = [GUISettings.COL_SUCCESS 0.25];
+                r.EdgeColor = 'none';
+                h = plot(obj.hMatchCriAx, [0 100], [-0.6 -0.6], 'k:');
+                h.LineWidth = h.LineWidth * 2;
+                hold(obj.hMatchCriAx, 'off');
+                obj.hMatchCriAx.YLim = [-1 0];
+                obj.hMatchCriAx.XLabel.String = 'query image #';
+                obj.hMatchCriAx.XTick = [];
+                obj.hMatchCriAx.YLabel.String = 'lowest trajectory score';
+                obj.hMatchCriAx.YTick = [];
 
-            % Draw the match selection diagram
-            data = -1 * rand(1, 5*rwin);
-            data(2*rwin:3*rwin-1) = data(2*rwin:3*rwin-1) - 0.5;
-            data(end/2) = -1.5;
-            minwin = min(data(2*rwin:3*rwin-1));
-            minout = min([data(1:2*rwin-1) data(3*rwin:end)]);
-            cla(obj.hMatchCriAx);
-            hold(obj.hMatchCriAx, 'on');
-            h = plot(obj.hMatchCriAx, data, 'k.');
-            h.MarkerSize = h.MarkerSize * 2;
-            r = rectangle(obj.hMatchCriAx, 'Position', [2*rwin -1.5 rwin 1.5]);
-            r.FaceColor = [GUISettings.COL_SUCCESS 0.25];
-            r.EdgeColor = 'none';
-            h = plot(obj.hMatchCriAx, [0 5*rwin], [minwin minwin], 'k');
-            h.LineWidth = h.LineWidth * 2;
-            h = plot(obj.hMatchCriAx, [0 5*rwin], [minout minout], 'k:');
-            h.LineWidth = h.LineWidth * 2;
-            hold(obj.hMatchCriAx, 'off');
-            obj.hMatchCriAx.YLim = [-1.5 0];
-            obj.hMatchCriAx.XLabel.String = 'reference image #';
-            obj.hMatchCriAx.XTick = [];
-            obj.hMatchCriAx.YLabel.String = 'trajectory score';
-            obj.hMatchCriAx.YTick = [];
+                % Add text annotations for the thresholded selection method
+                h = text(obj.hMatchCriAx, 100, -0.6, '$\lambda$', ...
+                    'interpreter', 'latex', 'HorizontalAlignment', 'right', ...
+                    'VerticalAlignment', 'top');
+                h.FontSize = h.FontSize * GUISettings.LATEX_FACTOR * 1.25;
+            else
+                % Draw the windowed selection method diagram
+                if (length(obj.dataWindow) ~= 5*rwin)
+                    obj.dataWindow = -1 * rand(1, 5*rwin);
+                    obj.dataWindow(2*rwin:3*rwin-1) = ...
+                        obj.dataWindow(2*rwin:3*rwin-1) - 0.5;
+                    obj.dataWindow(end/2) = -1.5;
+                end
+                minwin = min(obj.dataWindow(2*rwin:3*rwin-1));
+                minout = min([obj.dataWindow(1:2*rwin-1) ...
+                    obj.dataWindow(3*rwin:end)]);
+                cla(obj.hMatchCriAx);
+                hold(obj.hMatchCriAx, 'on');
+                h = plot(obj.hMatchCriAx, obj.dataWindow, 'k.');
+                h.MarkerSize = h.MarkerSize * 2;
+                r = rectangle(obj.hMatchCriAx, 'Position', ...
+                    [2*rwin -1.75 rwin 1.75]);
+                r.FaceColor = [GUISettings.COL_DEFAULT 0.25];
+                r.EdgeColor = 'none';
+                h = plot(obj.hMatchCriAx, [0 5*rwin], [minwin minwin], 'k');
+                h.LineWidth = h.LineWidth * 2;
+                h = plot(obj.hMatchCriAx, [0 5*rwin], [minout minout], 'k:');
+                h.LineWidth = h.LineWidth * 2;
+                hold(obj.hMatchCriAx, 'off');
+                obj.hMatchCriAx.YLim = [-1.75 0];
+                obj.hMatchCriAx.XLabel.String = 'reference image #';
+                obj.hMatchCriAx.XTick = [];
+                obj.hMatchCriAx.YLabel.String = 'trajectory score';
+                obj.hMatchCriAx.YTick = [];
 
-            % Add annotations to the trajectory preview diagram
-            % TODO
+                % Add text annotations to the windowed selection method diagram
+                h = text(obj.hMatchCriAx, 5*rwin, minout, '$min_2$', ...
+                    'interpreter', 'latex', 'HorizontalAlignment', 'right', ...
+                    'VerticalAlignment', 'top');
+                h.FontSize = h.FontSize * GUISettings.LATEX_FACTOR * 1.25;
+                h = text(obj.hMatchCriAx, 5*rwin, minwin, '$min_1$', ...
+                    'interpreter', 'latex', 'HorizontalAlignment', 'right', ...
+                    'VerticalAlignment', 'bottom');
+                h.FontSize = h.FontSize * GUISettings.LATEX_FACTOR * 1.25;
+            end
         end
 
         function drawProcessingPreviews(obj)
@@ -925,15 +1053,20 @@ classdef ConfigSeqSLAMGUI < handle
                 obj.hMatchTrajVstepValue.Visible = 'on';
                 obj.hMatchCriTitle.Visible = 'on';
                 obj.hMatchCriAx.Visible = 'on';
+                obj.hMatchCriMethod.Visible = 'on';
+                obj.hMatchCriMethodValue.Visible = 'on';
                 obj.hMatchCriWindow.Visible = 'on';
                 obj.hMatchCriWindowValue.Visible = 'on';
                 obj.hMatchCriU.Visible = 'on';
                 obj.hMatchCriUValue.Visible = 'on';
+                obj.hMatchCriThreshold.Visible = 'on';
+                obj.hMatchCriThresholdValue.Visible = 'on';
 
                 % Force a refresh of all of the diagrams
                 obj.drawMatchDiagrams();
 
-                % Force the load setting to apply
+                % Force the calling of any necessary callbacks
+                obj.cbSelectMatchMethod(obj.hMatchCriMethodValue, []);
                 obj.cbLoadMatch(obj.hMatchLoad, []);
             elseif (screen == 4)
                 % Other settings
@@ -984,10 +1117,19 @@ classdef ConfigSeqSLAMGUI < handle
                 obj.config.seqslam.matching.trajectory.v_max, 1.2);
             obj.hMatchTrajVstepValue.String = SafeData.noEmpty( ...
                 obj.config.seqslam.matching.trajectory.v_step, 0.1);
+            method = SafeData.noEmpty(obj.config.seqslam.matching.method, ...
+                'window');
+            if strcmpi(method, 'thresh')
+                obj.hMatchCriMethodValue.Value = 2;
+            else
+                obj.hMatchCriMethodValue.Value = 1;
+            end
             obj.hMatchCriWindowValue.String = SafeData.noEmpty( ...
-                obj.config.seqslam.matching.criteria.r_window, 10);
+                obj.config.seqslam.matching.method_window.r_window, 10);
             obj.hMatchCriUValue.String = SafeData.noEmpty( ...
-                obj.config.seqslam.matching.criteria.u, 1.11);
+                obj.config.seqslam.matching.method_window.u, 1.11);
+            obj.hMatchCriThresholdValue.String = SafeData.noEmpty( ...
+                obj.config.seqslam.matching.method_thresh.threshold, 2.5);
 
             obj.hMscDiffLoad.Value = SafeData.noEmpty( ...
                 obj.config.seqslam.diff_matrix.load, 0);
@@ -1098,19 +1240,19 @@ classdef ConfigSeqSLAMGUI < handle
             SpecSize.size(obj.hMatchTrajAx, SpecSize.HEIGHT, ...
                 SpecSize.RATIO, 1);
             SpecSize.size(obj.hMatchTrajLength, SpecSize.WIDTH, ...
-                SpecSize.PERCENT, obj.hFig, 0.2);
+                SpecSize.PERCENT, obj.hFig, 0.25);
             SpecSize.size(obj.hMatchTrajLengthValue, SpecSize.WIDTH, ...
                 SpecSize.PERCENT, obj.hFig, 0.2);
             SpecSize.size(obj.hMatchTrajVmin, SpecSize.WIDTH, ...
-                SpecSize.PERCENT, obj.hFig, 0.2);
+                SpecSize.PERCENT, obj.hFig, 0.25);
             SpecSize.size(obj.hMatchTrajVminValue, SpecSize.WIDTH, ...
                 SpecSize.PERCENT, obj.hFig, 0.2);
             SpecSize.size(obj.hMatchTrajVmax, SpecSize.WIDTH, ...
-                SpecSize.PERCENT, obj.hFig, 0.2);
+                SpecSize.PERCENT, obj.hFig, 0.25);
             SpecSize.size(obj.hMatchTrajVmaxValue, SpecSize.WIDTH, ...
                 SpecSize.PERCENT, obj.hFig, 0.2);
             SpecSize.size(obj.hMatchTrajVstep, SpecSize.WIDTH, ...
-                SpecSize.PERCENT, obj.hFig, 0.2);
+                SpecSize.PERCENT, obj.hFig, 0.25);
             SpecSize.size(obj.hMatchTrajVstepValue, SpecSize.WIDTH, ...
                 SpecSize.PERCENT, obj.hFig, 0.2);
             SpecSize.size(obj.hMatchCriTitle, SpecSize.WIDTH, ...
@@ -1119,13 +1261,21 @@ classdef ConfigSeqSLAMGUI < handle
                 obj.hFig, 0.5, 4*GUISettings.PAD_LARGE);
             SpecSize.size(obj.hMatchCriAx, SpecSize.HEIGHT, SpecSize.RATIO, ...
                 0.5);
-            SpecSize.size(obj.hMatchCriWindow, SpecSize.WIDTH, ...
+            SpecSize.size(obj.hMatchCriMethod, SpecSize.WIDTH, ...
+                SpecSize.PERCENT, obj.hFig, 0.25);
+            SpecSize.size(obj.hMatchCriMethodValue, SpecSize.WIDTH, ...
                 SpecSize.PERCENT, obj.hFig, 0.2);
+            SpecSize.size(obj.hMatchCriWindow, SpecSize.WIDTH, ...
+                SpecSize.PERCENT, obj.hFig, 0.25);
             SpecSize.size(obj.hMatchCriWindowValue, SpecSize.WIDTH, ...
                 SpecSize.PERCENT, obj.hFig, 0.2);
             SpecSize.size(obj.hMatchCriU, SpecSize.WIDTH, SpecSize.PERCENT, ...
-                obj.hFig, 0.2);
+                obj.hFig, 0.25);
             SpecSize.size(obj.hMatchCriUValue, SpecSize.WIDTH, ...
+                SpecSize.PERCENT, obj.hFig, 0.2);
+            SpecSize.size(obj.hMatchCriThreshold, SpecSize.WIDTH, ...
+                SpecSize.PERCENT, obj.hFig, 0.25);
+            SpecSize.size(obj.hMatchCriThresholdValue, SpecSize.WIDTH, ...
                 SpecSize.PERCENT, obj.hFig, 0.2);
 
             SpecSize.size(obj.hMscDiff, SpecSize.WIDTH, SpecSize.MATCH, ...
@@ -1357,10 +1507,20 @@ classdef ConfigSeqSLAMGUI < handle
                 2*GUISettings.PAD_LARGE);
             SpecPosition.positionIn(obj.hMatchCriAx, obj.hFig, ...
                 SpecPosition.LEFT, 3*GUISettings.PAD_LARGE);
-            SpecPosition.positionRelative(obj.hMatchCriWindowValue, ...
+            SpecPosition.positionRelative(obj.hMatchCriMethodValue, ...
                 obj.hMatchCriTitle, SpecPosition.BELOW, GUISettings.PAD_LARGE);
-            SpecPosition.positionIn(obj.hMatchCriWindowValue, obj.hFig, ...
+            SpecPosition.positionIn(obj.hMatchCriMethodValue, obj.hFig, ...
                 SpecPosition.RIGHT, GUISettings.PAD_LARGE);
+            SpecPosition.positionRelative(obj.hMatchCriMethod, ...
+                obj.hMatchCriMethodValue, SpecPosition.CENTER_Y);
+            SpecPosition.positionRelative(obj.hMatchCriMethod, ...
+                obj.hMatchCriMethodValue, SpecPosition.LEFT_OF, ...
+                GUISettings.PAD_MED);
+            SpecPosition.positionRelative(obj.hMatchCriWindowValue, ...
+                obj.hMatchCriMethodValue, SpecPosition.BELOW, ...
+                GUISettings.PAD_LARGE);
+            SpecPosition.positionRelative(obj.hMatchCriWindowValue, ...
+                obj.hMatchCriMethodValue, SpecPosition.CENTER_X);
             SpecPosition.positionRelative(obj.hMatchCriWindow, ...
                 obj.hMatchCriWindowValue, SpecPosition.CENTER_Y);
             SpecPosition.positionRelative(obj.hMatchCriWindow, ...
@@ -1373,8 +1533,18 @@ classdef ConfigSeqSLAMGUI < handle
                 obj.hMatchCriWindowValue, SpecPosition.CENTER_X);
             SpecPosition.positionRelative(obj.hMatchCriU, ...
                 obj.hMatchCriUValue, SpecPosition.CENTER_Y);
-            SpecPosition.positionRelative(obj.hMatchCriU, obj.hMatchCriUValue, ...
-                SpecPosition.LEFT_OF, GUISettings.PAD_MED);
+            SpecPosition.positionRelative(obj.hMatchCriU, ...
+                obj.hMatchCriUValue, SpecPosition.LEFT_OF, GUISettings.PAD_MED);
+            SpecPosition.positionRelative(obj.hMatchCriThresholdValue, ...
+                obj.hMatchCriMethodValue, SpecPosition.BELOW, ...
+                GUISettings.PAD_LARGE);
+            SpecPosition.positionRelative(obj.hMatchCriThresholdValue, ...
+                obj.hMatchCriMethodValue, SpecPosition.CENTER_X);
+            SpecPosition.positionRelative(obj.hMatchCriThreshold, ...
+                obj.hMatchCriThresholdValue, SpecPosition.CENTER_Y);
+            SpecPosition.positionRelative(obj.hMatchCriThreshold, ...
+                obj.hMatchCriThresholdValue, SpecPosition.LEFT_OF, ...
+                GUISettings.PAD_MED);
 
             SpecPosition.positionRelative(obj.hMscDiff, obj.hScreen, ...
                 SpecPosition.BELOW, 2*GUISettings.PAD_LARGE);
@@ -1479,10 +1649,17 @@ classdef ConfigSeqSLAMGUI < handle
                 str2num(obj.hMatchTrajVmaxValue.String);
             obj.config.seqslam.matching.trajectory.v_step = ...
                 str2num(obj.hMatchTrajVstepValue.String);
-            obj.config.seqslam.matching.criteria.r_window = ...
+            if obj.hMatchCriMethodValue.Value == 2
+                obj.config.seqslam.matching.method = 'thresh';
+            else
+                obj.config.seqslam.matching.method = 'window';
+            end
+            obj.config.seqslam.matching.method_window.r_window = ...
                 str2num(obj.hMatchCriWindowValue.String);
-            obj.config.seqslam.matching.criteria.u = ...
+            obj.config.seqslam.matching.method_window.u = ...
                 str2num(obj.hMatchCriUValue.String);
+            obj.config.seqslam.matching.method_thresh.threshold = ...
+                str2num(obj.hMatchCriThresholdValue.String);
 
             obj.config.seqslam.diff_matrix.load = ...
                 logical(obj.hMscDiffLoad.Value);

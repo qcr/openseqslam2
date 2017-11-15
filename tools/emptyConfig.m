@@ -60,10 +60,10 @@ function empty = emptyConfig()
     empty.seqslam.matching.trajectory.v_max = [];
     empty.seqslam.matching.trajectory.v_step = [];
 
-    %empty.seqslam.matching.r_recent = [];
-
-    empty.seqslam.matching.criteria.r_window = [];
-    empty.seqslam.matching.criteria.u = [];
+    empty.seqslam.matching.method = [];
+    empty.seqslam.matching.method_window.r_window = [];
+    empty.seqslam.matching.method_window.u = [];
+    empty.seqslam.matching.method_thresh.threshold = [];
 
     % Visual settings (progress UI)
     empty.visual.progress.percent_freq = [];

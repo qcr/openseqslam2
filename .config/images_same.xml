@@ -55,9 +55,13 @@
         <setting name="v_max" type="numeric" value="1.2"/>
         <setting name="v_step" type="numeric" value="0.1"/>
       </settings-group>
-      <settings-group name="criteria">
+      <setting name="method" type="string" value="window" />
+      <settings-group name="method_window">
         <setting name="r_window" type="numeric" value="10"/>
         <setting name="u" type="numeric" value="1.111"/>
+      </settings-group>
+      <settings-group name="method_thresh">
+        <setting name="threshold" type="numeric" value="2.5" />
       </settings-group>
     </settings-group>
   </settings-group>
