@@ -14,17 +14,18 @@ The second release of OpenSeqSLAM, repackaged as an easy to use and configure to
 
 ## TODO List (roughly ordered by value):
 
-* Integrate absolute thresholding method (both in settings, and dynamic adjusting)
 * Package up some samples that ship with the download
 * Writing and reading of results from a directory (including logic for choosing whether to load existing or not)
 * Allow resized dimensions to change aspect ratio (SeqSLAM configuration GUI - need to understand why this change...)
 * Add help cues to the dialogs
 * Implement the "outlier fading" functionality in the Difference Matrix Results GUI
+* Cleanup the passing of config and results structs through the pipeline
+* Add a percent indicator to the exporting button to reflect progress
 * Re-evaluate regex matching scheme for images (in initial configuration GUI)
 
 
 ## Wish List (not a priority in any way shape or form):
 
-* Make resizeable
-* Fix axis management (currently a random mess full of unneccessary calls)
+* Make resizable
+* Fix axis management (currently a random mess full of unnecessary calls)
 * Clean up of messy code areas (break GUI creation and sizing functions into manageable sub-functions, etc.)

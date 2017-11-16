@@ -7,15 +7,15 @@ function empty = emptyResults()
     empty.preprocessed.reference_indices = [];
     empty.preprocessed.query = [];
     empty.preprocessed.query_indices = [];
-    
+
     % Difference matrices
     empty.diff_matrix.base = [];
     empty.diff_matrix.enhanced = [];
 
     % Matching
-    empty.matching.all.matches = [];
-    empty.matching.all.trajectories = [];
-    empty.matching.thresholded.mask = [];
-    empty.matching.thresholded.matches = [];
-    empty.matching.thresholded.trajectories = [];
+    empty.matching.all.min_scores = [];
+    empty.matching.all.best_trajectories = [];
+    empty.matching.selected.mask = [];
+    empty.matching.selected.matches = [];
+    empty.matching.selected.trajectories = [];
 end

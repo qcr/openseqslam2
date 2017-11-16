@@ -112,20 +112,58 @@ classdef SeqSLAMInstance < handle
             end
         end
 
-        function thresholded = threshold(matches, u)
+        function us = usFromMatches(scores, window)
+            % Start with the best scores
+            [best_scores, best_idx] = min(scores);
+
+            % Construct a NaN mask representing the windowed regions
+            mask = ones(size(scores));
+            for k = 1:length(best_idx)
+                a = max(1, best_idx(k)-round(window/2));
+                b = min(size(scores,1), best_idx(k)+round(window/2));
+                mask(a:b,k) = NaN();
+            end
+
+            % Compute the us from the windowed mins
+            us = min(scores.*mask) ./ best_scores;
+        end
+
+        function thresholded = thresholdWindowed(matches, window, u)
+            % Get the u scores, and best indices
+            us = SeqSLAMInstance.usFromMatches(matches.min_scores, window);
+            [best_scores, best_idx] = min(matches.min_scores);
+
             % Mask out with NaNs those that are below threshold
-            mask = single(matches.matches(:,2) > u);
+            mask = single(us > u);
             mask(mask == 0) = NaN();
 
             % Save the thresholding results
             thresholded.mask = mask;
-            thresholded.matches = ...
-                matches.matches(:,1) .* mask;
+            thresholded.matches = best_idx .* mask;
             thresholded.trajectories = ...
-                matches.trajectories .* ...
-                repmat(mask, 1, ...
-                size(matches.trajectories,2), ...
-                size(matches.trajectories,3));
+                matches.best_trajectories .* ...
+                repmat(mask', 1, ...
+                size(matches.best_trajectories,2), ...
+                size(matches.best_trajectories,3));
+        end
+
+        function thresholded = thresholdBasic(matches, threshold)
+            % Get the best scores for each query images (and indices)
+            [best_scores, best_idx] = min(matches.min_scores);
+
+            % Mask out with NaNs those that are above threshold
+            % Create a maske where NaNs represent the scores above threshold
+            mask = single(best_scores < threshold);
+            mask(mask == 0) = NaN();
+
+            % Save the thresholding results
+            thresholded.mask = mask;
+            thresholded.matches = best_idx .* mask;
+            thresholded.trajectories = ...
+                matches.best_trajectories .* ...
+                repmat(mask', 1, ...
+                size(matches.best_trajectories,2), ...
+                size(matches.best_trajectories,3));
         end
     end
 
@@ -321,8 +359,8 @@ classdef SeqSLAMInstance < handle
             num_qs = size(obj.results.diff_matrix.enhanced,2);
             num_rs = size(obj.results.diff_matrix.enhanced,1);
 
-            % Allocate memory for the matching scores, and the trajectories
-            matches = NaN(num_qs,2);
+            % Allocate memory for min matching scores, and best trajectories
+            matches = NaN(num_rs, num_qs);
             trajs = NaN(num_qs, 2, ds); % q trajectories = r & q coords
 
             % Get matrices corresponding to all of the possible relative search
@@ -390,24 +428,15 @@ classdef SeqSLAMInstance < handle
                     end
                 end
 
-                % Get min score, and second smallest outside the window
-                [min_score, min_idx] = min(r_scores);
-                is = 1:num_rs;
-                outside_min = min(r_scores( ...
-                    is(is < min_idx-settingsMatch.criteria.r_window/2 | ...
-                    is > min_idx+settingsMatch.criteria.r_window/2) ...
-                    ));
-
-                % Store the min index, and the factor to second min
-                matches(q,:) = [min_idx outside_min/min_score];
-
-                % Store the found trajectory
-                trajs(q,:,:) = [qs(1,:); r_trajs(min_idx,:)];
+                % Store all of the r_scores, and trajectory of the minimum score
+                matches(:,q) = r_scores;
+                [x, idx] = min(r_scores);
+                trajs(q,:,:) = [qs(1,:); r_trajs(idx,:)];
             end
 
-            % Save the best match trajectory, index, best factor for each query
-            obj.results.matching.all.trajectories = trajs;
-            obj.results.matching.all.matches = matches;
+            % Save all of the minimum scores, and best trajectories
+            obj.results.matching.all.min_scores = matches;
+            obj.results.matching.all.best_trajectories = trajs;
         end
 
         function thresholding(obj)
@@ -420,9 +449,17 @@ classdef SeqSLAMInstance < handle
             end
 
             % Perform the thresholding
-            obj.results.matching.thresholded = SeqSLAMInstance.threshold( ...
-                obj.results.matching.all, ...
-                obj.config.seqslam.matching.method_window.u);
+            if strcmpi(obj.config.seqslam.matching.method, 'thresh')
+                obj.results.matching.selected = ...
+                    SeqSLAMInstance.thresholdBasic(obj.results.matching.all, ...
+                    obj.config.seqslam.matching.method_thresh.threshold);
+            else
+                obj.results.matching.selected = ...
+                    SeqSLAMInstance.thresholdWindowed( ...
+                    obj.results.matching.all, ...
+                    obj.config.seqslam.matching.method_window.r_window, ...
+                    obj.config.seqslam.matching.method_window.u);
+            end
 
             % Report to the UI if necessary
             if obj.listeningUI

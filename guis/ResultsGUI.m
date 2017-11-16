@@ -173,13 +173,13 @@ classdef ResultsGUI < handle
             % Loop through each of the matches, writing the frame to the video
             open(v);
             currentMatch = ResultsGUI.nextMatch([0 0], ...
-                obj.results.matching.thresholded.matches);
+                obj.results.matching.selected.matches);
             while ~isempty(currentMatch)
                 obj.currentVideoMatch = currentMatch;
                 obj.drawVideo();
                 v.writeVideo(getframe(obj.hAxVideo, boxFr));
                 currentMatch = ResultsGUI.nextMatch(currentMatch, ...
-                    obj.results.matching.thresholded.matches);
+                    obj.results.matching.selected.matches);
             end
             close(v);
 
@@ -200,8 +200,8 @@ classdef ResultsGUI < handle
 
         function cbMatchClicked(obj, src, event)
             % Figure out which match was clicked
-            ms = obj.results.matching.thresholded.matches;
-            cs = [(1:length(ms))' ms];
+            ms = obj.results.matching.selected.matches;
+            cs = [(1:length(ms)); ms]';
             cs = cs(~isnan(ms),:); % Coords corresponding to each match
             vs = cs - ones(size(cs))*diag(obj.hAxMain.CurrentPoint(1,1:2));
             [x, mI] = min(sum(vs.^2, 2)); % Index for match with min distance^2
@@ -226,10 +226,10 @@ classdef ResultsGUI < handle
             % Get the next frame
             obj.currentVideoMatch = ResultsGUI.nextMatch( ...
                 obj.currentVideoMatch, ...
-                obj.results.matching.thresholded.matches);
+                obj.results.matching.selected.matches);
             if isempty(obj.currentVideoMatch)
                 obj.currentVideoMatch = ResultsGUI.nextMatch([0 0], ...
-                    obj.results.matching.thresholded.matches);
+                    obj.results.matching.selected.matches);
             end
 
             % Redraw the axes on screen
@@ -281,10 +281,10 @@ classdef ResultsGUI < handle
 
             % Figure out the rs and qs
             qs = squeeze( ...
-                obj.results.matching.thresholded.trajectories( ...
+                obj.results.matching.selected.trajectories( ...
                 obj.selectedMatch(1),1,:));
             rs = squeeze( ...
-                obj.results.matching.thresholded.trajectories( ...
+                obj.results.matching.selected.trajectories( ...
                 obj.selectedMatch(1),2,:));
 
             % Call the sequence popup (it should block until closed)
@@ -670,7 +670,7 @@ classdef ResultsGUI < handle
             % Useful temporaries
             m = obj.selectedMatch;
             szDiff = size(obj.results.diff_matrix.enhanced);
-            szTrajs = size(obj.results.matching.thresholded.trajectories);
+            szTrajs = size(obj.results.matching.selected.trajectories);
 
             % Fill in the difference matrix plot, with any requested overlaying
             % features
@@ -682,15 +682,15 @@ classdef ResultsGUI < handle
             end
             if obj.hOptsMatchSeqs.Value
                 arrayfun(@(x) plot(obj.hAxMain, ...
-                    squeeze(obj.results.matching.thresholded.trajectories( ...
+                    squeeze(obj.results.matching.selected.trajectories( ...
                     x,1,:)), ...
-                    squeeze(obj.results.matching.thresholded.trajectories( ...
+                    squeeze(obj.results.matching.selected.trajectories( ...
                     x,2,:)), ...
                     '-'), 1:szTrajs(1));
             end
             if obj.hOptsMatchMatches.Value
                 plot(obj.hAxMain, ...
-                    obj.results.matching.thresholded.matches, '.');
+                    obj.results.matching.selected.matches, '.');
             end
             if ~isempty(m)
                 plot(obj.hAxMain, [m(1) m(1)], [1 szDiff(1)], 'k--', ...
@@ -705,7 +705,7 @@ classdef ResultsGUI < handle
             % Update the focus area and plots
             if ~isempty(m)
                 % Get the trajectory, and update the title with its details
-                t = obj.results.matching.thresholded.trajectories(m(1),:,:);
+                t = obj.results.matching.selected.trajectories(m(1),:,:);
                 obj.hFocus.Visible = 'on';
                 obj.hFocus.Title = ['Focus: (matched #' num2str(m(1)) ...
                     ' with #' num2str(m(2)) ')'];
@@ -739,7 +739,7 @@ classdef ResultsGUI < handle
                 end
                 if obj.hOptsMatchMatches.Value
                     h = plot(obj.hFocusAx, m(1), ...
-                        obj.results.matching.thresholded.matches(m(1)), 'k.');
+                        obj.results.matching.selected.matches(m(1)), 'k.');
                     h.MarkerSize = h.MarkerSize * 6;
                 end
                 hold(obj.hFocusAx, 'off');
@@ -881,7 +881,7 @@ classdef ResultsGUI < handle
 
                 % Always start at the first frame
                 obj.currentVideoMatch = ResultsGUI.nextMatch( ...
-                    [0 0], obj.results.matching.thresholded.matches);
+                    [0 0], obj.results.matching.selected.matches);
 
                 % Draw the content
                 obj.drawVideo();
@@ -902,7 +902,7 @@ classdef ResultsGUI < handle
         function populateMatchList(obj)
             % transforming the query dataset list
             obj.listMatches = ['All' ...
-                obj.listQuery(~isnan(obj.results.matching.thresholded.mask))];
+                obj.listQuery(~isnan(obj.results.matching.selected.mask))];
         end
 
         function sizeGUI(obj)
@@ -1182,11 +1182,11 @@ classdef ResultsGUI < handle
                 m = [];
             else
                 % Get the match indices
-                mIs = find(~isnan(obj.results.matching.thresholded.mask));
+                mIs = find(~isnan(obj.results.matching.selected.mask));
 
                 % Stor the image # for query and reference ([mQ, mR])
                 obj.selectedMatch = [mIs(v-1) ...
-                    obj.results.matching.thresholded.matches(mIs(v-1))];
+                    obj.results.matching.selected.matches(mIs(v-1))];
             end
         end
     end

@@ -850,7 +850,7 @@ classdef ConfigSeqSLAMGUI < handle
             if (obj.hMatchCriMethodValue.Value == 2)
                 % Draw the thresholded selction method diagram
                 if (length(obj.dataThresh) ~= 100)
-                    data = -1 * rand(1, 100);
+                    obj.dataThresh = -1 * rand(1, 100);
                 end
                 cla(obj.hMatchCriAx);
                 hold(obj.hMatchCriAx, 'on');
@@ -866,7 +866,7 @@ classdef ConfigSeqSLAMGUI < handle
                 obj.hMatchCriAx.YLim = [-1 0];
                 obj.hMatchCriAx.XLabel.String = 'query image #';
                 obj.hMatchCriAx.XTick = [];
-                obj.hMatchCriAx.YLabel.String = 'lowest trajectory score';
+                obj.hMatchCriAx.YLabel.String = 'trajectory score';
                 obj.hMatchCriAx.YTick = [];
 
                 % Add text annotations for the thresholded selection method
