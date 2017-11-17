@@ -20,7 +20,6 @@ The second release of OpenSeqSLAM, repackaged as an easy to use and configure to
 * Add help cues to the dialogs
 * Implement the "outlier fading" functionality in the Difference Matrix Results GUI
 * Cleanup the passing of config and results structs through the pipeline
-* Add a percent indicator to the exporting button to reflect progress
 * Re-evaluate regex matching scheme for images (in initial configuration GUI)
 
 

@@ -150,6 +150,10 @@ classdef ResultsGUI < handle
                 return;
             end
 
+            % Start a waitmsg to inform the user of the progress
+            numMatches = sum(~isnan(obj.results.matching.selected.mask));
+            h = waitbar(0, 'Exporting... (0%');
+
             % Save the current state of the playback UI, and disable all
             uiMatch = obj.currentVideoMatch;
             obj.hScreen.Enable = 'off';
@@ -161,7 +165,6 @@ classdef ResultsGUI < handle
             % Setup the video output file, and figure out frame sizing
             v = VideoWriter(fullfile(p, f), 'Uncompressed AVI');
             v.FrameRate = str2num(obj.hOptsVidRateValue.String);
-
             f = getframe(obj.hAxVideo);
             fSz = size(f.cdata);
             imSz = size(obj.hAxVideo.Children(end).CData);
@@ -174,14 +177,19 @@ classdef ResultsGUI < handle
             open(v);
             currentMatch = ResultsGUI.nextMatch([0 0], ...
                 obj.results.matching.selected.matches);
+            matchNum = 0;
             while ~isempty(currentMatch)
                 obj.currentVideoMatch = currentMatch;
                 obj.drawVideo();
                 v.writeVideo(getframe(obj.hAxVideo, boxFr));
                 currentMatch = ResultsGUI.nextMatch(currentMatch, ...
                     obj.results.matching.selected.matches);
+                waitbar(matchNum / numMatches, h, ['Exporting... (' ...
+                    num2str(round(matchNum/ numMatches * 100)) '%)']);
+                matchNum = matchNum + 1;
             end
             close(v);
+            close(h);
 
             % Restore the state of the playback UI, and re-enable all
             obj.currentVideoMatch = uiMatch;
