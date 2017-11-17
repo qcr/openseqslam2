@@ -14,7 +14,6 @@ classdef SeqSLAMInstance < handle
     methods
         function obj = SeqSLAMInstance(config)
             obj.config = config;
-            obj.loadResults();
         end
 
         function attachUI(obj, ui)
@@ -29,41 +28,32 @@ classdef SeqSLAMInstance < handle
             obj.listeningUI = true;
         end
 
-        function loadResults(obj)
-            % Bail if there are no existing results
-            if ~ConfigIOGUI.containsResults(obj.config.results.path)
-                return;
-            end
-
-            % Load the config of the existing results
-            fn = ResultsGUI.getFileName(config, ResultsGUI.FN_CONFIG);
-            configResults = xml2settings(fn);
-
-            % Go through each of the load options, loading only if BOTH
-            % load requested AND config matches!
-            % TODO
-        end
-
         function run(obj)
-            % Perform each of the 'do' actions, guarding against if they
-            % already exist
+            % Determine if we are actually going to be saving results
+            saving = ~isempty(obj.config.results.path) && ...
+                exist(obj.config.results.path) == 7;
+
+            % Perform each of the 'do' actions, periodically saving results
+            if saving
+                resultsSave(obj.config.results.path, obj.config, 'config.xml');
+            end
             obj.preprocess();
+            if saving
+                resultsSave(obj.config.results.path, ...
+                    obj.results.preprocessed, 'preprocessed.mat');
+            end
             obj.differenceMatrix();
             obj.contrastEnhancement();
+            if saving
+                resultsSave(obj.config.results.path, ...
+                    obj.results.diff_matrix, 'diff_matrix.mat');
+            end
             obj.matching();
             obj.thresholding();
-        end
-
-        function saveResults(obj)
-            % Bail if there is no provided results directory (there should
-            % always be one generally...)
-            % TODO
-
-            % Save the config
-            % TODO
-
-            % Save each of the results in their own separate '*.mat' file
-            % TODO
+            if saving
+                resultsSave(obj.config.results.path, ...
+                    obj.results.matching, 'matching.mat');
+            end
         end
     end
 

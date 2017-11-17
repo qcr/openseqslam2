@@ -21,11 +21,10 @@
     <setting name="subsample_factor" type="numeric" value="50"/>
   </settings-group>
   <settings-group name="results">
-    <setting name="path" type="string" value="$TOOLBOX_ROOT/results/debug"/>
+    <setting name="path" type="string" value="$TOOLBOX_ROOT/results/sample_result"/>
   </settings-group>
   <settings-group name="seqslam">
     <settings-group name="image_processing">
-      <setting name="load" type="boolean" value="0"/>
       <settings-group name="downsample">
         <setting name="width" type="numeric" value="64"/>
         <setting name="height" type="numeric" value="32"/>
@@ -38,13 +37,11 @@
       </settings-group>
     </settings-group>
     <settings-group name="diff_matrix">
-      <setting name="load" type="boolean" value="0"/>
       <settings-group name="contrast">
         <setting name="r_window" type="numeric" value="10"/>
       </settings-group>
     </settings-group>
     <settings-group name="matching">
-      <setting name="load" type="boolean" value="0"/>
       <settings-group name="trajectory">
         <setting name="d_s" type="numeric" value="10"/>
         <setting name="v_min" type="numeric" value="0.8"/>

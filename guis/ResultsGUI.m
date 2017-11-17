@@ -14,6 +14,7 @@ classdef ResultsGUI < handle
     properties
         hFig;
 
+        hSaveResults;
         hScreen;
 
         hTitle;
@@ -284,6 +285,26 @@ classdef ResultsGUI < handle
             obj.openScreen(obj.hScreen.Value);
         end
 
+        function cbSaveResults(obj, src, event)
+            % Prompt the user for a save directory
+            resultsDir = uigetdir('', ...
+                'Select the directory where the results will be saved');
+            if isnumeric(resultsDir)
+                uiwait(errordlg(['No save location was selected, ' ...
+                    'results were not saved'], 'No save location selected'));
+                return;
+            end
+
+            % Save the results
+            resultsSave(resultsDir, obj.config, 'config.xml');
+            resultsSave(resultsDir, obj.results.preprocessed, ...
+                'preprocessed.mat');
+            resultsSave(resultsDir, obj.results.diff_matrix, ...
+                'diff_matrix.mat');
+            resultsSave(resultsDir, obj.results.matching, ...
+                'matching.mat');
+        end
+
         function cbShowSequence(obj, src, event)
             obj.hFocusButton.Enable = 'off';
 
@@ -374,6 +395,12 @@ classdef ResultsGUI < handle
             obj.hFig.Name = 'OpenSeqSLAM2.0 Results';
 
             % Generic elements
+            obj.hSaveResults = uicontrol('Style', 'pushbutton');
+            obj.hSaveResults.Parent = obj.hFig;
+            GUISettings.applyUIControlStyle(obj.hSaveResults);
+            obj.hSaveResults.String = 'Save results';
+            obj.hSaveResults.FontWeight = 'bold';
+
             obj.hScreen = uicontrol('Style', 'popupmenu');
             GUISettings.applyUIControlStyle(obj.hScreen);
             obj.hScreen.String = ResultsGUI.SCREENS;
@@ -541,6 +568,7 @@ classdef ResultsGUI < handle
             obj.hFocusQueryAx.Visible = 'off';
 
             % Callbacks (must be last, otherwise empty objects passed...)
+            obj.hSaveResults.Callback = {@obj.cbSaveResults};
             obj.hScreen.Callback = {@obj.cbSelectScreen};
             obj.hOptsPreDatasetValue.Callback = {@obj.cbChangeDataset};
             obj.hOptsPreImageValue.Callback = {@obj.cbChangeImage};
@@ -927,6 +955,8 @@ classdef ResultsGUI < handle
 
             % Now that the figure (space for placing UI elements is set),
             % size all of the elements
+            SpecSize.size(obj.hSaveResults, SpecSize.WIDTH, ...
+                SpecSize.PERCENT, obj.hFig, 0.1);
             SpecSize.size(obj.hScreen, SpecSize.WIDTH, SpecSize.PERCENT, ...
                 obj.hFig, 0.8);
 
@@ -1018,10 +1048,14 @@ classdef ResultsGUI < handle
                 SpecSize.RATIO, 3/4);
 
             % Then, systematically place
+            SpecPosition.positionIn(obj.hSaveResults, obj.hFig, ...
+                SpecPosition.TOP, GUISettings.PAD_SMALL);
+            SpecPosition.positionIn(obj.hSaveResults, obj.hFig, ...
+                SpecPosition.RIGHT, GUISettings.PAD_LARGE);
             SpecPosition.positionIn(obj.hScreen, obj.hFig, ...
                 SpecPosition.TOP, GUISettings.PAD_SMALL);
             SpecPosition.positionIn(obj.hScreen, obj.hFig, ...
-                SpecPosition.CENTER_X);
+                SpecPosition.LEFT, GUISettings.PAD_LARGE);
 
             SpecPosition.positionRelative(obj.hTitle, obj.hScreen, ...
                 SpecPosition.BELOW, GUISettings.PAD_LARGE);

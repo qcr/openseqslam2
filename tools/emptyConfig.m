@@ -35,8 +35,6 @@ function empty = emptyConfig()
     empty.results.path = [];
 
     % SeqSLAM settings (image processing)
-    empty.seqslam.image_processing.load = [];
-
     empty.seqslam.image_processing.downsample.width = [];
     empty.seqslam.image_processing.downsample.height = [];
     empty.seqslam.image_processing.downsample.method = [];
@@ -48,13 +46,9 @@ function empty = emptyConfig()
     empty.seqslam.image_processing.normalisation.strength = [];
 
     % SeqSLAM settings (difference matrix)
-    empty.seqslam.diff_matrix.load = [];
-
     empty.seqslam.diff_matrix.contrast.r_window = [];
 
     % SeqSLAM settings (matching)
-    empty.seqslam.matching.load = [];
-
     empty.seqslam.matching.trajectory.d_s = [];
     empty.seqslam.matching.trajectory.v_min = [];
     empty.seqslam.matching.trajectory.v_max = [];

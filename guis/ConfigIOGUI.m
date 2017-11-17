@@ -9,6 +9,8 @@ classdef ConfigIOGUI < handle
     properties
         hFig;
 
+        hPrevResults;
+
         hConfigImport;
         hConfigExport;
 
@@ -73,12 +75,6 @@ classdef ConfigIOGUI < handle
             obj.config = s;
             obj.populate();
             success = true;
-        end
-    end
-
-    methods (Static)
-        function results = containsResults(directory)
-            results = exist(fullfile(directory, 'config.xml'), 'file');
         end
     end
 
@@ -192,6 +188,31 @@ classdef ConfigIOGUI < handle
             obj.dumpConfigToXML(fullfile(p, f));
         end
 
+        function cbOpenResults(obj, src, event)
+            obj.interactivity(false);
+
+            % Request a results directory from the user
+            resultsDir = uigetdir('', ...
+                'Select the directory containing the saved results');
+
+            % Check the directory for existing results (bail if there are none)
+            [present, err] = resultsPresent(resultsDir);
+
+            % Attempt to open the results
+            [results, config, err] = resultsOpen(resultsDir);
+            if ~isempty(err)
+                uiwait(errordlg( ...
+                    ['Opening of results failed due to an error (' err ')'], ...
+                    'Failed to open results'));
+            else
+                % Open up the results in the ResultsGUI, and wait until done
+                resultsui = ResultsGUI(results, config);
+                uiwait(resultsui.hFig);
+            end
+
+            obj.interactivity(true);
+        end
+
         function cbSeqSLAMSettings(obj, src, event)
             obj.interactivity(false);
 
@@ -221,6 +242,12 @@ classdef ConfigIOGUI < handle
             GUISettings.applyFigureStyle(obj.hFig);
             obj.hFig.Name = 'OpenSeqSLAM2.0 Configuration';
             obj.hFig.Resize = 'off';
+
+            % Button for opening previous results
+            obj.hPrevResults = uicontrol('Style', 'pushbutton');
+            obj.hPrevResults.Parent = obj.hFig;
+            GUISettings.applyUIControlStyle(obj.hPrevResults);
+            obj.hPrevResults.String = 'Open previous results';
 
             % Buttons for exporting and importing parameters
             obj.hConfigImport = uicontrol('Style', 'pushbutton');
@@ -331,6 +358,7 @@ classdef ConfigIOGUI < handle
             obj.hStart.String = 'Start';
 
             % Callbacks (must be last, otherwise empty objects passed...)
+            obj.hPrevResults.Callback = {@obj.cbOpenResults};
             obj.hConfigImport.Callback = {@obj.cbImport};
             obj.hConfigExport.Callback = {@obj.cbExport};
             obj.hRefLocation.Callback = {@obj.cbEvaluateDataset, ...
@@ -440,15 +468,20 @@ classdef ConfigIOGUI < handle
             status.ForegroundColor = GUISettings.COL_LOADING;
             drawnow();
             obj.interactivity(true);
-            if ~exist(path, 'file')
+            if isempty(path)
+                % Results will not be saved
+                status.String = ['No location selected - ' ...
+                    'results will not be saved automatically'];
+                status.ForegroundColor = GUISettings.COL_WARNING;
+            elseif ~exist(path, 'file')
                 % Inform that the path does not point to an existing directory
-                status.String = 'Selected directory does not exist!';
+                status.String = 'Directory does not exist!';
                 status.ForegroundColor = GUISettings.COL_ERROR;
-            elseif ConfigIOGUI.containsResults(path)
+            elseif 1 == 2 % TODO IMPLEMENT CONTAINS CHECK PROPERLY!!!
                 % Results directory selected with existing results
-                status.String = ['Selected directory contains ' ...
-                    'previous results'];
-                status.ForegroundColor = GUISettings.COL_SUCCESS;
+                status.String = ['Directory contains ' ...
+                    'previous results which will be overwritten'];
+                status.ForegroundColor = GUISettings.COL_WARNING;
             else
                 % A new results directory was selected
                 status.String = ['Selected directory contains ' ...
@@ -465,6 +498,8 @@ classdef ConfigIOGUI < handle
             else
                 status = 'off';
             end
+
+            obj.hPrevResults.Enable = status;
 
             obj.hConfigImport.Enable = status;
             obj.hConfigExport.Enable = status;
@@ -544,6 +579,8 @@ classdef ConfigIOGUI < handle
 
             % Now that the figure (space for placing UI elements is set),
             % size all of the elements
+            SpecSize.size(obj.hPrevResults, SpecSize.WIDTH, ...
+                SpecSize.PERCENT, obj.hFig, 0.35);
             SpecSize.size(obj.hConfigImport, SpecSize.WIDTH, ...
                 SpecSize.PERCENT, obj.hFig, 0.25);
             SpecSize.size(obj.hConfigExport, SpecSize.WIDTH, ...
@@ -592,10 +629,14 @@ classdef ConfigIOGUI < handle
                 obj.hFig, 0.2);
 
             % Then, systematically place
+            SpecPosition.positionIn(obj.hPrevResults, obj.hFig, ...
+                SpecPosition.LEFT, GUISettings.PAD_MED);
+            SpecPosition.positionIn(obj.hPrevResults, obj.hFig, ...
+                SpecPosition.TOP, GUISettings.PAD_MED);
             SpecPosition.positionIn(obj.hConfigExport, obj.hFig, ...
                 SpecPosition.RIGHT, GUISettings.PAD_MED);
-            SpecPosition.positionIn(obj.hConfigExport, obj.hFig, ...
-                SpecPosition.TOP, GUISettings.PAD_MED);
+            SpecPosition.positionRelative(obj.hConfigExport, ...
+                obj.hPrevResults, SpecPosition.CENTER_Y);
             SpecPosition.positionRelative(obj.hConfigImport, ...
                 obj.hConfigExport, SpecPosition.LEFT_OF, ...
                 GUISettings.PAD_MED);

@@ -9,7 +9,7 @@ classdef ConfigSeqSLAMGUI < handle
             'Miscellaneous'};
 
         % Sizing parameters
-        FIG_WIDTH_FACTOR = 12;  % Times longest internal heading
+        FIG_WIDTH_FACTOR = 10;  % Times longest internal heading
         FIG_HEIGHT_FACTOR = 40; % Times height of buttons at font size
 
         % Visual constants
@@ -20,7 +20,6 @@ classdef ConfigSeqSLAMGUI < handle
         hFig;
         hScreen;
 
-        hImPrLoad;
         hImPrRef;
         hImPrRefSample;
         hImPrRefAxCrop;
@@ -50,9 +49,6 @@ classdef ConfigSeqSLAMGUI < handle
         hImPrNormStrength;
         hImPrNormStrengthValue;
 
-        %TODO hDiff
-
-        hMatchLoad;
         hMatchTrajTitle;
         hMatchTrajAx;
         hMatchTrajLength;
@@ -75,7 +71,6 @@ classdef ConfigSeqSLAMGUI < handle
         hMatchCriThresholdValue;
 
         hMscDiff;
-        hMscDiffLoad;
         hMscDiffEnh;
         hMscDiffEnhValue;
         hMscVis;
@@ -216,66 +211,6 @@ classdef ConfigSeqSLAMGUI < handle
             obj.drawProcessingPreviews();
         end
 
-        function cbLoadMatch(obj, src, event)
-            if src.Value == 0
-                % Turn on all of the interactive visual elements
-                obj.hMatchTrajLengthValue.Enable = 'on';
-                obj.hMatchTrajVminValue.Enable = 'on';
-                obj.hMatchTrajVmaxValue.Enable = 'on';
-                obj.hMatchTrajVstepValue.Enable = 'on';
-                obj.hMatchCriWindowValue.Enable = 'on';
-                obj.hMatchCriUValue.Enable = 'on';
-
-                % Refresh all of the diagrams
-                obj.drawMatchDiagrams();
-            else
-                % Turn off all of the interactive visual elements
-                obj.hMatchTrajLengthValue.Enable = 'off';
-                obj.hMatchTrajVminValue.Enable = 'off';
-                obj.hMatchTrajVmaxValue.Enable = 'off';
-                obj.hMatchTrajVstepValue.Enable = 'off';
-                obj.hMatchCriWindowValue.Enable = 'off';
-                obj.hMatchCriUValue.Enable = 'off';
-
-                % Mask over all of the diagrams
-                % TODO MANUALLY
-            end
-        end
-
-        function cbLoadProcessed(obj, src, event)
-            if src.Value == 0
-                % Turn on all of the interactive visual elements
-                obj.hImPrRefSample.Enable = 'on';
-                obj.hImPrQuerySample.Enable = 'on';
-                obj.hImPrRefresh.Enable = 'on';
-                obj.hImPrResizeW.Enable = 'on';
-                obj.hImPrResizeH.Enable = 'on';
-                obj.hImPrResizeMethodValue.Enable = 'on';
-                obj.hImPrNormThreshValue.Enable = 'on';
-                obj.hImPrNormStrengthValue.Enable = 'on';
-
-                % Refresh all of the previews
-                obj.drawProcessingPreviews();
-            else
-                % Turn off of the visual interactive elements
-                obj.hImPrRefSample.Enable = 'off';
-                obj.hImPrQuerySample.Enable = 'off';
-                obj.hImPrRefresh.Enable = 'off';
-                obj.hImPrResizeW.Enable = 'off';
-                obj.hImPrResizeH.Enable = 'off';
-                obj.hImPrResizeMethodValue.Enable = 'off';
-                obj.hImPrNormThreshValue.Enable = 'off';
-                obj.hImPrNormStrengthValue.Enable = 'off';
-
-                % Delete any crop boxes
-                delete(obj.hImPrRefCropBox);
-                delete(obj.hImPrQueryCropBox);
-
-                % Mask over all of the previews
-                obj.disableProcessingPreviews([1 1; 1 1; 1 1])
-            end
-        end
-
         function cbSelectMatchMethod(obj, src, event)
             % Enable the correct visual elements (1 is the default)
             if obj.hMatchCriMethodValue.Value == 2
@@ -300,7 +235,6 @@ classdef ConfigSeqSLAMGUI < handle
 
         function clearScreen(obj)
             % Hide all options
-            obj.hImPrLoad.Visible = 'off';
             obj.hImPrRef.Visible = 'off';
             obj.hImPrRefSample.Visible = 'off';
             obj.hImPrRefAxCrop.Visible = 'off';
@@ -328,7 +262,6 @@ classdef ConfigSeqSLAMGUI < handle
             obj.hImPrNormStrength.Visible = 'off';
             obj.hImPrNormStrengthValue.Visible = 'off';
 
-            obj.hMatchLoad.Visible = 'off';
             obj.hMatchTrajTitle.Visible = 'off';
             obj.hMatchTrajAx.Visible = 'off';
             obj.hMatchTrajLength.Visible = 'off';
@@ -421,11 +354,6 @@ classdef ConfigSeqSLAMGUI < handle
             obj.hScreen.String = ConfigSeqSLAMGUI.SCREENS;
 
             % Create the image processing panel
-            obj.hImPrLoad = uicontrol('Style', 'checkbox');
-            obj.hImPrLoad.Parent = obj.hFig;
-            GUISettings.applyUIControlStyle(obj.hImPrLoad);
-            obj.hImPrLoad.String = 'Load existing';
-
             obj.hImPrRef = uicontrol('Style', 'text');
             obj.hImPrRef.Parent = obj.hFig;
             GUISettings.applyUIControlStyle(obj.hImPrRef);
@@ -556,19 +484,12 @@ classdef ConfigSeqSLAMGUI < handle
             GUISettings.applyUIControlStyle(obj.hImPrNormStrengthValue);
             obj.hImPrNormStrengthValue.String = '';
 
-            % Create the difference matrix panel
-            % TODO
-
             % Create the matching panel
-            obj.hMatchLoad = uicontrol('Style', 'checkbox');
-            obj.hMatchLoad.Parent = obj.hFig;
-            GUISettings.applyUIControlStyle(obj.hMatchLoad);
-            obj.hMatchLoad.String = 'Load existing';
-
             obj.hMatchTrajTitle = uicontrol('Style', 'text');
             obj.hMatchTrajTitle.Parent = obj.hFig;
             GUISettings.applyUIControlStyle(obj.hMatchTrajTitle);
             obj.hMatchTrajTitle.String = 'Search Trajectory Settings';
+            obj.hMatchTrajTitle.FontWeight = 'bold';
 
             obj.hMatchTrajAx = axes();
             GUISettings.applyUIAxesStyle(obj.hMatchTrajAx);
@@ -615,6 +536,7 @@ classdef ConfigSeqSLAMGUI < handle
             obj.hMatchCriTitle.Parent = obj.hFig;
             GUISettings.applyUIControlStyle(obj.hMatchCriTitle);
             obj.hMatchCriTitle.String = 'Match Selection Settings';
+            obj.hMatchCriTitle.FontWeight = 'bold';
 
             obj.hMatchCriAx = axes();
             GUISettings.applyUIAxesStyle(obj.hMatchCriAx);
@@ -662,11 +584,6 @@ classdef ConfigSeqSLAMGUI < handle
             obj.hMscDiff = uipanel();
             GUISettings.applyUIPanelStyle(obj.hMscDiff);
             obj.hMscDiff.Title = 'Difference Matrix Contrast Enhancement';
-
-            obj.hMscDiffLoad = uicontrol('Style', 'checkbox');
-            obj.hMscDiffLoad.Parent = obj.hMscDiff;
-            GUISettings.applyUIControlStyle(obj.hMscDiffLoad);
-            obj.hMscDiffLoad.String = 'Load existing';
 
             obj.hMscDiffEnh = annotation(obj.hMscDiff, 'textbox');
             obj.hMscDiffEnh.String = ...
@@ -752,7 +669,6 @@ classdef ConfigSeqSLAMGUI < handle
 
             % Callbacks (must be last, otherwise empty objects passed...)
             obj.hScreen.Callback = {@obj.cbChangeScreen};
-            obj.hImPrLoad.Callback = {@obj.cbLoadProcessed};
             obj.hImPrRefSample.Callback = {@obj.cbChangePreviewImage};
             obj.hImPrQuerySample.Callback = {@obj.cbChangePreviewImage};
             obj.hImPrRefresh.Callback = {@obj.cbRefreshPreprocessed};
@@ -761,7 +677,6 @@ classdef ConfigSeqSLAMGUI < handle
             obj.hImPrResizeMethodValue.Callback = {@obj.cbChangeResize};
             obj.hImPrNormThreshValue.Callback = {@obj.cbChangeNorm};
             obj.hImPrNormStrengthValue.Callback = {@obj.cbChangeNorm};
-            obj.hMatchLoad.Callback = {@obj.cbLoadMatch};
             obj.hMatchTrajLengthValue.Callback = {@obj.cbRefreshDiagrams};
             obj.hMatchTrajVminValue.Callback = {@obj.cbRefreshDiagrams};
             obj.hMatchTrajVmaxValue.Callback = {@obj.cbRefreshDiagrams};
@@ -1000,7 +915,6 @@ classdef ConfigSeqSLAMGUI < handle
             if (screen == 1)
                 % Image preprocessing settings
                 % Show the appropriate options and axes
-                obj.hImPrLoad.Visible = 'on';
                 obj.hImPrRef.Visible = 'on';
                 obj.hImPrRefSample.Visible = 'on';
                 obj.hImPrRefAxCrop.Visible = 'on';
@@ -1030,13 +944,9 @@ classdef ConfigSeqSLAMGUI < handle
 
                 % Force a refresh of all of the previews
                 obj.drawProcessingPreviews();
-
-                % Force the load setting to apply
-                obj.cbLoadProcessed(obj.hImPrLoad, []);
             elseif (screen == 2)
                 % Matching settings
                 % Show the appropriate options and axes
-                obj.hMatchLoad.Visible = 'on';
                 obj.hMatchTrajTitle.Visible = 'on';
                 obj.hMatchTrajAx.Visible = 'on';
                 obj.hMatchTrajLength.Visible = 'on';
@@ -1063,7 +973,6 @@ classdef ConfigSeqSLAMGUI < handle
 
                 % Force the calling of any necessary callbacks
                 obj.cbSelectMatchMethod(obj.hMatchCriMethodValue, []);
-                obj.cbLoadMatch(obj.hMatchLoad, []);
             elseif (screen == 3)
                 % Other settings
                 obj.hMscDiff.Visible = 'on';
@@ -1082,8 +991,6 @@ classdef ConfigSeqSLAMGUI < handle
                 obj.indicesQuery));
 
             % Dump all data from the config struct to the UI
-            obj.hImPrLoad.Value = SafeData.noEmpty( ...
-                obj.config.seqslam.image_processing.load, 0);
             obj.hImPrCropRefValue.String = SafeData.noEmpty( ...
                 obj.config.seqslam.image_processing.crop.reference, ...
                 ['1, 1, ' num2str(obj.dimRef(2)) ', ' num2str(obj.dimRef(1))]);
@@ -1103,8 +1010,6 @@ classdef ConfigSeqSLAMGUI < handle
                 obj.config.seqslam.image_processing.normalisation.strength, ...
                 0.5);
 
-            obj.hMatchLoad.Value = SafeData.noEmpty( ...
-                obj.config.seqslam.matching.load, 0);
             obj.hMatchTrajLengthValue.String = SafeData.noEmpty( ...
                 obj.config.seqslam.matching.trajectory.d_s, 10);
             obj.hMatchTrajVminValue.String = SafeData.noEmpty( ...
@@ -1127,8 +1032,6 @@ classdef ConfigSeqSLAMGUI < handle
             obj.hMatchCriThresholdValue.String = SafeData.noEmpty( ...
                 obj.config.seqslam.matching.method_thresh.threshold, 2.5);
 
-            obj.hMscDiffLoad.Value = SafeData.noEmpty( ...
-                obj.config.seqslam.diff_matrix.load, 0);
             obj.hMscDiffEnhValue.String = SafeData.noEmpty( ...
                 obj.config.seqslam.diff_matrix.contrast.r_window, 10);
             obj.hMscVisPercValue.String = SafeData.noEmpty( ...
@@ -1146,7 +1049,7 @@ classdef ConfigSeqSLAMGUI < handle
         function sizeGUI(obj)
             % Get some reference dimensions (max width of headings, and
             % default height of a button
-            widthUnit = obj.hImPrLoad.Extent(3);
+            widthUnit = obj.hImPrRefresh.Extent(3);
             heightUnit = obj.hDone.Extent(4);
 
             % Size and position of the figure
@@ -1160,8 +1063,6 @@ classdef ConfigSeqSLAMGUI < handle
             SpecSize.size(obj.hScreen, SpecSize.WIDTH, SpecSize.PERCENT, ...
                 obj.hFig, 0.66);
 
-            SpecSize.size(obj.hImPrLoad, SpecSize.WIDTH, SpecSize.WRAP, ...
-                GUISettings.PAD_LARGE);
             SpecSize.size(obj.hImPrRef, SpecSize.WIDTH, SpecSize.PERCENT, ...
                 obj.hFig, 0.33, GUISettings.PAD_MED);
             SpecSize.size(obj.hImPrRefSample, SpecSize.WIDTH, ...
@@ -1227,8 +1128,6 @@ classdef ConfigSeqSLAMGUI < handle
             SpecSize.size(obj.hImPrNormStrengthValue, SpecSize.WIDTH, ...
                 SpecSize.PERCENT, obj.hImPrRefresh, 0.3);
 
-            SpecSize.size(obj.hMatchLoad, SpecSize.WIDTH, SpecSize.WRAP, ...
-                GUISettings.PAD_LARGE);
             SpecSize.size(obj.hMatchTrajTitle, SpecSize.WIDTH, ...
                 SpecSize.MATCH, obj.hFig);
             SpecSize.size(obj.hMatchTrajAx, SpecSize.WIDTH, ...
@@ -1278,8 +1177,6 @@ classdef ConfigSeqSLAMGUI < handle
                 obj.hFig, GUISettings.PAD_MED);
             SpecSize.size(obj.hMscDiff, SpecSize.HEIGHT, SpecSize.PERCENT, ...
                 obj.hFig, 0.1);
-            SpecSize.size(obj.hMscDiffLoad, SpecSize.WIDTH, SpecSize.WRAP, ...
-                GUISettings.PAD_LARGE);
             SpecSize.size(obj.hMscDiffEnh, SpecSize.WIDTH, SpecSize.PERCENT, ...
                 obj.hMscDiff, 0.35, GUISettings.PAD_SMALL);
             SpecSize.size(obj.hMscDiffEnhValue, SpecSize.WIDTH, ...
@@ -1326,12 +1223,8 @@ classdef ConfigSeqSLAMGUI < handle
             SpecPosition.positionIn(obj.hScreen, obj.hFig, ...
                 SpecPosition.CENTER_X);
 
-            SpecPosition.positionRelative(obj.hImPrLoad, obj.hScreen, ...
+            SpecPosition.positionRelative(obj.hImPrRef, obj.hScreen, ...
                 SpecPosition.BELOW, GUISettings.PAD_MED);
-            SpecPosition.positionIn(obj.hImPrLoad, obj.hFig, ...
-                SpecPosition.RIGHT, GUISettings.PAD_MED);
-            SpecPosition.positionRelative(obj.hImPrRef, obj.hImPrLoad, ...
-                SpecPosition.BELOW);
             SpecPosition.positionIn(obj.hImPrRef, obj.hFig, ...
                 SpecPosition.LEFT, GUISettings.PAD_MED);
             SpecPosition.positionRelative(obj.hImPrRefSample, obj.hImPrRef, ...
@@ -1443,12 +1336,8 @@ classdef ConfigSeqSLAMGUI < handle
                 obj.hImPrNormStrength, SpecPosition.RIGHT_OF, ...
                 GUISettings.PAD_MED);
 
-            SpecPosition.positionRelative(obj.hMatchLoad, obj.hScreen, ...
+            SpecPosition.positionRelative(obj.hMatchTrajTitle, obj.hScreen, ...
                 SpecPosition.BELOW, GUISettings.PAD_MED);
-            SpecPosition.positionIn(obj.hMatchLoad, obj.hFig, ...
-                SpecPosition.RIGHT, GUISettings.PAD_MED);
-            SpecPosition.positionRelative(obj.hMatchTrajTitle, ...
-                obj.hMatchLoad, SpecPosition.BELOW);
             SpecPosition.positionIn(obj.hMatchTrajTitle, obj.hFig, ...
                 SpecPosition.CENTER_X);
             SpecPosition.positionRelative(obj.hMatchTrajAx, ...
@@ -1546,12 +1435,8 @@ classdef ConfigSeqSLAMGUI < handle
                 SpecPosition.BELOW, 2*GUISettings.PAD_LARGE);
             SpecPosition.positionIn(obj.hMscDiff, obj.hFig, ...
                 SpecPosition.CENTER_X);
-            SpecPosition.positionIn(obj.hMscDiffLoad, obj.hMscDiff, ...
-                SpecPosition.TOP, GUISettings.PAD_LARGE);
-            SpecPosition.positionIn(obj.hMscDiffLoad, obj.hMscDiff, ...
-                SpecPosition.RIGHT, GUISettings.PAD_MED);
-            SpecPosition.positionRelative(obj.hMscDiffEnh, obj.hMscDiffLoad, ...
-                SpecPosition.BELOW, GUISettings.PAD_MED);
+            SpecPosition.positionIn(obj.hMscDiffEnh, obj.hMscDiff, ...
+                SpecPosition.TOP, 2.5*GUISettings.PAD_LARGE);
             SpecPosition.positionIn(obj.hMscDiffEnh, obj.hMscDiff, ...
                 SpecPosition.LEFT, GUISettings.PAD_MED);
             SpecPosition.positionRelative(obj.hMscDiffEnhValue, ...
@@ -1617,8 +1502,6 @@ classdef ConfigSeqSLAMGUI < handle
 
         function strip(obj)
             % Strip data from the UI, and store it in the config struct
-            obj.config.seqslam.image_processing.load = ...
-                logical(obj.hImPrLoad.Value);
             obj.config.seqslam.image_processing.crop.reference = ...
                 SafeData.str2vector(obj.hImPrCropRefValue.String);
             obj.config.seqslam.image_processing.crop.query = ...
@@ -1635,8 +1518,6 @@ classdef ConfigSeqSLAMGUI < handle
             obj.config.seqslam.image_processing.normalisation.strength = ...
                 str2num(obj.hImPrNormStrengthValue.String);
 
-            obj.config.seqslam.matching.load = ...
-                logical(obj.hMatchLoad.Value);
             obj.config.seqslam.matching.trajectory.d_s = ...
                 str2num(obj.hMatchTrajLengthValue.String);
             obj.config.seqslam.matching.trajectory.v_min = ...
@@ -1657,8 +1538,6 @@ classdef ConfigSeqSLAMGUI < handle
             obj.config.seqslam.matching.method_thresh.threshold = ...
                 str2num(obj.hMatchCriThresholdValue.String);
 
-            obj.config.seqslam.diff_matrix.load = ...
-                logical(obj.hMscDiffLoad.Value);
             empty.seqslam.diff_matrix.contrast.r_window = ...
                 str2num(obj.hMscDiffEnhValue.String);
             empty.visual.progress.percent_freq = ...
