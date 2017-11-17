@@ -17,7 +17,6 @@ The second release of OpenSeqSLAM, repackaged as an easy to use and configure to
 
 * Allow resized dimensions to change aspect ratio (SeqSLAM configuration GUI - need to understand why this change...)
 * Add help cues to the dialogs
-* Implement the "outlier fading" functionality in the Difference Matrix Results GUI
 * Cleanup the passing of config and results structs through the pipeline
 * Re-evaluate regex matching scheme for images (in initial configuration GUI)
 

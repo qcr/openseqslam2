@@ -479,6 +479,8 @@ classdef ResultsGUI < handle
             obj.hOptsDiffColValue = uicontrol('Style', 'slider');
             obj.hOptsDiffColValue.Parent = obj.hOpts;
             GUISettings.applyUIControlStyle(obj.hOptsDiffColValue);
+            obj.hOptsDiffColValue.Min = 0.01;
+            obj.hOptsDiffColValue.Value = obj.hOptsDiffColValue.Min;
 
             obj.hOptsMatchDiff = uicontrol('Style', 'checkbox');
             obj.hOptsMatchDiff.Parent = obj.hOpts;
@@ -639,12 +641,15 @@ classdef ResultsGUI < handle
             hold(obj.hAxMain, 'on');
 
             % Draw the requested difference matrix
-            % TODO apply colour scaling!
             if obj.hOptsDiffContr.Value
-                imagesc(obj.hAxMain, obj.results.diff_matrix.enhanced);
+                dataNorm = obj.results.diff_matrix.enhanced ./ ...
+                    max(max(obj.results.diff_matrix.enhanced));
             else
-                imagesc(obj.hAxMain, obj.results.diff_matrix.base);
+                dataNorm = obj.results.diff_matrix.base ./ ...
+                    max(max(obj.results.diff_matrix.base));
             end
+            dataNorm = 1 - exp(-10*obj.hOptsDiffColValue.Value*dataNorm);
+            imagesc(obj.hAxMain, dataNorm);
             hold(obj.hAxMain, 'off');
 
             % Style the plot
