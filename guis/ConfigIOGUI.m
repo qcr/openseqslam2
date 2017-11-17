@@ -50,6 +50,9 @@ classdef ConfigIOGUI < handle
 
             % Finally, show the figure when we are done configuring
             obj.hFig.Visible = 'on';
+
+            % Samples popup
+            obj.samplesPopup();
         end
 
         function dumpConfigToXML(obj, filename)
@@ -70,6 +73,12 @@ classdef ConfigIOGUI < handle
             obj.config = s;
             obj.populate();
             success = true;
+        end
+    end
+
+    methods (Static)
+        function results = containsResults(directory)
+            results = exist(fullfile(directory, 'config.xml'), 'file');
         end
     end
 
@@ -359,11 +368,11 @@ classdef ConfigIOGUI < handle
 
                 % Report the results
                 if (a == 0 && b == 0) || isempty(ext)
-                    status.String = ['Error: no dataset was found (' ...
+                    status.String = ['No dataset was found (' ...
                         'a filename patterns wasn''t identified)!'];
                     status.ForegroundColor = GUISettings.COL_ERROR;
                 else
-                    status.String = ['Success: dataset with filenames ''' ...
+                    status.String = ['Dataset with filenames ''' ...
                         startToken '[' ...
                         num2str(a, ['%0' num2str(numel(num2str(b))) 'd']) ...
                         '-' num2str(b) ']' endToken ''' identified!'];
@@ -390,7 +399,7 @@ classdef ConfigIOGUI < handle
                 % Attempt to read the video
                 v = VideoReader(path);
                 if v.Duration > 0
-                    status.String = ['Success: video read (' ...
+                    status.String = ['Video read (' ...
                         int2str(v.Duration/60) 'm ' ...
                         num2str(round(mod(v.Duration,60)), '%02d') 's)!'];
                     status.ForegroundColor = GUISettings.COL_SUCCESS;
@@ -409,13 +418,13 @@ classdef ConfigIOGUI < handle
                         obj.cachedQuery = results;
                     end
                 else
-                    status.String = [ 'Error: an empty video ' ...
+                    status.String = ['An empty video ' ...
                         '(duration of 0 seconds) was read!'];
                     status.ForegroundColor = GUISettings.COL_ERROR;
                 end
             else
                 % Unsupported video format
-                status.String = ['Error: ''*' e ...
+                status.String = ['''*' e ...
                     ''' is an unsupported video format'];
                 status.ForegroundColor = GUISettings.COL_ERROR;
             end
@@ -433,16 +442,16 @@ classdef ConfigIOGUI < handle
             obj.interactivity(true);
             if ~exist(path, 'file')
                 % Inform that the path does not point to an existing directory
-                status.String = 'Error: Selected directory does not exist!';
+                status.String = 'Selected directory does not exist!';
                 status.ForegroundColor = GUISettings.COL_ERROR;
             elseif ConfigIOGUI.containsResults(path)
                 % Results directory selected with existing results
-                status.String = ['Success: selected directory contains ' ...
+                status.String = ['Selected directory contains ' ...
                     'previous results'];
                 status.ForegroundColor = GUISettings.COL_SUCCESS;
             else
                 % A new results directory was selected
-                status.String = ['Success: selected directory contains ' ...
+                status.String = ['Selected directory contains ' ...
                     'no existing results'];
                 status.ForegroundColor = GUISettings.COL_SUCCESS;
             end
@@ -494,6 +503,31 @@ classdef ConfigIOGUI < handle
             obj.evaluateDataset(obj.hRefLocation.String, obj.hRefStatus);
             obj.evaluateDataset(obj.hQueryLocation.String, obj.hQueryStatus);
             obj.evaluateResults(obj.hResultsLocation.String, obj.hResultsStatus);
+        end
+
+        function samplesPopup(obj)
+            % Assume the samples have been unzipped if the directory exists,
+            % or do not unzip if do not ask again has been clicked
+            if exist(fullfile(toolboxRoot(), 'datasets', 'samples')) == 7 || ...
+                    exist(fullfile(toolboxRoot(), '.persistent', 'nounzip'))
+                return;
+            end
+
+            % Ask the user if they would like to unzip the samples
+            resp = questdlg(['It appears the samples provided with the ' ...
+                'toolbox have not yet been unzipped. ' ...
+                'Would you like to unzip them?'], 'Unzip samples?', ...
+                'Yes', 'No', 'Do not ask again', 'Yes');
+            if strcmpi(resp, 'yes')
+                h = waitbar(0.5, 'Unzipping...');
+                unzip( ...
+                    fullfile(toolboxRoot(), 'datasets', 'samples.zip'), ...
+                    fullfile(toolboxRoot(), 'datasets'));
+                close(h);
+            elseif strcmpi(resp, 'do not ask again')
+                fclose(fopen( ...
+                    fullfile(toolboxRoot(), '.persistent', 'nounzip'), 'w+'));
+            end
         end
 
         function sizeGUI(obj)
@@ -680,12 +714,6 @@ classdef ConfigIOGUI < handle
                 obj.hSettingsSeqSLAM.Enable = 'on';
                 obj.hStart.Enable = 'on';
             end
-        end
-    end
-
-    methods (Static)
-        function results = containsResults(directory)
-            results = exist(fullfile(directory, 'config.xml'), 'file');
         end
     end
 end

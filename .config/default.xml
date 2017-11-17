@@ -1,24 +1,28 @@
 <?xml version="1.0" encoding="utf-8"?>
 <seqslam-settings>
   <settings-group name="reference">
-    <setting name="type" type="string" value="video"/>
-    <settings-group name="video">
-      <setting name="ext" type="string" value="avi"/>
-      <setting name="frames" type="numeric" value="11550"/>
-      <setting name="frame_rate" type="numeric" value="29.97"/>
+    <setting name="type" type="string" value="image"/>
+    <settings-group name="image">
+      <setting name="ext" type="string" value="png"/>
+      <setting name="index_start" type="numeric" value="1"/>
+      <setting name="index_end" type="numeric" value="35768"/>
+      <setting name="token_start" type="string" value="images-"/>
+      <setting name="token_end" type="string" value=".png"/>
     </settings-group>
-    <setting name="path" type="string" value="$TOOLBOX_ROOT/datasets/daynight/day_trunc.avi"/>
-    <setting name="subsample_factor" type="numeric" value="100"/>
+    <setting name="path" type="string" value="$TOOLBOX_ROOT/datasets/samples/nordland_trimmed/summer"/>
+    <setting name="subsample_factor" type="numeric" value="10"/>
   </settings-group>
   <settings-group name="query">
-    <setting name="type" type="string" value="video"/>
-    <settings-group name="video">
-      <setting name="ext" type="string" value="avi"/>
-      <setting name="frames" type="numeric" value="11550"/>
-      <setting name="frame_rate" type="numeric" value="29.97"/>
+    <setting name="type" type="string" value="image"/>
+    <settings-group name="image">
+      <setting name="ext" type="string" value="png"/>
+      <setting name="index_start" type="numeric" value="1"/>
+      <setting name="index_end" type="numeric" value="35768"/>
+      <setting name="token_start" type="string" value="images-"/>
+      <setting name="token_end" type="string" value=".png"/>
     </settings-group>
-    <setting name="path" type="string" value="$TOOLBOX_ROOT/datasets/daynight/day_trunc.avi"/>
-    <setting name="subsample_factor" type="numeric" value="100"/>
+    <setting name="path" type="string" value="$TOOLBOX_ROOT/datasets/samples/nordland_trimmed/winter"/>
+    <setting name="subsample_factor" type="numeric" value="10"/>
   </settings-group>
   <settings-group name="results">
     <setting name="path" type="string" value="$TOOLBOX_ROOT/results/debug"/>

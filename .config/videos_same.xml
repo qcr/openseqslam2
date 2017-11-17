@@ -7,8 +7,8 @@
       <setting name="frames" type="numeric" value="11550"/>
       <setting name="frame_freq" type="numeric" value="29.97"/>
     </settings-group>
-    <setting name="path" type="string" value="$TOOLBOX_ROOT/datasets/daynight/day_trunc.avi"/>
-    <setting name="subsample_factor" type="numeric" value="100"/>
+    <setting name="path" type="string" value="$TOOLBOX_ROOT/datasets/samples/daynight/day_trunc.avi"/>
+    <setting name="subsample_factor" type="numeric" value="50"/>
   </settings-group>
   <settings-group name="query">
     <setting name="type" type="string" value="video"/>
@@ -17,8 +17,8 @@
       <setting name="frames" type="numeric" value="11550"/>
       <setting name="frame_freq" type="numeric" value="29.97"/>
     </settings-group>
-    <setting name="path" type="string" value="$TOOLBOX_ROOT/datasets/daynight/day_trunc.avi"/>
-    <setting name="subsample_factor" type="numeric" value="100"/>
+    <setting name="path" type="string" value="$TOOLBOX_ROOT/datasets/samples/daynight/day_trunc.avi"/>
+    <setting name="subsample_factor" type="numeric" value="50"/>
   </settings-group>
   <settings-group name="results">
     <setting name="path" type="string" value="$TOOLBOX_ROOT/results/debug"/>

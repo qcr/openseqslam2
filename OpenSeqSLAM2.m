@@ -1,6 +1,6 @@
 function [results, config] = OpenSeqSLAM2(varargin)
     % Add the toolbox to the path
-    run(fullfile(fileparts(which('SeqSLAM')), 'tools', 'toolboxInit'));
+    run(fullfile(fileparts(which('OpenSeqSLAM2')), 'tools', 'toolboxInit'));
 
     % Add the option to just load defaults and run
     if length(varargin) > 0 && varargin{1}
