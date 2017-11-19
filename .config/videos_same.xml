@@ -5,7 +5,7 @@
     <settings-group name="video">
       <setting name="ext" type="string" value="avi"/>
       <setting name="frames" type="numeric" value="11550"/>
-      <setting name="frame_freq" type="numeric" value="29.97"/>
+      <setting name="frame_rate" type="numeric" value="29.97"/>
     </settings-group>
     <setting name="path" type="string" value="$TOOLBOX_ROOT/datasets/samples/daynight/day_trunc.avi"/>
     <setting name="subsample_factor" type="numeric" value="50"/>
@@ -15,7 +15,7 @@
     <settings-group name="video">
       <setting name="ext" type="string" value="avi"/>
       <setting name="frames" type="numeric" value="11550"/>
-      <setting name="frame_freq" type="numeric" value="29.97"/>
+      <setting name="frame_rate" type="numeric" value="29.97"/>
     </settings-group>
     <setting name="path" type="string" value="$TOOLBOX_ROOT/datasets/samples/daynight/day_trunc.avi"/>
     <setting name="subsample_factor" type="numeric" value="50"/>

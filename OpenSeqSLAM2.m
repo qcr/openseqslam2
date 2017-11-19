@@ -4,24 +4,23 @@ function [results, config] = OpenSeqSLAM2(varargin)
 
     % Add the option to just load defaults and run
     if length(varargin) > 0 && varargin{1}
-        config = xml2settings('.config/default.xml');
+        config = xml2settings( ...
+            fullfile(toolboxRoot(), '.config', 'default.xml'));
     else
         % Run the config GUI to set all required parameters
         config = SeqSLAMConfig();
+
         % Abort if no parameters are returned
         if isempty(config)
             fprintf('Exited start dialog. Aborting...\n');
-            dbg = [];
+            results = [];
             return;
         end
     end
 
     % Run the SeqSLAM process, and get the results
     results = SeqSLAMRun(config);
-    %inst = SeqSLAMInstance(config);
-    %inst.run();
-    %results = inst.results;
 
     % Run the results visualisation GUI
-    results = SeqSLAMResults(results, config);
+    [results, config] = SeqSLAMResults(results, config);
 end
