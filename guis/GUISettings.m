@@ -8,7 +8,7 @@ classdef GUISettings
         % Colouring settings
         COL_SUCCESS = [0 0.6 0];
         COL_WARNING = [1 0.4 0];
-        COL_ERROR = 'r';
+        COL_ERROR = [1 0 0];
         COL_LOADING = [0.6 0.6 0.6];
         COL_DEFAULT = [0 0 0];
 

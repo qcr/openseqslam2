@@ -388,7 +388,7 @@ classdef ConfigIOGUI < handle
             [p, n, e] = fileparts(path);
             if ~exist(path, 'file')
                 % Inform that the path does not point to an existing file
-                status.String = 'Error: File does not exist!';
+                status.String = 'File does not exist!';
                 status.ForegroundColor = GUISettings.COL_ERROR;
             elseif isdir(path)
                 % Attempt to profile the requested image dataset
@@ -747,9 +747,11 @@ classdef ConfigIOGUI < handle
         end
 
         function updateButtons(obj)
-            if ~strncmpi(obj.hRefStatus.String, 'success', 7) || ...
-                    ~strncmpi(obj.hQueryStatus.String, 'success', 7) || ...
-                    ~strncmpi(obj.hResultsStatus.String, 'success', 7)
+            if isequal(obj.hRefStatus.ForegroundColor, ...
+                    GUISettings.COL_ERROR) || isequal( ...
+                    obj.hQueryStatus.ForegroundColor, GUISettings.COL_ERROR) ...
+                    || isequal(obj.hResultsStatus.ForegroundColor, ...
+                    GUISettings.COL_ERROR)
                 obj.hSettingsSeqSLAM.Enable = 'off';
                 obj.hStart.Enable = 'off';
             else
