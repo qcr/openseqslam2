@@ -318,9 +318,10 @@ classdef ConfigSeqSLAMGUI < handle
             end
 
             % Update the text boxes
-            pos = SafeData.vector2str(round( ...
-                [posOut(1:2) posOut(1:2)+posOut(3:4)]));
-            obj.hImPrCropQueryValue.String = pos;
+            v = round([posOut(1:2) posOut(1:2)+posOut(3:4)]);
+            obj.hImPrCropQueryValue.String = SafeData.vector2str(v);
+            obj.hImPrResizeW.String = v(3) - v(1) + 1;
+            obj.hImPrResizeH.String = v(4) - v(2) + 1;
         end
 
         function posOut = constrainedRefPosition(obj, posIn)
@@ -333,10 +334,11 @@ classdef ConfigSeqSLAMGUI < handle
             obj.hImPrQueryCropBox.setPosition(posOut);
 
             % Update the text boxes
-            pos = SafeData.vector2str(round( ...
-                [posOut(1:2) posOut(1:2)+posOut(3:4)]));
-            obj.hImPrCropRefValue.String = pos;
-            obj.hImPrCropQueryValue.String = pos;
+            v = round([posOut(1:2) posOut(1:2)+posOut(3:4)]);
+            obj.hImPrCropRefValue.String = SafeData.vector2str(v);
+            obj.hImPrCropQueryValue.String = SafeData.vector2str(v);
+            obj.hImPrResizeW.String = v(3) - v(1) + 1;
+            obj.hImPrResizeH.String = v(4) - v(2) + 1;
         end
 
         function createGUI(obj)
@@ -839,6 +841,10 @@ classdef ConfigSeqSLAMGUI < handle
             configCurrent = obj.config;
             obj.config = configTemp;
 
+            % Get vectors representing the crop limits
+            cropRef = SafeData.str2vector(obj.hImPrCropRefValue.String);
+            cropQuery = SafeData.str2vector(obj.hImPrCropQueryValue.String);
+
             % Generate all of the required images
             refImg = datasetOpenImage(obj.config.reference, ...
                 obj.hImPrRefSample.Value, obj.numbersRef);
@@ -867,13 +873,13 @@ classdef ConfigSeqSLAMGUI < handle
 
             % Draw the crop-boxes
             obj.hImPrRefCropBox = imrect(obj.hImPrRefAxCrop, ...
-                [obj.hImPrRefAxCrop.XLim(1) obj.hImPrRefAxCrop.YLim(1) ...
-                diff(obj.hImPrRefAxCrop.XLim) diff(obj.hImPrRefAxCrop.YLim)]);
+                [cropRef(1) cropRef(2) cropRef(3)-cropRef(1) ...
+                cropRef(4)-cropRef(2)]);
             obj.hImPrRefCropBox.setPositionConstraintFcn( ...
                 @obj.constrainedRefPosition);
             obj.hImPrQueryCropBox = imrect(obj.hImPrQueryAxCrop, ...
-                [obj.hImPrQueryAxCrop.XLim(1) obj.hImPrQueryAxCrop.YLim(1) ...
-                diff(obj.hImPrQueryAxCrop.XLim) diff(obj.hImPrQueryAxCrop.YLim)]);
+                [cropQuery(1) cropQuery(2) cropQuery(3)-cropQuery(1) ...
+                cropQuery(4)-cropQuery(2)]);
             obj.hImPrQueryCropBox.setPositionConstraintFcn( ...
                 @obj.constrainedQueryPosition);
             obj.hImPrQueryCropBox.setFixedAspectRatioMode(1);

@@ -28,11 +28,14 @@
    <settings-group name="seqslam">
       <settings-group name="image_processing">
          <settings-group name="downsample">
-            <setting name="width" type="numeric" value="64"/>
-            <setting name="height" type="numeric" value="32"/>
+            <setting name="width" type="numeric" value="62"/>
+            <setting name="height" type="numeric" value="30"/>
             <setting name="method" type="string" value="lanczos3"/>
          </settings-group>
-         <settings-group name="crop"/>
+         <settings-group name="crop">
+            <setting name="reference" type="vector" value="2, 2, 63, 31"/>
+            <setting name="query" type="vector" value="2, 2, 63, 31"/>
+         </settings-group>
          <settings-group name="normalisation">
             <setting name="threshold" type="numeric" value="0.5"/>
             <setting name="strength" type="numeric" value="1"/>

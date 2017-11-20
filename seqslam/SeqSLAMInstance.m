@@ -172,17 +172,8 @@ classdef SeqSLAMInstance < handle
 
                 % Allocate memory for all of the processed images
                 nImages = length(numbers);
-                c = settingsProcess.crop.(datasets{ds});
-                if isempty(c)
-                    nWidth = ...
-                        settingsProcess.downsample.width;
-                    nHeight = ...
-                        settingsProcess.downsample.height;
-                else
-                    nWidth = c(3) - c(1);
-                    nHeight = c(4) - c(2);
-                end
-                images = zeros(nHeight, nWidth, nImages, 'uint8');
+                images = zeros(settingsProcess.downsample.height, ...
+                    settingsProcess.downsample.width, nImages, 'uint8');
 
                 % Initialise everything related to dataset
                 if strcmpi(settingsDataset.type, 'video')
