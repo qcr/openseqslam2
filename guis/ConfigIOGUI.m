@@ -392,26 +392,27 @@ classdef ConfigIOGUI < handle
                 status.ForegroundColor = GUISettings.COL_ERROR;
             elseif isdir(path)
                 % Attempt to profile the requested image dataset
-                [ext, a, b, startToken, endToken] = datasetPictureProfile(path);
+                [numbers, ext startToken, endToken] = ...
+                    datasetPictureProfile(path);
 
                 % Report the results
-                if (a == 0 && b == 0) || isempty(ext)
+                if length(numbers) == 0 || isempty(ext)
                     status.String = ['No dataset was found (' ...
                         'a filename patterns wasn''t identified)!'];
                     status.ForegroundColor = GUISettings.COL_ERROR;
                 else
                     status.String = ['Dataset with filenames ''' ...
-                        startToken '[' ...
-                        num2str(a, ['%0' num2str(numel(num2str(b))) 'd']) ...
-                        '-' num2str(b) ']' endToken ''' identified!'];
+                        startToken '[' num2str(numbers(1), ...
+                        ['%0' num2str(numel(num2str(numbers(end)))) 'd']) ...
+                        '-' num2str(numbers(end)) ']' endToken ...
+                        ''' identified!'];
                     status.ForegroundColor = GUISettings.COL_SUCCESS;
 
                     % Save the results
                     results = [];
                     results.type = 'image';
                     results.image.ext = ext;
-                    results.image.index_start = a;
-                    results.image.index_end = b;
+                    results.image.numbers = numbers;
                     results.image.token_start = startToken;
                     results.image.token_end = endToken;
                     if status == obj.hRefStatus

@@ -8,8 +8,7 @@ function empty = emptyConfig()
     empty.reference.type = [];
 
     empty.reference.image.ext = [];
-    empty.reference.image.index_start = [];
-    empty.reference.image.index_end = [];
+    empty.reference.image.numbers = [];
     empty.reference.image.token_start = [];
     empty.reference.image.token_end = [];
 
@@ -22,8 +21,7 @@ function empty = emptyConfig()
     empty.query.type = [];
 
     empty.query.image.ext = [];
-    empty.query.image.index_start = [];
-    empty.query.image.index_end = [];
+    empty.query.image.numbers = [];
     empty.query.image.token_start = [];
     empty.query.image.token_end = [];
 

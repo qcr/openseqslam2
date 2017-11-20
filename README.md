@@ -10,7 +10,6 @@ The second release of OpenSeqSLAM, repackaged as an easy to use and configure to
 * Matching performs terribly on day night video dataset (could simply be poor parameter choices)
 * Changing crop box doesn't fade corresponding previews (SeqSLAM configuration GUI)
 * Crop boxes reset to full size when refreshing previews (SeqSLAM configuration GUI)
-* The subsampling does not play nicely with image datasets whose numbering isn't sequential
 
 
 ## TODO List (roughly ordered by value):

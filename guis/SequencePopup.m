@@ -89,7 +89,7 @@ classdef SequencePopup < handle
             for k = 1:length(obj.hQueryAxes)
                 cla(obj.hQueryAxes(k));
                 imshow(datasetOpenImage(obj.config.('query'), obj.listQs(k), ...
-                    obj.results.preprocessed.('query_indices')), ...
+                    obj.results.preprocessed.('query_numbers')), ...
                     'Parent', obj.hQueryAxes(k));
             end
 
@@ -98,7 +98,7 @@ classdef SequencePopup < handle
                 cla(obj.hRefAxes(k));
                 imshow(datasetOpenImage(obj.config.('reference'), ...
                     obj.listRs(k), ...
-                    obj.results.preprocessed.('reference_indices')), ...
+                    obj.results.preprocessed.('reference_numbers')), ...
                     'Parent', obj.hRefAxes(k));
             end
         end
@@ -108,13 +108,13 @@ classdef SequencePopup < handle
             % TODO handle potential resizing gracefully
             widthUnit = obj.hTitle.Extent(3);
             heightUnit = obj.hTitle.Extent(4);
-			
+
             % Size and position the figure
             obj.hFig.Position = [0, 0, ...
                 widthUnit * SequencePopup.FIG_WIDTH_FACTOR, ...
                 heightUnit * SequencePopup.FIG_HEIGHT_FACTOR];
             movegui(obj.hFig, 'center');
-			
+
             % Now that the figure (space for placing UI elements is set),
             % size all of the elements
             SpecSize.size(obj.hTitle, SpecSize.HEIGHT, SpecSize.WRAP);
@@ -149,7 +149,7 @@ classdef SequencePopup < handle
             SpecPosition.positionIn(obj.hTitle, obj.hFig, ...
                 SpecPosition.TOP, GUISettings.PAD_MED);
             SpecPosition.positionIn(obj.hTitle, obj.hFig, ...
-                    SpecPosition.CENTER_X);
+                SpecPosition.CENTER_X);
 
             SpecPosition.positionRelative(obj.hQueryTitle, obj.hTitle, ...
                 SpecPosition.BELOW, GUISettings.PAD_LARGE);
@@ -172,7 +172,7 @@ classdef SequencePopup < handle
                 SpecPosition.BELOW, 3*GUISettings.PAD_LARGE);
             SpecPosition.positionIn(obj.hRefTitle, obj.hFig, ...
                 SpecPosition.LEFT, GUISettings.PAD_LARGE);
-            
+
             SpecPosition.positionRelative(obj.hRefAxes(1), ...
                 obj.hRefTitle, SpecPosition.BELOW);
             SpecPosition.positionIn(obj.hRefAxes(1), obj.hFig, ...

@@ -91,13 +91,12 @@ classdef SeqSLAMInstance < handle
             end
         end
 
-        function indices = indices(datasetConfig)
+        function numbers = numbers(datasetConfig)
             if strcmpi(datasetConfig.type, 'image')
-                indices = datasetConfig.image.index_start:...
-                    datasetConfig.subsample_factor:...
-                    datasetConfig.image.index_end;
+                numbers = datasetConfig.image.numbers(...
+                    1:datasetConfig.subsample_factor:end);
             elseif strcmpi(datasetConfig.type, 'video')
-                indices = 1:datasetConfig.subsample_factor:...
+                numbers = 1:datasetConfig.subsample_factor:...
                     datasetConfig.video.frames;
             end
         end
@@ -168,11 +167,11 @@ classdef SeqSLAMInstance < handle
                 % Cache dataset settings (mainly to avoid typing...)
                 settingsDataset = obj.config.(datasets{ds});
 
-                % Get the indices
-                indices = SeqSLAMInstance.indices(settingsDataset);
+                % Get the numbers for the chosen images
+                numbers = SeqSLAMInstance.numbers(settingsDataset);
 
                 % Allocate memory for all of the processed images
-                nImages = length(indices);
+                nImages = length(numbers);
                 c = settingsProcess.crop.(datasets{ds});
                 if isempty(c)
                     nWidth = ...
@@ -192,16 +191,16 @@ classdef SeqSLAMInstance < handle
                     v = [];
                 end
 
-                % Loop over all of the image indices
-                for k = 1:length(indices)
+                % Loop over all of the image numbers
+                for k = 1:length(numbers)
                     % Calculate percent if needed (used in multiple places)
                     perc = [];
                     if obj.listeningUI
-                        perc = k/length(indices)*100;
+                        perc = k/length(numbers)*100;
                     end
 
                     % Load next image
-                    img = datasetOpenImage(settingsDataset, k, indices, v);
+                    img = datasetOpenImage(settingsDataset, k, numbers, v);
 
                     % Preprocess the image
                     state = ProgressGUI.STATE_PREPROCESS_REF + ds-1;
@@ -225,15 +224,15 @@ classdef SeqSLAMInstance < handle
                             p.image_num = k;
                             if ~isempty(v)
                                 p.image_details = datasetFrameInfo( ...
-                                    indices(k)-1, v.FrameRate, 1, ...
+                                    numbers(k)-1, v.FrameRate, 1, ...
                                     settingsDataset.path, k);
                             else
                                 p.image_details = datasetPictureInfo( ...
                                     settingsDataset.path, ...
                                     settingsDataset.image.token_start, ...
                                     settingsDataset.image.token_end, ...
-                                    indices(k), ...
-                                    settingsDataset.image.index_end, 1, k);
+                                    numbers(k), ...
+                                    settingsDataset.image.numbers(end), 1, k);
                             end
                             obj.cbMainUpdate(p);
                         elseif obj.cbPercentReady(state, perc)
@@ -242,9 +241,9 @@ classdef SeqSLAMInstance < handle
                     end
                 end
 
-                % Save the processed image matrix to the results, and indices
+                % Save the matrix for processed images, and image numbers used
                 obj.results.preprocessed.(datasets{ds}) = images;
-                obj.results.preprocessed.([datasets{ds} '_indices']) = indices;
+                obj.results.preprocessed.([datasets{ds} '_numbers']) = numbers;
             end
         end
 
