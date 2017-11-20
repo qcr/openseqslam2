@@ -160,6 +160,7 @@ classdef ResultsGUI < handle
 
             % Save the current state of the playback UI, and disable all
             uiMatch = obj.currentVideoMatch;
+            obj.hSaveResults.Enable = 'off';
             obj.hScreen.Enable = 'off';
             obj.hOptsVidRateValue.Enable = 'off';
             obj.hOptsVidPlay.Enable = 'off';
@@ -197,6 +198,7 @@ classdef ResultsGUI < handle
 
             % Restore the state of the playback UI, and re-enable all
             obj.currentVideoMatch = uiMatch;
+            obj.hSaveResults.Enable = 'on';
             obj.hScreen.Enable = 'on';
             obj.hOptsVidRateValue.Enable = 'on';
             obj.hOptsVidPlay.Enable = 'on';

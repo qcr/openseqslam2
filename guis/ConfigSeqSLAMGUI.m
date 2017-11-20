@@ -90,8 +90,8 @@ classdef ConfigSeqSLAMGUI < handle
 
         config = emptyConfig();
 
-        indicesRef = [];
-        indicesQuery = [];
+        numbersRef = [];
+        numbersQuery = [];
 
         listImagesRef = [];
         listImagesQuery = [];
@@ -832,18 +832,22 @@ classdef ConfigSeqSLAMGUI < handle
         end
 
         function drawProcessingPreviews(obj)
-            % Strip the UI (we need the config to be up to date)
+            % Get a config representing curring UI state
+            % TODO VERY lazy inefficient way to do this...
+            configTemp = obj.config;
             obj.strip();
+            configCurrent = obj.config;
+            obj.config = configTemp;
 
             % Generate all of the required images
             refImg = datasetOpenImage(obj.config.reference, ...
-                obj.hImPrRefSample.Value, obj.indicesRef);
+                obj.hImPrRefSample.Value, obj.numbersRef);
             queryImg = datasetOpenImage(obj.config.query, ...
-                obj.hImPrQuerySample.Value, obj.indicesQuery);
+                obj.hImPrQuerySample.Value, obj.numbersQuery);
             [refImgOut, refImgs] = SeqSLAMInstance.preprocessSingle( ...
-                refImg, obj.config.seqslam.image_processing, 'reference', 1);
+                refImg, configCurrent.seqslam.image_processing, 'reference', 1);
             [queryImgOut, queryImgs] = SeqSLAMInstance.preprocessSingle( ...
-                queryImg, obj.config.seqslam.image_processing, 'query', 1);
+                queryImg, configCurrent.seqslam.image_processing, 'query', 1);
 
             % Clear all axes
             cla(obj.hImPrRefAxCrop);
@@ -876,12 +880,12 @@ classdef ConfigSeqSLAMGUI < handle
         end
 
         function generateImageLists(obj)
-            obj.indicesRef = SeqSLAMInstance.indices(obj.config.reference);
+            obj.numbersRef = SeqSLAMInstance.numbers(obj.config.reference);
             obj.listImagesRef = datasetImageList(obj.config.reference, ...
-                obj.indicesRef);
-            obj.indicesQuery = SeqSLAMInstance.indices(obj.config.query);
+                obj.numbersRef);
+            obj.numbersQuery = SeqSLAMInstance.numbers(obj.config.query);
             obj.listImagesQuery = datasetImageList(obj.config.query, ...
-                obj.indicesQuery);
+                obj.numbersQuery);
         end
 
         function valid = isDataValid(obj, screen)
@@ -986,16 +990,18 @@ classdef ConfigSeqSLAMGUI < handle
         function populate(obj)
             % Use the first image in each dataset to get some reference dimensions
             obj.dimRef = size(datasetOpenImage(obj.config.reference, 1, ...
-                obj.indicesRef));
+                obj.numbersRef));
             obj.dimQuery = size(datasetOpenImage(obj.config.query, 1, ...
-                obj.indicesQuery));
+                obj.numbersQuery));
 
             % Dump all data from the config struct to the UI
             obj.hImPrCropRefValue.String = SafeData.noEmpty( ...
-                obj.config.seqslam.image_processing.crop.reference, ...
+                SafeData.vector2str( ...
+                obj.config.seqslam.image_processing.crop.reference), ...
                 ['1, 1, ' num2str(obj.dimRef(2)) ', ' num2str(obj.dimRef(1))]);
             obj.hImPrCropQueryValue.String = SafeData.noEmpty( ...
-                obj.config.seqslam.image_processing.crop.query, ['1, 1, ' ...
+                SafeData.vector2str( ...
+                obj.config.seqslam.image_processing.crop.query), ['1, 1, ' ...
                 num2str(obj.dimQuery(2)) ', ' num2str(obj.dimQuery(1))]);
             obj.hImPrResizeW.String = SafeData.noEmpty( ...
                 obj.config.seqslam.image_processing.downsample.width, ...
@@ -1502,10 +1508,18 @@ classdef ConfigSeqSLAMGUI < handle
 
         function strip(obj)
             % Strip data from the UI, and store it in the config struct
-            obj.config.seqslam.image_processing.crop.reference = ...
-                SafeData.str2vector(obj.hImPrCropRefValue.String);
-            obj.config.seqslam.image_processing.crop.query = ...
-                SafeData.str2vector(obj.hImPrCropQueryValue.String);
+            v = SafeData.str2vector(obj.hImPrCropRefValue.String);
+            if isequal(v, [1 1 obj.dimRef(2) obj.dimRef(1)])
+                obj.config.seqslam.image_processing.crop.reference = [];
+            else
+                obj.config.seqslam.image_processing.crop.reference = v;
+            end
+            v = SafeData.str2vector(obj.hImPrCropQueryValue.String);
+            if isequal(v, [1 1 obj.dimQuery(2) obj.dimQuery(1)])
+                obj.config.seqslam.image_processing.crop.query = [];
+            else
+                obj.config.seqslam.image_processing.crop.query = v;
+            end
             obj.config.seqslam.image_processing.downsample.width = ...
                 str2num(obj.hImPrResizeW.String);
             obj.config.seqslam.image_processing.downsample.height = ...
