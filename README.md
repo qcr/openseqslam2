@@ -4,7 +4,6 @@ The second release of OpenSeqSLAM, repackaged as an easy to use and configure to
 
 ## Known Bugs (roughly ordered by severity):
 
-* Percent update frequency is only respected for first step of Progress GUI (suspected because "lastPercent" value is not reset when changing states)
 * Matching performs terribly on day night video dataset (could simply be poor parameter choices)
 * Changing crop box doesn't fade corresponding previews (SeqSLAM configuration GUI)
 * Crop boxes reset to full size when refreshing previews (SeqSLAM configuration GUI)

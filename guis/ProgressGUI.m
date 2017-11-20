@@ -115,6 +115,7 @@ classdef ProgressGUI < handle
                 cla(obj.hAxC);
                 cla(obj.hAxD);
                 cla(obj.hAxMain);
+                obj.lastPercentRefresh = 0;
             end
 
             % Save the new progress
