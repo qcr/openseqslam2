@@ -41,6 +41,7 @@ classdef ConfigSeqSLAMGUI < handle
         hImPrResizeW;
         hImPrResizeX;
         hImPrResizeH;
+        hImPrResizeLock;
         hImPrResizeMethod;
         hImPrResizeMethodValue;
         hImPrNorm;
@@ -179,15 +180,17 @@ classdef ConfigSeqSLAMGUI < handle
             % Disable the appropriate previews
             obj.disableProcessingPreviews([0 0; 1 1; 1 1]);
 
-            % Force the other resize value to maintain the aspect ratio
-            pos = obj.hImPrRefCropBox.getPosition();
-            ar = pos(3) / pos(4);
-            if src == obj.hImPrResizeW
-                obj.hImPrResizeH.String = num2str(round( ...
-                    str2num(obj.hImPrResizeW.String) / ar));
-            elseif src == obj.hImPrResizeH
-                obj.hImPrResizeW.String = num2str(round( ...
-                    str2num(obj.hImPrResizeH.String) * ar));
+            % Force the other resize value to maintain aspect ratio if required
+            if obj.hImPrResizeLock.Value == 1
+                pos = obj.hImPrRefCropBox.getPosition();
+                ar = pos(3) / pos(4);
+                if src == obj.hImPrResizeW
+                    obj.hImPrResizeH.String = num2str(round( ...
+                        str2num(obj.hImPrResizeW.String) / ar));
+                elseif src == obj.hImPrResizeH
+                    obj.hImPrResizeW.String = num2str(round( ...
+                        str2num(obj.hImPrResizeH.String) * ar));
+                end
             end
         end
 
@@ -197,6 +200,16 @@ classdef ConfigSeqSLAMGUI < handle
 
         function cbChangeScreen(obj, src, event)
             obj.openScreen(obj.hScreen.Value);
+        end
+
+        function cbLockAspectRatio(obj, src, event)
+            if obj.hImPrResizeLock.Value == 1
+                % Set height to track aspect ratio
+                pos = obj.hImPrRefCropBox.getPosition();
+                ar = pos(3)/pos(4);
+                obj.hImPrResizeH.String = num2str(round( ...
+                    str2num(obj.hImPrResizeW.String) / ar));
+            end
         end
 
         function cbRefreshDiagrams(obj, src, event)
@@ -254,6 +267,7 @@ classdef ConfigSeqSLAMGUI < handle
             obj.hImPrResizeW.Visible = 'off';
             obj.hImPrResizeX.Visible = 'off';
             obj.hImPrResizeH.Visible = 'off';
+            obj.hImPrResizeLock.Visible = 'off';
             obj.hImPrResizeMethod.Visible = 'off';
             obj.hImPrResizeMethodValue.Visible = 'off';
             obj.hImPrNorm.Visible = 'off';
@@ -322,6 +336,9 @@ classdef ConfigSeqSLAMGUI < handle
             obj.hImPrCropQueryValue.String = SafeData.vector2str(v);
             obj.hImPrResizeW.String = v(3) - v(1) + 1;
             obj.hImPrResizeH.String = v(4) - v(2) + 1;
+
+            % Fade all other previews
+            obj.disableProcessingPreviews([0 0; 1 1; 1 1]);
         end
 
         function posOut = constrainedRefPosition(obj, posIn)
@@ -339,6 +356,9 @@ classdef ConfigSeqSLAMGUI < handle
             obj.hImPrCropQueryValue.String = SafeData.vector2str(v);
             obj.hImPrResizeW.String = v(3) - v(1) + 1;
             obj.hImPrResizeH.String = v(4) - v(2) + 1;
+
+            % Fade all other previews
+            obj.disableProcessingPreviews([0 0; 1 1; 1 1]);
         end
 
         function createGUI(obj)
@@ -448,6 +468,12 @@ classdef ConfigSeqSLAMGUI < handle
             obj.hImPrResizeH.Parent = obj.hFig;
             GUISettings.applyUIControlStyle(obj.hImPrResizeH);
             obj.hImPrResizeH.String = '';
+
+            obj.hImPrResizeLock = uicontrol('Style', 'checkbox');
+            obj.hImPrResizeLock.Parent = obj.hFig;
+            GUISettings.applyUIControlStyle(obj.hImPrResizeLock);
+            obj.hImPrResizeLock.String = 'Lock aspect ratio';
+            obj.hImPrResizeLock.Value = 1;
 
             obj.hImPrResizeMethod = uicontrol('Style', 'text');
             obj.hImPrResizeMethod.Parent = obj.hFig;
@@ -676,6 +702,7 @@ classdef ConfigSeqSLAMGUI < handle
             obj.hImPrRefresh.Callback = {@obj.cbRefreshPreprocessed};
             obj.hImPrResizeW.Callback = {@obj.cbChangeResize};
             obj.hImPrResizeH.Callback = {@obj.cbChangeResize};
+            obj.hImPrResizeLock.Callback = {@obj.cbLockAspectRatio};
             obj.hImPrResizeMethodValue.Callback = {@obj.cbChangeResize};
             obj.hImPrNormThreshValue.Callback = {@obj.cbChangeNorm};
             obj.hImPrNormStrengthValue.Callback = {@obj.cbChangeNorm};
@@ -944,6 +971,7 @@ classdef ConfigSeqSLAMGUI < handle
                 obj.hImPrResizeW.Visible = 'on';
                 obj.hImPrResizeX.Visible = 'on';
                 obj.hImPrResizeH.Visible = 'on';
+                obj.hImPrResizeLock.Visible = 'on';
                 obj.hImPrResizeMethod.Visible = 'on';
                 obj.hImPrResizeMethodValue.Visible = 'on';
                 obj.hImPrNorm.Visible = 'on';
@@ -1120,10 +1148,12 @@ classdef ConfigSeqSLAMGUI < handle
             SpecSize.size(obj.hImPrResize, SpecSize.WIDTH, SpecSize.MATCH, ...
                 obj.hImPrRefresh);
             SpecSize.size(obj.hImPrResizeW, SpecSize.WIDTH, ...
-                SpecSize.PERCENT, obj.hImPrRefresh, 0.4);
+                SpecSize.PERCENT, obj.hImPrRefresh, 0.2);
             SpecSize.size(obj.hImPrResizeX, SpecSize.WIDTH, ...
-                SpecSize.PERCENT, obj.hImPrRefresh, 0.2, GUISettings.PAD_MED);
+                SpecSize.PERCENT, obj.hImPrRefresh, 0.1, GUISettings.PAD_MED);
             SpecSize.size(obj.hImPrResizeH, SpecSize.WIDTH, ...
+                SpecSize.PERCENT, obj.hImPrRefresh, 0.2);
+            SpecSize.size(obj.hImPrResizeLock, SpecSize.WIDTH, ...
                 SpecSize.PERCENT, obj.hImPrRefresh, 0.4);
             SpecSize.size(obj.hImPrResizeMethod, SpecSize.WIDTH, ...
                 SpecSize.MATCH, obj.hImPrRefresh);
@@ -1316,6 +1346,10 @@ classdef ConfigSeqSLAMGUI < handle
                 obj.hImPrResizeW, SpecPosition.CENTER_Y);
             SpecPosition.positionRelative(obj.hImPrResizeH, ...
                 obj.hImPrResizeX, SpecPosition.RIGHT_OF, GUISettings.PAD_SMALL);
+            SpecPosition.positionRelative(obj.hImPrResizeLock, ...
+                obj.hImPrResizeW, SpecPosition.CENTER_Y);
+            SpecPosition.positionRelative(obj.hImPrResizeLock, ...
+                obj.hImPrRefresh, SpecPosition.RIGHT);
             SpecPosition.positionRelative(obj.hImPrResizeMethod, ...
                 obj.hImPrResizeW, SpecPosition.BELOW, GUISettings.PAD_LARGE);
             SpecPosition.positionRelative(obj.hImPrResizeMethod, ...
