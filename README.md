@@ -11,7 +11,6 @@ The second release of OpenSeqSLAM, repackaged as an easy to use and configure to
 
 * Add help guidance to guide the user through the UI (everything that can be done must be explained!)
 * Add a screen to the Results GUI for comparing to ground truth and generating precision recall curves
-* Popup informing that save was successful in Results GUI
 * Re-evaluate regex matching scheme for images (in initial configuration GUI)
 
 

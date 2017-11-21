@@ -298,6 +298,9 @@ classdef ResultsGUI < handle
                 'diff_matrix.mat');
             resultsSave(resultsDir, obj.results.matching, ...
                 'matching.mat');
+
+            uiwait(msgbox({'Results were saved to:' resultsDir}, ...
+                'Save Successful'));
         end
 
         function cbShowSequence(obj, src, event)
