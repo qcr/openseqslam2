@@ -48,6 +48,7 @@ classdef ResultsGUI < handle
         hOptsVidRate;
         hOptsVidRateValue;
         hOptsVidPlay;
+        hOptsVidSlider;
         hOptsVidExport;
 
         hFocus;
@@ -160,11 +161,7 @@ classdef ResultsGUI < handle
 
             % Save the current state of the playback UI, and disable all
             uiMatch = obj.currentVideoMatch;
-            obj.hSaveResults.Enable = 'off';
-            obj.hScreen.Enable = 'off';
-            obj.hOptsVidRateValue.Enable = 'off';
-            obj.hOptsVidPlay.Enable = 'off';
-            obj.hOptsVidExport.Enable = 'off';
+            obj.toggleVideoScreenLock(true);
             obj.hOptsVidExport.String = 'Exporting...';
 
             % Setup the video output file, and figure out frame sizing
@@ -198,11 +195,7 @@ classdef ResultsGUI < handle
 
             % Restore the state of the playback UI, and re-enable all
             obj.currentVideoMatch = uiMatch;
-            obj.hSaveResults.Enable = 'on';
-            obj.hScreen.Enable = 'on';
-            obj.hOptsVidRateValue.Enable = 'on';
-            obj.hOptsVidPlay.Enable = 'on';
-            obj.hOptsVidExport.Enable = 'on';
+            obj.toggleVideoScreenLock(false);
             obj.hOptsVidExport.String = 'Export';
 
             obj.drawVideo();
@@ -254,10 +247,9 @@ classdef ResultsGUI < handle
             % Go down two possible branches, depending on if video is playing
             if strcmpi(obj.hOptsVidPlay.String, 'play')
                 % Update the UI to reflect that the video is playing
+                obj.toggleVideoScreenLock(true);
+                obj.hOptsVidPlay.Enable = 'on';
                 obj.hOptsVidPlay.String = 'Pause';
-                obj.hOptsVidRateValue.Enable = 'off';
-                obj.hOptsVidExport.Enable = 'off';
-                obj.hScreen.Enable = 'off';
 
                 % Start the timer
                 obj.videoTimer = timer();
@@ -270,10 +262,8 @@ classdef ResultsGUI < handle
                 start(obj.videoTimer);
             else
                 % Update the UI to reflect that the video is now paused
+                obj.toggleVideoScreenLock(false);
                 obj.hOptsVidPlay.String = 'Play';
-                obj.hOptsVidRateValue.Enable = 'on';
-                obj.hOptsVidExport.Enable = 'on';
-                obj.hScreen.Enable = 'on';
 
                 % Stop the timer, and delete it
                 stop(obj.videoTimer);
@@ -344,6 +334,21 @@ classdef ResultsGUI < handle
             obj.drawMatches();
         end
 
+        function cbVideoSliderAdjust(obj, src, event)
+            % TODO this is a silly / lazy way to do this.... fix
+            % TODO actually this whole approach to getting the frame
+            % corresponding to a given match is poor...
+            idxs = find(~isnan(obj.results.matching.selected.matches));
+            if obj.hOptsVidSlider.Value > 1
+                dummyMatch = [idxs(round(obj.hOptsVidSlider.Value - 1)) 0];
+            else
+                dummyMatch = [0 0];
+            end
+            obj.currentVideoMatch = ResultsGUI.nextMatch(dummyMatch, ...
+                obj.results.matching.selected.matches);
+            obj.drawVideo();
+        end
+
         function clearScreen(obj)
             % Hide all options
             obj.hOptsPreDataset.Visible = 'off';
@@ -363,6 +368,7 @@ classdef ResultsGUI < handle
             obj.hOptsVidRate.Visible = 'off';
             obj.hOptsVidRateValue.Visible = 'off';
             obj.hOptsVidPlay.Visible = 'off';
+            obj.hOptsVidSlider.Visible = 'off';
             obj.hOptsVidExport.Visible = 'off';
 
             % Hide all on screen content
@@ -533,6 +539,10 @@ classdef ResultsGUI < handle
             obj.hOptsVidPlay.Parent = obj.hOpts;
             GUISettings.applyUIControlStyle(obj.hOptsVidPlay);
             obj.hOptsVidPlay.String = 'Play';
+
+            obj.hOptsVidSlider = uicontrol('Style', 'slider');
+            obj.hOptsVidSlider.Parent = obj.hOpts;
+            GUISettings.applyUIControlStyle(obj.hOptsVidSlider);
 
             obj.hOptsVidExport = uicontrol('Style', 'pushbutton');
             obj.hOptsVidExport.Parent = obj.hOpts;
@@ -920,6 +930,7 @@ classdef ResultsGUI < handle
                 obj.hOptsVidRate.Visible = 'on';
                 obj.hOptsVidRateValue.Visible = 'on';
                 obj.hOptsVidPlay.Visible = 'on';
+                obj.hOptsVidSlider.Visible = 'on';
                 obj.hOptsVidExport.Visible = 'on';
 
                 % Turn on the required axes
@@ -928,6 +939,18 @@ classdef ResultsGUI < handle
                 % Always start at the first frame
                 obj.currentVideoMatch = ResultsGUI.nextMatch( ...
                     [0 0], obj.results.matching.selected.matches);
+
+                % Set the correct limits, intervals, and callback on the slider
+                numMatches = sum(~isnan(obj.results.matching.selected.mask));
+                if numMatches <= 1
+                    obj.hOptsVidSlider.Enable = 'off';
+                else
+                    obj.hOptsVidSlider.Max = numMatches;
+                    obj.hOptsVidSlider.Min = 1;
+                    obj.hOptsVidSlider.SliderStep = [1/(numMatches-1) 0.1];
+                    obj.hOptsVidSlider.Value = 1;
+                    obj.hOptsVidSlider.Callback = {@obj.cbVideoSliderAdjust};
+                end
 
                 % Draw the content
                 obj.drawVideo();
@@ -1012,6 +1035,8 @@ classdef ResultsGUI < handle
                 SpecSize.PERCENT, obj.hOpts, 0.1);
             SpecSize.size(obj.hOptsVidPlay, SpecSize.WIDTH, ...
                 SpecSize.PERCENT, obj.hOpts, 0.15);
+            SpecSize.size(obj.hOptsVidSlider, SpecSize.WIDTH, ...
+                SpecSize.PERCENT, obj.hOpts, 0.4);
             SpecSize.size(obj.hOptsVidExport, SpecSize.WIDTH, ...
                 SpecSize.PERCENT, obj.hOpts, 0.15);
 
@@ -1158,6 +1183,10 @@ classdef ResultsGUI < handle
             SpecPosition.positionRelative(obj.hOptsVidPlay, ...
                 obj.hOptsVidRateValue, SpecPosition.RIGHT_OF, ...
                 GUISettings.PAD_LARGE);
+            SpecPosition.positionRelative(obj.hOptsVidSlider, ...
+                obj.hOptsVidRate, SpecPosition.CENTER_Y);
+            SpecPosition.positionRelative(obj.hOptsVidSlider, ...
+                obj.hOptsVidPlay, SpecPosition.RIGHT_OF, GUISettings.PAD_LARGE);
             SpecPosition.positionRelative(obj.hOptsVidExport, ...
                 obj.hOptsVidRate, SpecPosition.CENTER_Y);
             SpecPosition.positionIn(obj.hOptsVidExport, obj.hOpts, ...
@@ -1219,6 +1248,26 @@ classdef ResultsGUI < handle
                 SpecPosition.ABOVE);
             SpecPosition.positionIn(obj.hFocusRef, obj.hFocus, ...
                 SpecPosition.LEFT, GUISettings.PAD_MED);
+        end
+
+        function toggleVideoScreenLock(obj, locked)
+            if locked
+                state = 'off';
+            else
+                state = 'on';
+            end
+            obj.hSaveResults.Enable = state;
+            obj.hScreen.Enable = state;
+            obj.hOptsVidRateValue.Enable = state;
+            obj.hOptsVidPlay.Enable = state;
+            obj.hOptsVidExport.Enable = state;
+
+            % Handle slider special case (if only 1 match... never enable)
+            if sum(~isnan(obj.results.matching.selected.mask)) <= 1
+                obj.hOptsVidSlider.Enable = 'off';
+            else
+                obj.hOptsVidSlider.Enable = state;
+            end
         end
 
         function updateMatches(obj)
