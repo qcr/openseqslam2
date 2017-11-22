@@ -16,6 +16,7 @@ classdef ProgressGUI < handle
 
     properties
         hFig;
+        hHelp;
 
         hStatus1;
         hStatus2;
@@ -59,6 +60,10 @@ classdef ProgressGUI < handle
 
             % Save the config
             obj.config = config;
+
+            % Add the help button to the figure
+            obj.hHelp = HelpPopup.addHelpButton(obj.hFig);
+            HelpPopup.setDestination(obj.hHelp, 'progress');
 
             % Create an initial progress state
             progress = [];

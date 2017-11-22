@@ -1,6 +1,6 @@
 # OpenSeqSLAM2.0 Toolbox
 
-The second release of OpenSeqSLAM, repackaged as an easy to use and configure toolbox for MATLAB.
+The second release of OpenSeqSLAM, repackaged as an easy to use and configure toolbox for MATLAB. To run the software, simply run "OpenSeqSLAM2" with no arguments.
 
 ## Known Bugs (roughly ordered by severity):
 
@@ -11,6 +11,8 @@ The second release of OpenSeqSLAM, repackaged as an easy to use and configure to
 
 * Add help guidance to guide the user through the UI (everything that can be done must be explained!)
 * Add a screen to the Results GUI for comparing to ground truth and generating precision recall curves
+* Add horizontal scrolling to Sequence Popup
+* Highlight the match in the Sequence Popup (i.e. middle pair of images)
 * Re-evaluate regex matching scheme for images (in initial configuration GUI)
 
 

@@ -13,6 +13,7 @@ classdef ResultsGUI < handle
 
     properties
         hFig;
+        hHelp;
 
         hSaveResults;
         hScreen;
@@ -83,6 +84,9 @@ classdef ResultsGUI < handle
             % Save the config and results
             obj.config = config;
             obj.results = results;
+
+            % Add the help button to the figure
+            obj.hHelp = HelpPopup.addHelpButton(obj.hFig);
 
             % Populate the static lists
             obj.populateDatasetLists();
@@ -315,7 +319,9 @@ classdef ResultsGUI < handle
                 obj.selectedMatch(1),2,:));
 
             % Call the sequence popup (it should block until closed)
-            SequencePopup(qs, rs, obj.config, obj.results);
+            sequi = SequencePopup(qs, rs, obj.config, obj.results);
+            uiwait(sequi.hFig);
+            obj.openScreen(obj.hScreen.Value);
 
             obj.hFocusButton.Enable = 'on';
         end
@@ -334,7 +340,7 @@ classdef ResultsGUI < handle
             obj.selectedMatch = [];
             obj.hOptsMatchSelectValue.Value = 1;
             obj.updateMatches();
-            obj.drawMatches();
+            obj.openScreen(obj.hScreen.Value);
         end
 
         function cbVideoSliderAdjust(obj, src, event)
@@ -873,6 +879,9 @@ classdef ResultsGUI < handle
             % Add the appropriate elements for the screen
             if (screen == 1)
                 % Image preprocessing screen
+                HelpPopup.setDestination(obj.hHelp, ...
+                    'results/image_preprocessing');
+
                 % Show the appropriate options
                 obj.hOptsPreDataset.Visible = 'on';
                 obj.hOptsPreDatasetValue.Visible = 'on';
@@ -888,6 +897,9 @@ classdef ResultsGUI < handle
                 obj.cbRefreshPreprocessed();
             elseif (screen == 2)
                 % Difference matrix screen
+                HelpPopup.setDestination(obj.hHelp, ...
+                    'results/diff_matrix');
+
                 % Show the appropriate options
                 obj.hOptsDiffContr.Visible = 'on';
                 obj.hOptsDiffCol.Visible = 'on';
@@ -907,6 +919,9 @@ classdef ResultsGUI < handle
                 obj.drawDiffMatrix();
             elseif(screen == 3)
                 % Sequence matches screen
+                HelpPopup.setDestination(obj.hHelp, ...
+                    'results/matches');
+
                 % Show the appropriate options
                 obj.hOptsMatchDiff.Visible = 'on';
                 obj.hOptsMatchSeqs.Visible = 'on';
@@ -930,6 +945,10 @@ classdef ResultsGUI < handle
                 obj.drawMatches();
             elseif (screen == 4)
                 % Matches video screen
+                HelpPopup.setDestination(obj.hHelp, ...
+                    'results/video');
+
+                % Show the appropriate options
                 obj.hOptsVidRate.Visible = 'on';
                 obj.hOptsVidRateValue.Visible = 'on';
                 obj.hOptsVidPlay.Visible = 'on';
@@ -1087,9 +1106,9 @@ classdef ResultsGUI < handle
 
             % Then, systematically place
             SpecPosition.positionIn(obj.hSaveResults, obj.hFig, ...
-                SpecPosition.TOP, GUISettings.PAD_SMALL);
+                SpecPosition.TOP, GUISettings.PAD_MED);
             SpecPosition.positionIn(obj.hSaveResults, obj.hFig, ...
-                SpecPosition.RIGHT, GUISettings.PAD_LARGE);
+                SpecPosition.RIGHT, 3.5*GUISettings.PAD_LARGE);
             SpecPosition.positionIn(obj.hScreen, obj.hFig, ...
                 SpecPosition.TOP, GUISettings.PAD_SMALL);
             SpecPosition.positionIn(obj.hScreen, obj.hFig, ...

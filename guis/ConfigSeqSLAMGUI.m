@@ -18,6 +18,7 @@ classdef ConfigSeqSLAMGUI < handle
 
     properties
         hFig;
+        hHelp;
         hScreen;
 
         hImPrRef;
@@ -114,6 +115,9 @@ classdef ConfigSeqSLAMGUI < handle
             % Create and size the GUI
             obj.createGUI();
             obj.sizeGUI();
+
+            % Add the help button to the figure
+            obj.hHelp = HelpPopup.addHelpButton(obj.hFig);
 
             % Populate the UI, and open the default screen (first)
             obj.populate();
@@ -364,7 +368,7 @@ classdef ConfigSeqSLAMGUI < handle
         function createGUI(obj)
             % Create the figure (and hide it)
             obj.hFig = figure('Visible', 'off');
-            obj.hFig.WindowStyle = 'modal';
+            %obj.hFig.WindowStyle = 'modal';
             GUISettings.applyFigureStyle(obj.hFig);
             obj.hFig.Name = 'SeqSLAM Settings';
             obj.hFig.Resize = 'off';
@@ -625,7 +629,7 @@ classdef ConfigSeqSLAMGUI < handle
 
             obj.hMscVis = uipanel();
             GUISettings.applyUIPanelStyle(obj.hMscVis);
-            obj.hMscVis.Title = 'Progress UI Visualisation Timings';
+            obj.hMscVis.Title = 'Progress GUI Visualisation Timings';
 
             obj.hMscVisWarn = uicontrol('Style', 'text');
             obj.hMscVisWarn.Parent = obj.hMscVis;
@@ -951,6 +955,9 @@ classdef ConfigSeqSLAMGUI < handle
             % Add the appropriate elements for the screen
             if (screen == 1)
                 % Image preprocessing settings
+                HelpPopup.setDestination(obj.hHelp, ...
+                    'seqslam_settings/image_preprocessing');
+
                 % Show the appropriate options and axes
                 obj.hImPrRef.Visible = 'on';
                 obj.hImPrRefSample.Visible = 'on';
@@ -984,6 +991,9 @@ classdef ConfigSeqSLAMGUI < handle
                 obj.drawProcessingPreviews();
             elseif (screen == 2)
                 % Matching settings
+                HelpPopup.setDestination(obj.hHelp, ...
+                    'seqslam_settings/sequence_matching');
+
                 % Show the appropriate options and axes
                 obj.hMatchTrajTitle.Visible = 'on';
                 obj.hMatchTrajAx.Visible = 'on';
@@ -1013,6 +1023,10 @@ classdef ConfigSeqSLAMGUI < handle
                 obj.cbSelectMatchMethod(obj.hMatchCriMethodValue, []);
             elseif (screen == 3)
                 % Other settings
+                HelpPopup.setDestination(obj.hHelp, ...
+                    'seqslam_settings/miscellaneous');
+
+                % Show the appropriate options
                 obj.hMscDiff.Visible = 'on';
                 obj.hMscVis.Visible = 'on';
             end

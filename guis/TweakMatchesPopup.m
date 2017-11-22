@@ -7,6 +7,7 @@ classdef TweakMatchesPopup < handle
 
     properties
         hFig;
+        hHelp;
 
         hTitle;
 
@@ -41,6 +42,11 @@ classdef TweakMatchesPopup < handle
             % Create and size the popup
             obj.createPopup();
             obj.sizePopup();
+
+            % Add the help button to the figure
+            obj.hHelp = HelpPopup.addHelpButton(obj.hFig);
+            HelpPopup.setDestination(obj.hHelp, ...
+                'tweaking');
 
             % Populate the UI (drawing happens after poulating selects a method)
             obj.populate();

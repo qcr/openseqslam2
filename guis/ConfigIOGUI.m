@@ -8,6 +8,7 @@ classdef ConfigIOGUI < handle
 
     properties
         hFig;
+        hHelp;
 
         hPrevResults;
 
@@ -49,6 +50,10 @@ classdef ConfigIOGUI < handle
             % Create and size the GUI
             obj.createGUI();
             obj.sizeGUI();
+
+            % Add the help button to the figure
+            obj.hHelp = HelpPopup.addHelpButton(obj.hFig);
+            HelpPopup.setDestination(obj.hHelp, 'configuration');
 
             % Finally, show the figure when we are done configuring
             obj.hFig.Visible = 'on';
@@ -208,6 +213,7 @@ classdef ConfigIOGUI < handle
                 % Open up the results in the ResultsGUI, and wait until done
                 resultsui = ResultsGUI(results, config);
                 uiwait(resultsui.hFig);
+                HelpPopup.setDestination(obj.hHelp, 'configuration');
             end
 
             obj.interactivity(true);
@@ -220,6 +226,7 @@ classdef ConfigIOGUI < handle
             obj.strip();
             seqslamgui = ConfigSeqSLAMGUI(obj.config);
             uiwait(seqslamgui.hFig);
+            HelpPopup.setDestination(obj.hHelp, 'configuration');
 
             % Save the parameters returned
             obj.config = seqslamgui.config;
@@ -630,19 +637,15 @@ classdef ConfigIOGUI < handle
                 obj.hFig, 0.2);
 
             % Then, systematically place
-            SpecPosition.positionIn(obj.hPrevResults, obj.hFig, ...
+            SpecPosition.positionIn(obj.hConfigImport, obj.hFig, ...
                 SpecPosition.LEFT, GUISettings.PAD_MED);
-            SpecPosition.positionIn(obj.hPrevResults, obj.hFig, ...
+            SpecPosition.positionIn(obj.hConfigImport, obj.hFig, ...
                 SpecPosition.TOP, GUISettings.PAD_MED);
-            SpecPosition.positionIn(obj.hConfigExport, obj.hFig, ...
-                SpecPosition.RIGHT, GUISettings.PAD_MED);
             SpecPosition.positionRelative(obj.hConfigExport, ...
-                obj.hPrevResults, SpecPosition.CENTER_Y);
-            SpecPosition.positionRelative(obj.hConfigImport, ...
-                obj.hConfigExport, SpecPosition.LEFT_OF, ...
+                obj.hConfigImport, SpecPosition.RIGHT_OF, ...
                 GUISettings.PAD_MED);
-            SpecPosition.positionRelative(obj.hConfigImport, ...
-                obj.hConfigExport, SpecPosition.CENTER_Y);
+            SpecPosition.positionRelative(obj.hConfigExport, ...
+                obj.hConfigImport, SpecPosition.CENTER_Y);
 
             SpecPosition.positionIn(obj.hRef, obj.hFig, ...
                 SpecPosition.CENTER_X);
@@ -714,6 +717,10 @@ classdef ConfigIOGUI < handle
             SpecPosition.positionIn(obj.hSettingsSeqSLAM, obj.hFig, ...
                 SpecPosition.LEFT, GUISettings.PAD_MED);
             SpecPosition.positionIn(obj.hSettingsSeqSLAM, obj.hFig, ...
+                SpecPosition.BOTTOM, GUISettings.PAD_MED);
+            SpecPosition.positionIn(obj.hPrevResults, obj.hFig, ...
+                SpecPosition.CENTER_X);
+            SpecPosition.positionIn(obj.hPrevResults, obj.hFig, ...
                 SpecPosition.BOTTOM, GUISettings.PAD_MED);
             SpecPosition.positionIn(obj.hStart, obj.hFig, ...
                 SpecPosition.RIGHT, GUISettings.PAD_MED);

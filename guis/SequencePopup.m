@@ -7,6 +7,7 @@ classdef SequencePopup < handle
 
     properties
         hFig;
+        hHelp;
 
         hTitle;
 
@@ -34,6 +35,11 @@ classdef SequencePopup < handle
             obj.createPopup();
             obj.sizePopup();
 
+            % Add the help button to the figure
+            obj.hHelp = HelpPopup.addHelpButton(obj.hFig);
+            HelpPopup.setDestination(obj.hHelp, ...
+                'sequence');
+
             % Draw the screen content (images)
             obj.drawScreen();
 
@@ -48,7 +54,7 @@ classdef SequencePopup < handle
             obj.hFig = figure('Visible', 'off');
             obj.hFig.WindowStyle = 'modal';
             GUISettings.applyFigureStyle(obj.hFig);
-            obj.hFig.Name = 'Matched Sequence';
+            obj.hFig.Name = 'Matched Sequence Viewer';
 
             % Generic elements
             obj.hTitle = uicontrol('Style', 'text');
