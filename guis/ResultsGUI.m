@@ -320,8 +320,10 @@ classdef ResultsGUI < handle
                 obj.selectedMatch(1),2,:));
 
             % Call the sequence popup (it should block until closed)
+            obj.interactivity(false);
             sequi = SequencePopup(qs, rs, obj.config, obj.results);
             uiwait(sequi.hFig);
+            obj.interactivity(true);
             obj.openScreen(obj.hScreen.Value);
 
             obj.hFocusButton.Enable = 'on';
@@ -329,8 +331,10 @@ classdef ResultsGUI < handle
 
         function cbTweakMatches(obj, src, event)
             % Launch the tweaking popup (and wait until done)
+            obj.interactivity(false);
             tweakui = TweakMatchesPopup(obj.config, obj.results);
             uiwait(tweakui.hFig);
+            obj.interactivity(true);
 
             % Update the config, and results (changes should only have been
             % made if apply was clicked, and not close)
@@ -861,6 +865,32 @@ classdef ResultsGUI < handle
             obj.hAxC.Title.Visible = 'off';
             obj.hAxD.Title.Visible = 'off';
             obj.hAxMain.Title.Visible = 'off';
+        end
+
+        function interactivity(obj, enable)
+            if enable
+                status = 'on';
+            else
+                status = 'off';
+            end
+
+            obj.hHelp.Enable = status;
+            obj.hSaveResults.Enable = status;
+            obj.hScreen.Enable = status;
+            obj.hOptsPreDatasetValue.Enable = status;
+            obj.hOptsPreImageValue.Enable = status;
+            obj.hOptsDiffContr.Enable = status;
+            obj.hOptsDiffColValue.Enable = status;
+            obj.hOptsMatchDiff.Enable = status;
+            obj.hOptsMatchSeqs.Enable = status;
+            obj.hOptsMatchMatches.Enable = status;
+            obj.hOptsMatchSelectValue.Enable = status;
+            obj.hOptsMatchTweak.Enable = status;
+            obj.hOptsVidRateValue.Enable = status;
+            obj.hOptsVidPlay.Enable = status;
+            obj.hOptsVidSlider.Enable = status;
+            obj.hOptsVidExport.Enable = status;
+            obj.hFocusButton.Enable = status;
         end
 
         function openScreen(obj, screen)

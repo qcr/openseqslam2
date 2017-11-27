@@ -507,6 +507,8 @@ classdef ConfigIOGUI < handle
                 status = 'off';
             end
 
+            obj.hHelp.Enable = status;
+
             obj.hPrevResults.Enable = status;
 
             obj.hConfigImport.Enable = status;

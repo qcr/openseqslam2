@@ -9,10 +9,10 @@ The second release of OpenSeqSLAM, repackaged as an easy to use and configure to
 
 ## TODO List (roughly ordered by value):
 
-* Add help guidance to guide the user through the UI (everything that can be done must be explained!)
 * Add a screen to the Results GUI for comparing to ground truth and generating precision recall curves
 * Add horizontal scrolling to Sequence Popup
 * Highlight the match in the Sequence Popup (i.e. middle pair of images)
+* Disable match selection in Results GUI when a popup is open (i.e. enforce ad hoc modal structure)
 * Re-evaluate regex matching scheme for images (in initial configuration GUI)
 
 

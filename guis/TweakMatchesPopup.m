@@ -164,7 +164,6 @@ classdef TweakMatchesPopup < handle
         function createPopup(obj)
             % Create the figure (and hide it)
             obj.hFig = figure('Visible', 'off');
-            obj.hFig.WindowStyle = 'modal';
             GUISettings.applyFigureStyle(obj.hFig);
             obj.hFig.Name = 'Match Selection Tweaker';
 

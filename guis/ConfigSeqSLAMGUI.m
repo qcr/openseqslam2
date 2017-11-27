@@ -368,7 +368,6 @@ classdef ConfigSeqSLAMGUI < handle
         function createGUI(obj)
             % Create the figure (and hide it)
             obj.hFig = figure('Visible', 'off');
-            %obj.hFig.WindowStyle = 'modal';
             GUISettings.applyFigureStyle(obj.hFig);
             obj.hFig.Name = 'SeqSLAM Settings';
             obj.hFig.Resize = 'off';

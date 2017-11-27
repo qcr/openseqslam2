@@ -52,7 +52,6 @@ classdef SequencePopup < handle
         function createPopup(obj)
             % Create the figure (and hide it)
             obj.hFig = figure('Visible', 'off');
-            obj.hFig.WindowStyle = 'modal';
             GUISettings.applyFigureStyle(obj.hFig);
             obj.hFig.Name = 'Matched Sequence Viewer';
 
