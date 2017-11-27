@@ -33,7 +33,6 @@ classdef ResultsGUI < handle
         hOptsPreDatasetValue;
         hOptsPreImage;
         hOptsPreImageValue;
-        hOptsPreRefresh;
 
         hOptsDiffContr;
         hOptsDiffCol;
@@ -131,11 +130,17 @@ classdef ResultsGUI < handle
 
             % Reset the image selection to the first one
             obj.hOptsPreImageValue.Value = 1;
+
+            % Redraw the updated value
+            obj.drawPreprocessed();
         end
 
         function cbChangeImage(obj, src, event)
             % Grey out all of the plots because we have a change
             obj.greyAxes();
+
+            % Redraw the updated value
+            obj.drawPreprocessed();
         end
 
         function cbDiffClicked(obj, src, event)
@@ -276,10 +281,6 @@ classdef ResultsGUI < handle
             end
         end
 
-        function cbRefreshPreprocessed(obj, src, even)
-            obj.drawPreprocessed();
-        end
-
         function cbSelectScreen(obj, src, event)
             obj.openScreen(obj.hScreen.Value);
         end
@@ -364,7 +365,6 @@ classdef ResultsGUI < handle
             obj.hOptsPreDatasetValue.Visible = 'off';
             obj.hOptsPreImage.Visible = 'off';
             obj.hOptsPreImageValue.Visible = 'off';
-            obj.hOptsPreRefresh.Visible = 'off';
             obj.hOptsDiffContr.Visible = 'off';
             obj.hOptsDiffCol.Visible = 'off';
             obj.hOptsDiffColValue.Visible = 'off';
@@ -481,11 +481,6 @@ classdef ResultsGUI < handle
             GUISettings.applyUIControlStyle(obj.hOptsPreImageValue);
             obj.hOptsPreImageValue.String = '';
 
-            obj.hOptsPreRefresh = uicontrol('Style', 'pushbutton');
-            obj.hOptsPreRefresh.Parent = obj.hOpts;
-            GUISettings.applyUIControlStyle(obj.hOptsPreRefresh);
-            obj.hOptsPreRefresh.String = 'Refresh';
-
             obj.hOptsDiffContr = uicontrol('Style', 'checkbox');
             obj.hOptsDiffContr.Parent = obj.hOpts;
             GUISettings.applyUIControlStyle(obj.hOptsDiffContr);
@@ -598,7 +593,6 @@ classdef ResultsGUI < handle
             obj.hScreen.Callback = {@obj.cbSelectScreen};
             obj.hOptsPreDatasetValue.Callback = {@obj.cbChangeDataset};
             obj.hOptsPreImageValue.Callback = {@obj.cbChangeImage};
-            obj.hOptsPreRefresh.Callback = {@obj.cbRefreshPreprocessed};
             obj.hOptsDiffContr.Callback = {@obj.cbDiffOptionChange};
             obj.hOptsDiffColValue.Callback = {@obj.cbDiffOptionChange};
             obj.hOptsMatchDiff.Callback = {@obj.cbMatchesOptionChange};
@@ -887,14 +881,13 @@ classdef ResultsGUI < handle
                 obj.hOptsPreDatasetValue.Visible = 'on';
                 obj.hOptsPreImage.Visible = 'on';
                 obj.hOptsPreImageValue.Visible = 'on';
-                obj.hOptsPreRefresh.Visible = 'on';
 
                 % Turn on the required axes
                 obj.hAxMain.Visible = 'on';
 
                 % Select the dataset, and manually trigger the refresh
                 obj.cbChangeDataset();
-                obj.cbRefreshPreprocessed();
+                obj.drawPreprocessed();
             elseif (screen == 2)
                 % Difference matrix screen
                 HelpPopup.setDestination(obj.hHelp, ...
@@ -1030,7 +1023,6 @@ classdef ResultsGUI < handle
             SpecSize.size(obj.hOptsPreImage, SpecSize.WIDTH, SpecSize.WRAP);
             SpecSize.size(obj.hOptsPreImageValue, SpecSize.WIDTH, ...
                 SpecSize.PERCENT, obj.hOpts, 0.6);
-            SpecSize.size(obj.hOptsPreRefresh, SpecSize.WIDTH, SpecSize.WRAP);
 
             SpecSize.size(obj.hOptsDiffContr, SpecSize.WIDTH, ...
                 SpecSize.WRAP, GUISettings.PAD_LARGE);
@@ -1133,19 +1125,15 @@ classdef ResultsGUI < handle
             SpecPosition.positionRelative(obj.hOptsPreDatasetValue, ...
                 obj.hOptsPreDataset, SpecPosition.RIGHT_OF, ...
                 GUISettings.PAD_MED);
-            SpecPosition.positionRelative(obj.hOptsPreRefresh, ...
-                obj.hOptsPreDataset, SpecPosition.CENTER_Y);
-            SpecPosition.positionIn(obj.hOptsPreRefresh, obj.hOpts, ...
-                SpecPosition.RIGHT, GUISettings.PAD_MED);
-            SpecPosition.positionRelative(obj.hOptsPreImageValue, ...
-                obj.hOptsPreDataset, SpecPosition.CENTER_Y);
-            SpecPosition.positionRelative(obj.hOptsPreImageValue, ...
-                obj.hOptsPreRefresh, SpecPosition.LEFT_OF, ...
-                GUISettings.PAD_LARGE);
             SpecPosition.positionRelative(obj.hOptsPreImage, ...
                 obj.hOptsPreDataset, SpecPosition.CENTER_Y);
             SpecPosition.positionRelative(obj.hOptsPreImage, ...
-                obj.hOptsPreImageValue, SpecPosition.LEFT_OF, ...
+                obj.hOptsPreDatasetValue, SpecPosition.RIGHT_OF, ...
+                2*GUISettings.PAD_LARGE);
+            SpecPosition.positionRelative(obj.hOptsPreImageValue, ...
+                obj.hOptsPreDataset, SpecPosition.CENTER_Y);
+            SpecPosition.positionRelative(obj.hOptsPreImageValue, ...
+                obj.hOptsPreImage, SpecPosition.RIGHT_OF, ...
                 GUISettings.PAD_MED);
 
             SpecPosition.positionIn(obj.hOptsDiffContr, obj.hOpts, ...
