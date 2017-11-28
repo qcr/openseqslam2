@@ -11,8 +11,6 @@ classdef TweakMatchesPopup < handle
 
         hTitle;
 
-        hGroup;
-
         hMethod;
         hMethodValue;
 

@@ -53,6 +53,8 @@ classdef SeqSLAMInstance < handle
             if saving
                 resultsSave(obj.config.results.path, ...
                     obj.results.matching, 'matching.mat');
+                resultsSave(obj.config.results.path, ...
+                    obj.results.pr, 'precision_recall.mat'); % Always empty
             end
         end
     end

@@ -35,10 +35,17 @@ function [results, config, err] = resultsOpen(path)
             'Failed to load matching database from ''matching.mat''.';
         return;
     end
+    load(fullfile(path, 'precision_recall.mat'));
+    if isempty(pr)
+        err = ...
+            'Failed to load matching database from ''precision_recall.mat''.';
+        return;
+    end
 
     % We have loaded everything successfully if we have made it here... combine
     % results and return
     results.preprocessed = preprocessed;
     results.diff_matrix = diffMatrix;
     results.matching = matching;
+    results.pr = pr;
 end

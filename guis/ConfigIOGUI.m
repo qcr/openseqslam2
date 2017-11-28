@@ -485,7 +485,7 @@ classdef ConfigIOGUI < handle
                 % Inform that the path does not point to an existing directory
                 status.String = 'Directory does not exist!';
                 status.ForegroundColor = GUISettings.COL_ERROR;
-            elseif 1 == 2 % TODO IMPLEMENT CONTAINS CHECK PROPERLY!!!
+            elseif resultsPresent(path)
                 % Results directory selected with existing results
                 status.String = ['Directory contains ' ...
                     'previous results which will be overwritten'];

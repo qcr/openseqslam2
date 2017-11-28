@@ -5,6 +5,7 @@ classdef ResultsGUI < handle
             'Image preprocessing', ...
             'Difference Matrix', ...
             'Sequence Matches', ...
+            'Precision-recall Plotting', ...
             'Matches Video'};
 
         FIG_WIDTH_FACTOR = 5.5;
@@ -25,6 +26,7 @@ classdef ResultsGUI < handle
         hAxC;
         hAxD;
         hAxMain;
+        hAxPR;
         hAxVideo;
 
         hOpts;
@@ -44,6 +46,15 @@ classdef ResultsGUI < handle
         hOptsMatchSelect;
         hOptsMatchSelectValue;
         hOptsMatchTweak;
+
+        hOptsPRGroundTruth;
+        hOptsPRGroundTruthDetails;
+        hOptsPRSweepVar;
+        hOptsPRSweepVarValue;
+        hOptsPRSweepNum;
+        hOptsPRSweepNumValue;
+        hOptsPRRefresh;
+        hOptsPRError;
 
         hOptsVidRate;
         hOptsVidRateValue;
@@ -303,6 +314,8 @@ classdef ResultsGUI < handle
                 'diff_matrix.mat');
             resultsSave(resultsDir, obj.results.matching, ...
                 'matching.mat');
+            resultsSave(resultsDir, obj.results.pr, ...
+                'precision_recall.mat');
 
             uiwait(msgbox({'Results were saved to:' resultsDir}, ...
                 'Save Successful'));
@@ -378,6 +391,14 @@ classdef ResultsGUI < handle
             obj.hOptsMatchSelect.Visible = 'off';
             obj.hOptsMatchSelectValue.Visible = 'off';
             obj.hOptsMatchTweak.Visible = 'off';
+            obj.hOptsPRGroundTruth.Visible = 'off';
+            obj.hOptsPRGroundTruthDetails.Visible = 'off';
+            obj.hOptsPRSweepVar.Visible = 'off';
+            obj.hOptsPRSweepVarValue.Visible = 'off';
+            obj.hOptsPRSweepNum.Visible = 'off';
+            obj.hOptsPRSweepNumValue.Visible = 'off';
+            obj.hOptsPRRefresh.Visible = 'off';
+            obj.hOptsPRError.Visible = 'off';
             obj.hOptsVidRate.Visible = 'off';
             obj.hOptsVidRateValue.Visible = 'off';
             obj.hOptsVidPlay.Visible = 'off';
@@ -395,6 +416,8 @@ classdef ResultsGUI < handle
             obj.hAxD.Title.Visible = 'off';
             obj.hAxMain.Visible = 'off';
             obj.hAxMain.Title.Visible = 'off';
+            obj.hAxPR.Visible = 'off';
+            obj.hAxPR.Title.Visible = 'off';
             obj.hAxVideo.Visible = 'off';
             obj.hAxVideo.Title.Visible = 'off';
 
@@ -455,6 +478,10 @@ classdef ResultsGUI < handle
             obj.hAxMain = axes();
             GUISettings.applyUIAxesStyle(obj.hAxMain);
             obj.hAxMain.Visible = 'off';
+
+            obj.hAxPR = axes();
+            GUISettings.applyUIAxesStyle(obj.hAxPR);
+            obj.hAxPR.Visible = 'off';
 
             obj.hAxVideo = axes();
             GUISettings.applyUIAxesStyle(obj.hAxVideo);
@@ -532,6 +559,48 @@ classdef ResultsGUI < handle
             obj.hOptsMatchTweak.Parent = obj.hOpts;
             GUISettings.applyUIControlStyle(obj.hOptsMatchTweak);
             obj.hOptsMatchTweak.String = 'Tweak matching';
+
+            obj.hOptsPRGroundTruth = uicontrol('Style', 'pushbutton');
+            obj.hOptsPRGroundTruth.Parent = obj.hOpts;
+            GUISettings.applyUIControlStyle(obj.hOptsPRGroundTruth);
+            obj.hOptsPRGroundTruth.String = 'Configure ground truth';
+
+            obj.hOptsPRGroundTruthDetails = uicontrol('Style', 'text');
+            obj.hOptsPRGroundTruthDetails.Parent = obj.hOpts;
+            GUISettings.applyUIControlStyle(obj.hOptsPRGroundTruthDetails);
+            obj.hOptsPRGroundTruthDetails.String = '';
+
+            obj.hOptsPRSweepVar = uicontrol('Style', 'text');
+            obj.hOptsPRSweepVar.Parent = obj.hOpts;
+            GUISettings.applyUIControlStyle(obj.hOptsPRSweepVar);
+            obj.hOptsPRSweepVar.String = 'Sweep variable:';
+
+            obj.hOptsPRSweepVarValue = annotation(obj.hOpts, 'textbox');
+            GUISettings.applyAnnotationStyle(obj.hOptsPRSweepVarValue);
+            obj.hOptsPRSweepVarValue.String = '';
+
+            obj.hOptsPRSweepNum = uicontrol('Style', 'text');
+            obj.hOptsPRSweepNum.Parent = obj.hOpts;
+            GUISettings.applyUIControlStyle(obj.hOptsPRSweepNum);
+            obj.hOptsPRSweepNum.String = '# of sweep points:';
+
+            obj.hOptsPRSweepNumValue = uicontrol('Style', 'edit');
+            obj.hOptsPRSweepNumValue.Parent = obj.hOpts;
+            GUISettings.applyUIControlStyle(obj.hOptsPRSweepNumValue);
+            obj.hOptsPRSweepNumValue.String = '';
+
+            obj.hOptsPRRefresh = uicontrol('Style', 'pushbutton');
+            obj.hOptsPRRefresh.Parent = obj.hOpts;
+            GUISettings.applyUIControlStyle(obj.hOptsPRRefresh);
+            obj.hOptsPRRefresh.String = 'Update plot';
+
+            obj.hOptsPRError = uicontrol('Style', 'text');
+            obj.hOptsPRError.Parent = obj.hFig;
+            GUISettings.applyUIControlStyle(obj.hOptsPRError);
+            obj.hOptsPRError.String = ...
+                {'Please first correctly configure the' ...
+                'ground truth matrix via the button above'};
+            GUISettings.setFontScale(obj.hOptsPRError, 1.75);
 
             obj.hOptsVidRate = uicontrol('Style', 'text');
             obj.hOptsVidRate.Parent = obj.hOpts;
@@ -822,6 +891,15 @@ classdef ResultsGUI < handle
             end
         end
 
+        function drawPrecisionRecall(obj)
+            % Don't do anything if there isn't a valid configuration present
+            if isequal(obj.hOptsPRGroundTruthDetails.ForegroundColor, ...
+                    GUISettings.COL_ERROR)
+                obj.hOptsPRError.Visible = 'on';
+                obj.hAxPR.Visible = 'off';
+            end
+        end
+
         function drawVideo(obj)
             hold(obj.hAxVideo, 'on');
 
@@ -967,6 +1045,56 @@ classdef ResultsGUI < handle
                 obj.updateMatches();
                 obj.drawMatches();
             elseif (screen == 4)
+                % Precision-recall plotting
+                HelpPopup.setDestination(obj.hHelp, ...
+                    'results/video');
+
+                % Show the appropriate options
+                obj.hOptsPRGroundTruth.Visible = 'on';
+                obj.hOptsPRGroundTruthDetails.Visible = 'on';
+                obj.hOptsPRSweepVar.Visible = 'on';
+                obj.hOptsPRSweepVarValue.Visible = 'on';
+                obj.hOptsPRSweepNum.Visible = 'on';
+                obj.hOptsPRSweepNumValue.Visible = 'on';
+                obj.hOptsPRRefresh.Visible = 'on';
+
+                % Derive all data (that is considered const when entering this
+                % screen)
+                obj.results.pr.matching_method = ...
+                    obj.config.seqslam.matching.method;
+                if strcmp(obj.results.pr.matching_method, 'thresh')
+                    obj.results.pr.sweep_var.start = ...
+                        max(obj.results.matching.all.min_scores);
+                    obj.results.pr.sweep_var.end = ...
+                        min(obj.results.matching.all.min_scores);
+                else
+                    us = SeqSLAMInstance.usFromMatches( ...
+                        obj.results.matching.all.min_scores, ...
+                        obj.config.seqslam.matching.method_window.r_window);
+                    obj.results.pr.sweep_var.start = 1;
+                    obj.results.pr.sweep_var.end = max(us);
+                end
+
+                % Fill in all appropriate values
+                if strcmp(obj.results.pr.matching_method, 'thresh')
+                    obj.hOptsPRSweepVarValue.String = '$\lambda$';
+                else
+                    obj.hOptsPRSweepVarValue.String = '$\mu$';
+                end
+                if ~isempty(obj.results.pr.sweep_var.num_steps)
+                    obj.hOptsPRSweepNumValue.String = ...
+                        num2str(obj.results.pr.sweep_var.num_steps)
+                else
+                    obj.hOptsPRSweepNumValue.String = 100;
+                end
+                obj.updateGroundTruthDescription();
+
+                % Turn on the required axes
+                obj.hAxPR.Visible = 'on';
+
+                % Draw the content
+                obj.drawPrecisionRecall();
+            elseif (screen == 5)
                 % Matches video screen
                 HelpPopup.setDestination(obj.hHelp, ...
                     'results/video');
@@ -1073,6 +1201,25 @@ classdef ResultsGUI < handle
             SpecSize.size(obj.hOptsMatchTweak, SpecSize.WIDTH, ...
                 SpecSize.PERCENT, obj.hOpts, 0.1);
 
+            SpecSize.size(obj.hOptsPRGroundTruth, SpecSize.WIDTH, ...
+                SpecSize.WRAP, GUISettings.PAD_SMALL);
+            SpecSize.size(obj.hOptsPRGroundTruthDetails, SpecSize.WIDTH, ...
+                SpecSize.PERCENT, obj.hOpts, 0.3);
+            SpecSize.size(obj.hOptsPRSweepVar, SpecSize.WIDTH, ...
+                SpecSize.WRAP, GUISettings.PAD_SMALL);
+            SpecSize.size(obj.hOptsPRSweepVarValue, SpecSize.WIDTH, ...
+                SpecSize.PERCENT, obj.hOpts, 0.1);
+            SpecSize.size(obj.hOptsPRSweepNum, SpecSize.WIDTH, ...
+                SpecSize.WRAP, GUISettings.PAD_SMALL);
+            SpecSize.size(obj.hOptsPRSweepNumValue, SpecSize.WIDTH, ...
+                SpecSize.PERCENT, obj.hOpts, 0.1);
+            SpecSize.size(obj.hOptsPRRefresh, SpecSize.WIDTH, SpecSize.WRAP, ...
+                GUISettings.PAD_SMALL);
+            SpecSize.size(obj.hOptsPRError, SpecSize.WIDTH, ...
+                SpecSize.PERCENT, obj.hFig, 0.5);
+            SpecSize.size(obj.hOptsPRError, SpecSize.HEIGHT, ...
+                SpecSize.PERCENT, obj.hFig, 0.5);
+
             SpecSize.size(obj.hOptsVidRate, SpecSize.WIDTH, SpecSize.WRAP, ...
                 GUISettings.PAD_SMALL);
             SpecSize.size(obj.hOptsVidRateValue, SpecSize.WIDTH, ...
@@ -1100,6 +1247,10 @@ classdef ResultsGUI < handle
             SpecSize.size(obj.hAxMain, SpecSize.WIDTH, SpecSize.PERCENT, ...
                 obj.hFig, 0.6);
             SpecSize.size(obj.hAxMain, SpecSize.HEIGHT, SpecSize.RATIO, 3/4);
+
+            SpecSize.size(obj.hAxPR, SpecSize.WIDTH, SpecSize.PERCENT, ...
+                obj.hFig, 0.6);
+            SpecSize.size(obj.hAxPR, SpecSize.HEIGHT, SpecSize.RATIO, 3/4);
 
             SpecSize.size(obj.hAxVideo, SpecSize.WIDTH, SpecSize.PERCENT, ...
                 obj.hFig, 0.9);
@@ -1210,6 +1361,44 @@ classdef ResultsGUI < handle
             SpecPosition.positionIn(obj.hOptsMatchTweak, ...
                 obj.hOpts, SpecPosition.RIGHT, GUISettings.PAD_MED);
 
+            SpecPosition.positionIn(obj.hOptsPRGroundTruth, obj.hOpts, ...
+                SpecPosition.TOP, 1.75*GUISettings.PAD_LARGE);
+            SpecPosition.positionIn(obj.hOptsPRGroundTruth, obj.hOpts, ...
+                SpecPosition.LEFT, GUISettings.PAD_MED);
+            SpecPosition.positionRelative(obj.hOptsPRGroundTruthDetails, ...
+                obj.hOptsPRGroundTruth, SpecPosition.CENTER_Y);
+            SpecPosition.positionRelative(obj.hOptsPRGroundTruthDetails, ...
+                obj.hOptsPRGroundTruth, SpecPosition.RIGHT_OF, ...
+                GUISettings.PAD_MED);
+            SpecPosition.positionRelative(obj.hOptsPRRefresh, ...
+                obj.hOptsPRGroundTruth, SpecPosition.CENTER_Y);
+            SpecPosition.positionIn(obj.hOptsPRRefresh, obj.hOpts, ...
+                SpecPosition.RIGHT, GUISettings.PAD_MED);
+            SpecPosition.positionRelative(obj.hOptsPRSweepNumValue, ...
+                obj.hOptsPRGroundTruth, SpecPosition.CENTER_Y);
+            SpecPosition.positionRelative(obj.hOptsPRSweepNumValue, ...
+                obj.hOptsPRRefresh, SpecPosition.LEFT_OF, ...
+                GUISettings.PAD_LARGE);
+            SpecPosition.positionRelative(obj.hOptsPRSweepNum, ...
+                obj.hOptsPRGroundTruth, SpecPosition.CENTER_Y);
+            SpecPosition.positionRelative(obj.hOptsPRSweepNum, ...
+                obj.hOptsPRSweepNumValue, SpecPosition.LEFT_OF, ...
+                GUISettings.PAD_MED);
+            SpecPosition.positionRelative(obj.hOptsPRSweepVarValue, ...
+                obj.hOptsPRGroundTruth, SpecPosition.CENTER_Y);
+            SpecPosition.positionRelative(obj.hOptsPRSweepVarValue, ...
+                obj.hOptsPRSweepNum, SpecPosition.LEFT_OF, ...
+                GUISettings.PAD_LARGE);
+            SpecPosition.positionRelative(obj.hOptsPRSweepVar, ...
+                obj.hOptsPRGroundTruth, SpecPosition.CENTER_Y);
+            SpecPosition.positionRelative(obj.hOptsPRSweepVar, ...
+                obj.hOptsPRSweepVarValue, SpecPosition.LEFT_OF, ...
+                GUISettings.PAD_MED);
+            SpecPosition.positionIn(obj.hOptsPRError, obj.hFig, ...
+                SpecPosition.CENTER_Y);
+            SpecPosition.positionIn(obj.hOptsPRError, obj.hFig, ...
+                SpecPosition.CENTER_X);
+
             SpecPosition.positionIn(obj.hOptsVidRate, obj.hOpts, ...
                 SpecPosition.TOP, 1.75*GUISettings.PAD_LARGE);
             SpecPosition.positionIn(obj.hOptsVidRate, obj.hOpts, ...
@@ -1252,6 +1441,11 @@ classdef ResultsGUI < handle
             SpecPosition.positionRelative(obj.hAxMain, obj.hOpts, ...
                 SpecPosition.BELOW, 3*GUISettings.PAD_LARGE);
             SpecPosition.positionIn(obj.hAxMain, obj.hFig, ...
+                SpecPosition.LEFT, 4*GUISettings.PAD_LARGE);
+
+            SpecPosition.positionRelative(obj.hAxPR, obj.hOpts, ...
+                SpecPosition.BELOW, 3*GUISettings.PAD_LARGE);
+            SpecPosition.positionIn(obj.hAxPR, obj.hOpts, ...
                 SpecPosition.LEFT, 4*GUISettings.PAD_LARGE);
 
             SpecPosition.positionRelative(obj.hAxVideo, obj.hOpts, ...
@@ -1308,6 +1502,38 @@ classdef ResultsGUI < handle
             else
                 obj.hOptsVidSlider.Enable = state;
             end
+        end
+
+        function updateGroundTruthDescription(obj)
+            if isempty(obj.results.pr.ground_truth.matrix)
+                d = 'No ground truth matrix available. Please configure...';
+                col = GUISettings.COL_ERROR;
+            elseif strcmp(obj.results.pr.ground_truth.type, 'file')
+                if isempty(obj.results.pr.ground_truth.file.path)
+                    d = 'No data for ground truth file found';
+                    col = GUISettings.COL_WARNING;
+                elseif ~exist(obj.results.pr.ground_truth.file.path)
+                    d = ['File @ ' obj.results.pr.ground_truth.file.path ...
+                        'could not be found'];
+                    col = GUISettings.COL_WARNING;
+                else
+                    d = ['Loaded from ' obj.results.pr.ground_truth.file.path];
+                    col = GUISettings.COL_SUCCESS;
+                end
+            elseif strcmp(obj.results.pr.ground_truth.type, 'velocity')
+                if isempty(obj.results.pr.ground_truth.velocity.vel) || ...
+                        isempty(obj.results.pr.ground_truth.velocity.tol)
+                    d = ['Failed to load data for velocity based ground truth'];
+                    col = GUISettings.COL_WARNING;
+                else
+                    d = ['Ground truth with vel = ' ...
+                        obj.results.pr.ground_truth.velocity.vel ' & tol = ' ...
+                        obj.results.pr.ground_truth.velocity.tol];
+                    col = GUISettings.COL_SUCCESS;
+                end
+            end
+            obj.hOptsPRGroundTruthDetails.String = d;
+            obj.hOptsPRGroundTruthDetails.ForegroundColor = col;
         end
 
         function updateMatches(obj)

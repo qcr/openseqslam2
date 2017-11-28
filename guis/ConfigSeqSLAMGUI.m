@@ -930,16 +930,16 @@ classdef ConfigSeqSLAMGUI < handle
                 % Normalisation threshold
                 v = str2num(obj.hImPrNormThreshValue.String);
                 if v < 0 || v > 1
-                    errordlg( ...
-                        'Normalisation edge threshold must be in range [0, 1]');
+                    uiwait(errordlg(['Normalisation edge threshold must ' ...
+                        'be in range [0, 1]']));
                     return;
                 end
 
                 % Normalisation strength
                 v = str2num(obj.hImPrNormStrengthValue.String);
                 if v < -1 || v > 1
-                    errordlg( ...
-                        'Normalisation strength must be in range [-1, 1]');
+                    uiwait(errordlg( ...
+                        'Normalisation strength must be in range [-1, 1]'));
                     return;
                 end
             end
