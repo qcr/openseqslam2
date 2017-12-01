@@ -392,18 +392,23 @@ classdef ResultsGUI < handle
         end
 
         function cbUpdatePRFocusValues(obj, src, event)
-            % Figure out which point the slider position corresponds to
-            n = obj.selectedPRFocus();
+            % Don't do this unless precision-recall has already been
+            % calculated
+            if ~isequal(obj.hOptsPRGroundTruthDetails.ForegroundColor, ...
+                    GUISettings.COL_ERROR)
+                % Figure out which point the slider position corresponds to
+                n = obj.selectedPRFocus();
 
-            % Update all values
-            vs = linspace(obj.results.pr.sweep_var.start, ...
-                obj.results.pr.sweep_var.end, ...
-                obj.results.pr.sweep_var.num_steps);
-            obj.hFocusPRValValue.String = num2str(vs(n));
-            obj.hFocusPRPrecisionValue.String = num2str( ...
-                obj.results.pr.values.precisions(n));
-            obj.hFocusPRRecallValue.String = num2str( ...
-                obj.results.pr.values.recalls(n));
+                % Update all values
+                vs = linspace(obj.results.pr.sweep_var.start, ...
+                    obj.results.pr.sweep_var.end, ...
+                    obj.results.pr.sweep_var.num_steps);
+                obj.hFocusPRValValue.String = num2str(vs(n));
+                obj.hFocusPRPrecisionValue.String = num2str( ...
+                    obj.results.pr.values.precisions(n));
+                obj.hFocusPRRecallValue.String = num2str( ...
+                    obj.results.pr.values.recalls(n));
+            end
 
             % Force a redraw
             obj.drawPrecisionRecall();
@@ -1180,7 +1185,7 @@ classdef ResultsGUI < handle
             elseif (screen == 4)
                 % Precision-recall plotting
                 HelpPopup.setDestination(obj.hHelp, ...
-                    'results/video');
+                    'results/precision_recall');
 
                 % Show the appropriate options
                 obj.hOptsPRGroundTruth.Visible = 'on';
