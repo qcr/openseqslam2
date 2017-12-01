@@ -4,7 +4,7 @@ The second release of OpenSeqSLAM, repackaged as an easy to use and configure to
 
 ## Known Bugs (roughly ordered by severity):
 
-* Under Ubuntu, the window manager sometimes incorrectly places the window title bar over the top of the figure, instead of on top (only current fix is to close window and reopen)
+* Under Ubuntu, the window manager sometimes incorrectly places the window title bar over the top of the figure, instead of on top (only current fix is to close window and reopen.... not sure who is being stupid here Ubuntu Unity or MATLAB - I suspect Unity)
 * Closing the Tweak popup resets the selected match in Results GUI (this should only be done when applying a tweak, not closing)
 * In PR it is assumed that every query image has a reference image ground truth. Is this a valid assumption???
 

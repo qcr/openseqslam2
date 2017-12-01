@@ -5,7 +5,7 @@ classdef ResultsGUI < handle
             'Image preprocessing', ...
             'Difference Matrix', ...
             'Sequence Matches', ...
-            'Precision-recall Plotting', ...
+            'Precision-Recall Plotting', ...
             'Matches Video'};
 
         FIG_WIDTH_FACTOR = 5.5;
@@ -62,13 +62,22 @@ classdef ResultsGUI < handle
         hOptsVidExport;
 
         hFocus;
-
         hFocusAx;
         hFocusButton;
         hFocusRef;
         hFocusRefAx;
         hFocusQuery;
         hFocusQueryAx;
+
+        hFocusPR;
+        hFocusPRVisualise;
+        hFocusPRSlider;
+        hFocusPRVal;
+        hFocusPRValValue;
+        hFocusPRPrecision;
+        hFocusPRPrecisionValue;
+        hFocusPRRecall;
+        hFocusPRRecallValue;
 
         results = emptyResults();
         config = emptyConfig();
@@ -170,9 +179,7 @@ classdef ResultsGUI < handle
             obj.results = gtui.results;
 
             % Update the precision recall plot
-            obj.updateGroundTruthDescription();
-            obj.updatePrecisionRecall();
-            obj.drawPrecisionRecall();
+            obj.refreshPrecisionRecallScreen();
         end
 
         function cbDiffClicked(obj, src, event)
@@ -361,6 +368,10 @@ classdef ResultsGUI < handle
             obj.hFocusButton.Enable = 'on';
         end
 
+        function cbTogglePRValueHighlight(obj, src, event)
+            obj.drawPrecisionRecall();
+        end
+
         function cbTweakMatches(obj, src, event)
             % Launch the tweaking popup (and wait until done)
             obj.interactivity(false);
@@ -380,9 +391,26 @@ classdef ResultsGUI < handle
             obj.openScreen(obj.hScreen.Value);
         end
 
-        function cbUpdateNumSweepPoint(obj, src, event)
-            obj.updatePrecisionRecall();
+        function cbUpdatePRFocusValues(obj, src, event)
+            % Figure out which point the slider position corresponds to
+            n = obj.selectedPRFocus();
+
+            % Update all values
+            vs = linspace(obj.results.pr.sweep_var.start, ...
+                obj.results.pr.sweep_var.end, ...
+                obj.results.pr.sweep_var.num_steps);
+            obj.hFocusPRValValue.String = num2str(vs(n));
+            obj.hFocusPRPrecisionValue.String = num2str( ...
+                obj.results.pr.values.precisions(n));
+            obj.hFocusPRRecallValue.String = num2str( ...
+                obj.results.pr.values.recalls(n));
+
+            % Force a redraw
             obj.drawPrecisionRecall();
+        end
+
+        function cbUpdateNumSweepPoint(obj, src, event)
+            obj.refreshPrecisionRecallScreen();
         end
 
         function cbVideoSliderAdjust(obj, src, event)
@@ -444,7 +472,9 @@ classdef ResultsGUI < handle
             obj.hAxVideo.Visible = 'off';
             obj.hAxVideo.Title.Visible = 'off';
 
+            % Hide all of the focus panes
             obj.hFocus.Visible = 'off';
+            obj.hFocusPR.Visible = 'off';
 
             % Clear the axes
             cla(obj.hAxA);
@@ -682,6 +712,55 @@ classdef ResultsGUI < handle
             GUISettings.applyUIAxesStyle(obj.hFocusQueryAx);
             obj.hFocusQueryAx.Visible = 'off';
 
+            % Focus Pane for Precision Recall
+            obj.hFocusPR = uipanel();
+            GUISettings.applyUIPanelStyle(obj.hFocusPR);
+            obj.hFocusPR.Title = 'Variable Value Explorer';
+
+            obj.hFocusPRVisualise = uicontrol('Style', 'checkbox');
+            obj.hFocusPRVisualise.Parent = obj.hFocusPR;
+            GUISettings.applyUIControlStyle(obj.hFocusPRVisualise);
+            obj.hFocusPRVisualise.String = 'Highlight value in plot';
+            obj.hFocusPRVisualise.Value = 1;
+
+            obj.hFocusPRSlider = uicontrol('Style', 'slider');
+            obj.hFocusPRSlider.Parent = obj.hFocusPR;
+            GUISettings.applyUIControlStyle(obj.hFocusPRSlider);
+
+            obj.hFocusPRVal = annotation(obj.hFocusPR, 'textbox');
+            GUISettings.applyAnnotationStyle(obj.hFocusPRVal);
+            obj.hFocusPRVal.String = '';
+            obj.hFocusPRVal.FontWeight = 'bold';
+
+            obj.hFocusPRValValue = uicontrol('Style', 'text');
+            obj.hFocusPRValValue.Parent = obj.hFocusPR;
+            GUISettings.applyUIControlStyle(obj.hFocusPRValValue);
+            obj.hFocusPRValValue.FontAngle = 'italic';
+
+            obj.hFocusPRPrecision = uicontrol('Style', 'text');
+            obj.hFocusPRPrecision.Parent = obj.hFocusPR;
+            GUISettings.applyUIControlStyle(obj.hFocusPRPrecision);
+            obj.hFocusPRPrecision.String = 'Precision:';
+            obj.hFocusPRPrecision.FontWeight = 'bold';
+            obj.hFocusPRPrecision.HorizontalAlignment = 'left';
+
+            obj.hFocusPRPrecisionValue = uicontrol('Style', 'text');
+            obj.hFocusPRPrecisionValue.Parent = obj.hFocusPR;
+            GUISettings.applyUIControlStyle(obj.hFocusPRPrecisionValue);
+            obj.hFocusPRPrecisionValue.FontAngle = 'italic';
+
+            obj.hFocusPRRecall = uicontrol('Style', 'text');
+            obj.hFocusPRRecall.Parent = obj.hFocusPR;
+            GUISettings.applyUIControlStyle(obj.hFocusPRRecall);
+            obj.hFocusPRRecall.String = 'Recall:';
+            obj.hFocusPRRecall.FontWeight = 'bold';
+            obj.hFocusPRRecall.HorizontalAlignment = 'left';
+
+            obj.hFocusPRRecallValue = uicontrol('Style', 'text');
+            obj.hFocusPRRecallValue.Parent = obj.hFocusPR;
+            GUISettings.applyUIControlStyle(obj.hFocusPRRecallValue);
+            obj.hFocusPRRecallValue.FontAngle = 'italic';
+
             % Callbacks (must be last, otherwise empty objects passed...)
             obj.hSaveResults.Callback = {@obj.cbSaveResults};
             obj.hScreen.Callback = {@obj.cbSelectScreen};
@@ -699,6 +778,9 @@ classdef ResultsGUI < handle
             obj.hOptsVidPlay.Callback = {@obj.cbPlayVideo};
             obj.hOptsVidExport.Callback = {@obj.cbExportVideo};
             obj.hFocusButton.Callback = {@obj.cbShowSequence};
+            obj.hFocusPRVisualise.Callback = {@obj.cbTogglePRValueHighlight};
+            addlistener(obj.hFocusPRSlider, 'Value', 'PostSet', ...
+                @obj.cbUpdatePRFocusValues);
         end
 
         function drawPreprocessed(obj)
@@ -920,16 +1002,32 @@ classdef ResultsGUI < handle
                     GUISettings.COL_ERROR)
                 obj.hOptsPRError.Visible = 'on';
                 obj.hAxPR.Visible = 'off';
+                obj.hFocusPR.Visible = 'off';
                 return;
             end
             obj.hOptsPRError.Visible = 'off';
+            obj.hFocusPR.Visible = 'on';
 
             % Draw the precision recall plot (use saved values)
             cla(obj.hAxPR);
+            hold(obj.hAxPR, 'on');
             h = plot(obj.hAxPR, obj.results.pr.values.precisions, ...
                 obj.results.pr.values.recalls, 'bo-');
             h.MarkerFaceColor = 'b';
             h.MarkerSize = h.MarkerSize * 0.75;
+
+            % Draw the highlighting if required
+            if obj.hFocusPRVisualise.Value == 1
+                n = obj.selectedPRFocus();
+                p = obj.results.pr.values.precisions(n);
+                r = obj.results.pr.values.recalls(n);
+                h = plot(obj.hAxPR, p, r, 'o');
+                h.MarkerEdgeColor = GUISettings.COL_WARNING;
+                h.MarkerFaceColor = GUISettings.COL_WARNING;
+                h = plot(obj.hAxPR, [0 p p], [r r 0], '--');
+                h.Color = GUISettings.COL_WARNING;
+            end
+            hold(obj.hAxPR, 'off');
 
             % Style the plot
             GUISettings.axesPrecisionRecallStyle(obj.hAxPR);
@@ -1099,8 +1197,10 @@ classdef ResultsGUI < handle
                 % has changed these values - i.e. threshold method changed)
                 if strcmp(obj.config.seqslam.matching.method, 'thresh')
                     obj.hOptsPRSweepVarValue.String = '$\lambda$';
+                    obj.hFocusPRVal.String = '$\lambda$:';
                 else
                     obj.hOptsPRSweepVarValue.String = '$\mu$';
+                    obj.hFocusPRVal.String = '$\mu$:';
                 end
                 obj.updateGroundTruthDescription();
 
@@ -1162,6 +1262,18 @@ classdef ResultsGUI < handle
             % transforming the query dataset list
             obj.listMatches = ['All' ...
                 obj.listQuery(~isnan(obj.results.matching.selected.mask))];
+        end
+
+        function refreshPrecisionRecallScreen(obj)
+            obj.updateGroundTruthDescription();
+            obj.updatePrecisionRecall();
+            obj.updateValueExplorerSlider();
+            obj.drawPrecisionRecall();
+        end
+
+        function n = selectedPRFocus(obj)
+            n = round(obj.hFocusPRSlider.Value * ...
+                (str2num(obj.hOptsPRSweepNumValue.String)-1) + 1);
         end
 
         function sizeGUI(obj)
@@ -1291,6 +1403,29 @@ classdef ResultsGUI < handle
                 SpecSize.PERCENT, obj.hFocus, 0.5);
             SpecSize.size(obj.hFocusQueryAx, SpecSize.HEIGHT, ...
                 SpecSize.RATIO, 3/4);
+
+            SpecSize.size(obj.hFocusPR, SpecSize.WIDTH, SpecSize.PERCENT, ...
+                obj.hFig, 0.3);
+            SpecSize.size(obj.hFocusPR, SpecSize.HEIGHT, SpecSize.PERCENT, ...
+                obj.hFig, 0.775);
+            SpecSize.size(obj.hFocusPRVisualise, SpecSize.WIDTH, ...
+                SpecSize.MATCH, obj.hFocusPR, GUISettings.PAD_LARGE);
+            SpecSize.size(obj.hFocusPRSlider, SpecSize.WIDTH, ...
+                SpecSize.PERCENT, obj.hFocusPR, 0.05);
+            SpecSize.size(obj.hFocusPRSlider, SpecSize.HEIGHT, ...
+                SpecSize.PERCENT, obj.hFocusPR, 0.6);
+            SpecSize.size(obj.hFocusPRVal, SpecSize.WIDTH, SpecSize.PERCENT, ...
+                obj.hFocusPR, 0.5);
+            SpecSize.size(obj.hFocusPRValValue, SpecSize.WIDTH, ...
+                SpecSize.PERCENT, obj.hFocusPR, 0.4);
+            SpecSize.size(obj.hFocusPRPrecision, SpecSize.WIDTH, ...
+                SpecSize.PERCENT, obj.hFocusPR, 0.5);
+            SpecSize.size(obj.hFocusPRPrecisionValue, SpecSize.WIDTH, ...
+                SpecSize.PERCENT, obj.hFocusPR, 0.4);
+            SpecSize.size(obj.hFocusPRRecall, SpecSize.WIDTH, ...
+                SpecSize.PERCENT, obj.hFocusPR, 0.5);
+            SpecSize.size(obj.hFocusPRRecallValue, SpecSize.WIDTH, ...
+                SpecSize.PERCENT, obj.hFocusPR, 0.4);
 
             % Then, systematically place
             SpecPosition.positionIn(obj.hSaveResults, obj.hFig, ...
@@ -1475,7 +1610,6 @@ classdef ResultsGUI < handle
                 SpecPosition.BELOW, GUISettings.PAD_LARGE);
             SpecPosition.positionIn(obj.hFocusButton, obj.hFocus, ...
                 SpecPosition.CENTER_X);
-
             SpecPosition.positionIn(obj.hFocusQueryAx, ...
                 obj.hFocus, SpecPosition.BOTTOM);
             SpecPosition.positionIn(obj.hFocusQuery, obj.hFocus, ...
@@ -1492,6 +1626,46 @@ classdef ResultsGUI < handle
                 SpecPosition.ABOVE);
             SpecPosition.positionIn(obj.hFocusRef, obj.hFocus, ...
                 SpecPosition.LEFT, GUISettings.PAD_MED);
+
+            SpecPosition.positionIn(obj.hFocusPR, obj.hFig, ...
+                SpecPosition.RIGHT, GUISettings.PAD_MED);
+            SpecPosition.positionRelative(obj.hFocusPR, obj.hOpts, ...
+                SpecPosition.BELOW, 1.5*GUISettings.PAD_LARGE);
+            SpecPosition.positionIn(obj.hFocusPRVisualise, obj.hFocusPR, ...
+                SpecPosition.TOP, 2*GUISettings.PAD_LARGE);
+            SpecPosition.positionIn(obj.hFocusPRVisualise, obj.hFocusPR, ...
+                SpecPosition.LEFT, GUISettings.PAD_LARGE);
+            SpecPosition.positionRelative(obj.hFocusPRSlider, ...
+                obj.hFocusPRVisualise, SpecPosition.BELOW, ...
+                GUISettings.PAD_LARGE);
+            SpecPosition.positionIn(obj.hFocusPRSlider, obj.hFocusPR, ...
+                SpecPosition.CENTER_X);
+            SpecPosition.positionIn(obj.hFocusPRRecall, obj.hFocusPR, ...
+                SpecPosition.BOTTOM, GUISettings.PAD_LARGE);
+            SpecPosition.positionIn(obj.hFocusPRRecall, obj.hFocusPR, ...
+                SpecPosition.LEFT, GUISettings.PAD_LARGE);
+            SpecPosition.positionRelative(obj.hFocusPRRecallValue, ...
+                obj.hFocusPRRecall, SpecPosition.CENTER_Y);
+            SpecPosition.positionRelative(obj.hFocusPRRecallValue, ...
+                obj.hFocusPRRecall, SpecPosition.RIGHT_OF, GUISettings.PAD_MED);
+            SpecPosition.positionRelative(obj.hFocusPRPrecision, ...
+                obj.hFocusPRRecall, SpecPosition.ABOVE, GUISettings.PAD_MED);
+            SpecPosition.positionRelative(obj.hFocusPRPrecision, ...
+                obj.hFocusPRRecall, SpecPosition.LEFT);
+            SpecPosition.positionRelative(obj.hFocusPRPrecisionValue, ...
+                obj.hFocusPRPrecision, SpecPosition.CENTER_Y);
+            SpecPosition.positionRelative(obj.hFocusPRPrecisionValue, ...
+                obj.hFocusPRPrecision, SpecPosition.RIGHT_OF, ...
+                GUISettings.PAD_MED);
+            SpecPosition.positionRelative(obj.hFocusPRVal, ...
+                obj.hFocusPRPrecision, SpecPosition.ABOVE);
+            SpecPosition.positionRelative(obj.hFocusPRVal, ...
+                obj.hFocusPRRecall, SpecPosition.LEFT, ...
+                -1*GUISettings.PAD_SMALL);
+            SpecPosition.positionRelative(obj.hFocusPRValValue, ...
+                obj.hFocusPRVal, SpecPosition.CENTER_Y);
+            SpecPosition.positionRelative(obj.hFocusPRValValue, ...
+                obj.hFocusPRVal, SpecPosition.RIGHT_OF, GUISettings.PAD_MED);
         end
 
         function toggleVideoScreenLock(obj, locked)
@@ -1605,9 +1779,13 @@ classdef ResultsGUI < handle
             for k = 1:length(precisions)
                 % Precision = # correct matches / # matches
                 ms = matches{k};
-                precisions(k) = sum(arrayfun( ...
-                    @(x) obj.results.pr.ground_truth.matrix( ...
-                    ms(x,2), ms(x,1)), 1:size(ms, 1))) / size(ms, 1);
+                if size(ms, 1) > 0
+                    precisions(k) = sum(arrayfun( ...
+                        @(x) obj.results.pr.ground_truth.matrix( ...
+                        ms(x,2), ms(x,1)), 1:size(ms, 1))) / size(ms, 1);
+                else
+                    precisions(k) = 1;
+                end
             end
 
             % Calculate the recall for each variable value
@@ -1622,6 +1800,9 @@ classdef ResultsGUI < handle
             end
 
             % Save the results
+            obj.results.pr.sweep_var.start = sweepStart;
+            obj.results.pr.sweep_var.end = sweepEnd;
+            obj.results.pr.sweep_var.num_steps = numSteps;
             obj.results.pr.values.precisions = precisions;
             obj.results.pr.values.recalls = recalls;
         end
@@ -1639,6 +1820,17 @@ classdef ResultsGUI < handle
                 obj.selectedMatch = [mIs(v-1) ...
                     obj.results.matching.selected.matches(mIs(v-1))];
             end
+        end
+
+        function updateValueExplorerSlider(obj)
+            % Set the intervals to reflect the number of variable values in the
+            % plot
+            obj.hFocusPRSlider.SliderStep = [ ...
+                1/(str2num(obj.hOptsPRSweepNumValue.String)-1) 0.1];
+
+            % Set it back to the start value, and call the callback
+            obj.hFocusPRSlider.Value = 0;
+            obj.cbUpdatePRFocusValues(obj.hFocusPRSlider, []);
         end
     end
 end
