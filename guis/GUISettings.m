@@ -94,6 +94,17 @@ classdef GUISettings
             axes.YLim = [min(yvals) max(yvals)] + [-0.5 0.5];
         end
 
+        function axesPrecisionRecallStyle(axes)
+            axes.Box = 'on';
+            axes.Visible = 'on';
+            axes.XColor = 'k';
+            axes.YColor = 'k';
+            axes.XLim = [0 1];
+            axes.YLim = [0 1];
+            axes.XLabel.String = 'Precision';
+            axes.YLabel.String = 'Recall';
+        end
+
         function setFontScale(uicontrol, scale)
             uicontrol.FontSize = get(groot, 'factoryUicontrolFontSize') ...
                 * scale;

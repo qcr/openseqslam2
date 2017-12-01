@@ -53,7 +53,6 @@ classdef ResultsGUI < handle
         hOptsPRSweepVarValue;
         hOptsPRSweepNum;
         hOptsPRSweepNumValue;
-        hOptsPRRefresh;
         hOptsPRError;
 
         hOptsVidRate;
@@ -111,6 +110,11 @@ classdef ResultsGUI < handle
     end
 
     methods (Access = private, Static)
+        function cs = matchCoords(matches)
+            cs = [(1:length(matches)); matches]';
+            cs = cs(~isnan(matches),:); % Coords corresponding to each match
+        end
+
         function next = nextMatch(current, matches)
             % Get index of matches
             inds = find(~isnan(matches));
@@ -152,6 +156,23 @@ classdef ResultsGUI < handle
 
             % Redraw the updated value
             obj.drawPreprocessed();
+        end
+
+        function cbConfigureGroundTruth(obj, src, event)
+            % Launch the ground truth popup (and wait until done)
+            obj.interactivity(false);
+            gtui = GroundTruthPopup(obj.results);
+            uiwait(gtui.hFig);
+            obj.interactivity(true);
+
+            % Update the results (these should have only been modified if apply
+            % was selected successfully)
+            obj.results = gtui.results;
+
+            % Update the precision recall plot
+            obj.updateGroundTruthDescription();
+            obj.updatePrecisionRecall();
+            obj.drawPrecisionRecall();
         end
 
         function cbDiffClicked(obj, src, event)
@@ -227,9 +248,7 @@ classdef ResultsGUI < handle
 
         function cbMatchClicked(obj, src, event)
             % Figure out which match was clicked
-            ms = obj.results.matching.selected.matches;
-            cs = [(1:length(ms)); ms]';
-            cs = cs(~isnan(ms),:); % Coords corresponding to each match
+            cs = ResultsGUI.matchCoords(obj.results.matching.selected.matches);
             vs = cs - ones(size(cs))*diag(obj.hAxMain.CurrentPoint(1,1:2));
             [x, mI] = min(sum(vs.^2, 2)); % Index for match with min distance^2
             obj.selectedMatch = cs(mI,:);
@@ -361,6 +380,11 @@ classdef ResultsGUI < handle
             obj.openScreen(obj.hScreen.Value);
         end
 
+        function cbUpdateNumSweepPoint(obj, src, event)
+            obj.updatePrecisionRecall();
+            obj.drawPrecisionRecall();
+        end
+
         function cbVideoSliderAdjust(obj, src, event)
             % TODO this is a silly / lazy way to do this.... fix
             % TODO actually this whole approach to getting the frame
@@ -397,7 +421,6 @@ classdef ResultsGUI < handle
             obj.hOptsPRSweepVarValue.Visible = 'off';
             obj.hOptsPRSweepNum.Visible = 'off';
             obj.hOptsPRSweepNumValue.Visible = 'off';
-            obj.hOptsPRRefresh.Visible = 'off';
             obj.hOptsPRError.Visible = 'off';
             obj.hOptsVidRate.Visible = 'off';
             obj.hOptsVidRateValue.Visible = 'off';
@@ -429,6 +452,7 @@ classdef ResultsGUI < handle
             cla(obj.hAxC);
             cla(obj.hAxD);
             cla(obj.hAxMain);
+            cla(obj.hAxPR);
             cla(obj.hAxVideo);
 
             % Remove any screen dependent callbacks
@@ -569,6 +593,7 @@ classdef ResultsGUI < handle
             obj.hOptsPRGroundTruthDetails.Parent = obj.hOpts;
             GUISettings.applyUIControlStyle(obj.hOptsPRGroundTruthDetails);
             obj.hOptsPRGroundTruthDetails.String = '';
+            obj.hOptsPRGroundTruthDetails.FontAngle = 'italic';
 
             obj.hOptsPRSweepVar = uicontrol('Style', 'text');
             obj.hOptsPRSweepVar.Parent = obj.hOpts;
@@ -589,18 +614,14 @@ classdef ResultsGUI < handle
             GUISettings.applyUIControlStyle(obj.hOptsPRSweepNumValue);
             obj.hOptsPRSweepNumValue.String = '';
 
-            obj.hOptsPRRefresh = uicontrol('Style', 'pushbutton');
-            obj.hOptsPRRefresh.Parent = obj.hOpts;
-            GUISettings.applyUIControlStyle(obj.hOptsPRRefresh);
-            obj.hOptsPRRefresh.String = 'Update plot';
-
             obj.hOptsPRError = uicontrol('Style', 'text');
             obj.hOptsPRError.Parent = obj.hFig;
             GUISettings.applyUIControlStyle(obj.hOptsPRError);
+            GUISettings.setFontScale(obj.hOptsPRError, 1.75);
             obj.hOptsPRError.String = ...
                 {'Please first correctly configure the' ...
                 'ground truth matrix via the button above'};
-            GUISettings.setFontScale(obj.hOptsPRError, 1.75);
+            obj.hOptsPRError.FontAngle = 'italic';
 
             obj.hOptsVidRate = uicontrol('Style', 'text');
             obj.hOptsVidRate.Parent = obj.hOpts;
@@ -673,6 +694,8 @@ classdef ResultsGUI < handle
             obj.hOptsMatchMatches.Callback = {@obj.cbMatchesOptionChange};
             obj.hOptsMatchSelectValue.Callback = {@obj.cbMatchSelected};
             obj.hOptsMatchTweak.Callback = {@obj.cbTweakMatches};
+            obj.hOptsPRGroundTruth.Callback = {@obj.cbConfigureGroundTruth};
+            obj.hOptsPRSweepNumValue.Callback = {@obj.cbUpdateNumSweepPoint};
             obj.hOptsVidPlay.Callback = {@obj.cbPlayVideo};
             obj.hOptsVidExport.Callback = {@obj.cbExportVideo};
             obj.hFocusButton.Callback = {@obj.cbShowSequence};
@@ -897,7 +920,19 @@ classdef ResultsGUI < handle
                     GUISettings.COL_ERROR)
                 obj.hOptsPRError.Visible = 'on';
                 obj.hAxPR.Visible = 'off';
+                return;
             end
+            obj.hOptsPRError.Visible = 'off';
+
+            % Draw the precision recall plot (use saved values)
+            cla(obj.hAxPR);
+            h = plot(obj.hAxPR, obj.results.pr.values.precisions, ...
+                obj.results.pr.values.recalls, 'bo-');
+            h.MarkerFaceColor = 'b';
+            h.MarkerSize = h.MarkerSize * 0.75;
+
+            % Style the plot
+            GUISettings.axesPrecisionRecallStyle(obj.hAxPR);
         end
 
         function drawVideo(obj)
@@ -1056,43 +1091,25 @@ classdef ResultsGUI < handle
                 obj.hOptsPRSweepVarValue.Visible = 'on';
                 obj.hOptsPRSweepNum.Visible = 'on';
                 obj.hOptsPRSweepNumValue.Visible = 'on';
-                obj.hOptsPRRefresh.Visible = 'on';
-
-                % Derive all data (that is considered const when entering this
-                % screen)
-                obj.results.pr.matching_method = ...
-                    obj.config.seqslam.matching.method;
-                if strcmp(obj.results.pr.matching_method, 'thresh')
-                    obj.results.pr.sweep_var.start = ...
-                        max(obj.results.matching.all.min_scores);
-                    obj.results.pr.sweep_var.end = ...
-                        min(obj.results.matching.all.min_scores);
-                else
-                    us = SeqSLAMInstance.usFromMatches( ...
-                        obj.results.matching.all.min_scores, ...
-                        obj.config.seqslam.matching.method_window.r_window);
-                    obj.results.pr.sweep_var.start = 1;
-                    obj.results.pr.sweep_var.end = max(us);
-                end
-
-                % Fill in all appropriate values
-                if strcmp(obj.results.pr.matching_method, 'thresh')
-                    obj.hOptsPRSweepVarValue.String = '$\lambda$';
-                else
-                    obj.hOptsPRSweepVarValue.String = '$\mu$';
-                end
-                if ~isempty(obj.results.pr.sweep_var.num_steps)
-                    obj.hOptsPRSweepNumValue.String = ...
-                        num2str(obj.results.pr.sweep_var.num_steps)
-                else
-                    obj.hOptsPRSweepNumValue.String = 100;
-                end
-                obj.updateGroundTruthDescription();
 
                 % Turn on the required axes
                 obj.hAxPR.Visible = 'on';
 
-                % Draw the content
+                % Fill in values here (have to do here in case another screen
+                % has changed these values - i.e. threshold method changed)
+                if strcmp(obj.config.seqslam.matching.method, 'thresh')
+                    obj.hOptsPRSweepVarValue.String = '$\lambda$';
+                else
+                    obj.hOptsPRSweepVarValue.String = '$\mu$';
+                end
+                obj.updateGroundTruthDescription();
+
+                % TODO probably should do this elsewhere only once... meh
+                obj.hOptsPRSweepNumValue.String = ...
+                    SafeData.noEmpty(obj.results.pr.sweep_var.num_steps, 25);
+
+                % Update and draw the content
+                obj.updatePrecisionRecall();
                 obj.drawPrecisionRecall();
             elseif (screen == 5)
                 % Matches video screen
@@ -1213,8 +1230,6 @@ classdef ResultsGUI < handle
                 SpecSize.WRAP, GUISettings.PAD_SMALL);
             SpecSize.size(obj.hOptsPRSweepNumValue, SpecSize.WIDTH, ...
                 SpecSize.PERCENT, obj.hOpts, 0.1);
-            SpecSize.size(obj.hOptsPRRefresh, SpecSize.WIDTH, SpecSize.WRAP, ...
-                GUISettings.PAD_SMALL);
             SpecSize.size(obj.hOptsPRError, SpecSize.WIDTH, ...
                 SpecSize.PERCENT, obj.hFig, 0.5);
             SpecSize.size(obj.hOptsPRError, SpecSize.HEIGHT, ...
@@ -1370,15 +1385,10 @@ classdef ResultsGUI < handle
             SpecPosition.positionRelative(obj.hOptsPRGroundTruthDetails, ...
                 obj.hOptsPRGroundTruth, SpecPosition.RIGHT_OF, ...
                 GUISettings.PAD_MED);
-            SpecPosition.positionRelative(obj.hOptsPRRefresh, ...
-                obj.hOptsPRGroundTruth, SpecPosition.CENTER_Y);
-            SpecPosition.positionIn(obj.hOptsPRRefresh, obj.hOpts, ...
-                SpecPosition.RIGHT, GUISettings.PAD_MED);
             SpecPosition.positionRelative(obj.hOptsPRSweepNumValue, ...
                 obj.hOptsPRGroundTruth, SpecPosition.CENTER_Y);
-            SpecPosition.positionRelative(obj.hOptsPRSweepNumValue, ...
-                obj.hOptsPRRefresh, SpecPosition.LEFT_OF, ...
-                GUISettings.PAD_LARGE);
+            SpecPosition.positionIn(obj.hOptsPRSweepNumValue, obj.hOpts, ...
+                SpecPosition.RIGHT, GUISettings.PAD_LARGE);
             SpecPosition.positionRelative(obj.hOptsPRSweepNum, ...
                 obj.hOptsPRGroundTruth, SpecPosition.CENTER_Y);
             SpecPosition.positionRelative(obj.hOptsPRSweepNum, ...
@@ -1527,8 +1537,9 @@ classdef ResultsGUI < handle
                     col = GUISettings.COL_WARNING;
                 else
                     d = ['Ground truth with vel = ' ...
-                        obj.results.pr.ground_truth.velocity.vel ' & tol = ' ...
-                        obj.results.pr.ground_truth.velocity.tol];
+                        num2str(obj.results.pr.ground_truth.velocity.vel) ...
+                        ' & tol = ' ...
+                        num2str(obj.results.pr.ground_truth.velocity.tol)];
                     col = GUISettings.COL_SUCCESS;
                 end
             end
@@ -1539,6 +1550,80 @@ classdef ResultsGUI < handle
         function updateMatches(obj)
             obj.populateMatchList();
             obj.hOptsMatchSelectValue.String = obj.listMatches;
+        end
+
+        function updatePrecisionRecall(obj)
+            % Bail if we do are not in a valid configuration
+            if isequal(obj.hOptsPRGroundTruthDetails.ForegroundColor, ...
+                    GUISettings.COL_ERROR)
+                return;
+            end
+
+            % Get all configuration parameters (method, start, end, # steps)
+            method = obj.config.seqslam.matching.method;
+            us = [];
+            if strcmp(method, 'thresh')
+                bestScores = min(obj.results.matching.all.min_scores);
+                sweepStart = max(bestScores);
+                sweepEnd = min(bestScores);
+            else
+                us = SeqSLAMInstance.usFromMatches( ...
+                    obj.results.matching.all.min_scores, ...
+                    obj.config.seqslam.matching.method_window.r_window);
+                sweepStart = 1;
+                sweepEnd = max(us);
+            end
+            numSteps = str2num(obj.hOptsPRSweepNumValue.String);
+
+            % Get each of the variable sweep values
+            varVals = linspace(sweepStart, sweepEnd, numSteps);
+
+            % Get the matches for each of the variable sweep values
+            matches = cell(size(varVals));
+            for k = 1:length(varVals)
+                if strcmp(method, 'thresh')
+                    thresholded = SeqSLAMInstance.thresholdBasic( ...
+                        obj.results.matching.all, varVals(k));
+                else
+                    thresholded = SeqSLAMInstance.thresholdWindowed( ...
+                        obj.results.matching.all, ...
+                        obj.config.seqslam.matching.method_window.r_window, ...
+                        varVals(k));
+                end
+                obj.results.dbg.a = obj.results.matching.all;
+                obj.results.dbg.w = obj.config.seqslam.matching.method_window.r_window;
+                obj.results.dbg.t = thresholded;
+                matches{k} = ResultsGUI.matchCoords(thresholded.matches);
+            end
+            obj.results.dbg.vals = varVals;
+            obj.results.dbg.sA = sweepStart;
+            obj.results.dbg.sB = sweepEnd;
+            obj.results.dbg.matches = matches;
+
+            % Calculate the precision for each variable value
+            precisions = zeros(size(matches));
+            for k = 1:length(precisions)
+                % Precision = # correct matches / # matches
+                ms = matches{k};
+                precisions(k) = sum(arrayfun( ...
+                    @(x) obj.results.pr.ground_truth.matrix( ...
+                    ms(x,2), ms(x,1)), 1:size(ms, 1))) / size(ms, 1);
+            end
+
+            % Calculate the recall for each variable value
+            recalls = zeros(size(matches));
+            for k = 1:length(matches)
+                % Recall = # correct matches / total # of matches
+                ms = matches{k};
+                recalls(k) = sum(arrayfun( ...
+                    @(x) obj.results.pr.ground_truth.matrix( ...
+                    ms(x,2), ms(x,1)), 1:size(ms, 1))) / ...
+                    size(obj.results.pr.ground_truth.matrix, 2);
+            end
+
+            % Save the results
+            obj.results.pr.values.precisions = precisions;
+            obj.results.pr.values.recalls = recalls;
         end
 
         function updateSelectedMatch(obj)
