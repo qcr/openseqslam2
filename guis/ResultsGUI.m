@@ -1789,7 +1789,7 @@ classdef ResultsGUI < handle
                         @(x) obj.results.pr.ground_truth.matrix( ...
                         ms(x,2), ms(x,1)), 1:size(ms, 1))) / size(ms, 1);
                 else
-                    precisions(k) = 1;
+                    precisions(k) = 0;
                 end
             end
 
