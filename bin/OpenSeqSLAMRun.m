@@ -1,4 +1,4 @@
-function results = SeqSLAMRun(config)
+function results = OpenSeqSLAMRun(config)
     % Create the progress GUI
     ioprogress = ProgressGUI(config);
 

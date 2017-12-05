@@ -1,4 +1,4 @@
-function [results, config] = SeqSLAMResults(results, config)
+function [results, config] = OpenSeqSLAMResults(results, config)
     % Run the results visualisation GUI, and wait until the GUI finishes
     resultsui = ResultsGUI(results, config);
     uiwait(resultsui.hFig);

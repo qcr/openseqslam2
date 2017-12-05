@@ -643,7 +643,8 @@ classdef ResultsGUI < handle
             obj.hOptsPRGroundTruthDetails = uicontrol('Style', 'text');
             obj.hOptsPRGroundTruthDetails.Parent = obj.hOpts;
             GUISettings.applyUIControlStyle(obj.hOptsPRGroundTruthDetails);
-            obj.hOptsPRGroundTruthDetails.String = '';
+            obj.hOptsPRGroundTruthDetails.String = {'' ''};
+            obj.hOptsPRGroundTruthDetails.HorizontalAlignment = 'left';
             obj.hOptsPRGroundTruthDetails.FontAngle = 'italic';
 
             obj.hOptsPRSweepVar = uicontrol('Style', 'text');
@@ -1362,7 +1363,9 @@ classdef ResultsGUI < handle
             SpecSize.size(obj.hOptsPRGroundTruth, SpecSize.WIDTH, ...
                 SpecSize.WRAP, GUISettings.PAD_SMALL);
             SpecSize.size(obj.hOptsPRGroundTruthDetails, SpecSize.WIDTH, ...
-                SpecSize.PERCENT, obj.hOpts, 0.3);
+                SpecSize.PERCENT, obj.hOpts, 0.425);
+            SpecSize.size(obj.hOptsPRGroundTruthDetails, SpecSize.HEIGHT, ...
+                SpecSize.WRAP);
             SpecSize.size(obj.hOptsPRSweepVar, SpecSize.WIDTH, ...
                 SpecSize.WRAP, GUISettings.PAD_SMALL);
             SpecSize.size(obj.hOptsPRSweepVarValue, SpecSize.WIDTH, ...

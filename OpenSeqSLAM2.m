@@ -8,7 +8,7 @@ function [results, config] = OpenSeqSLAM2(varargin)
             fullfile(toolboxRoot(), '.config', 'default.xml'));
     else
         % Run the config GUI to set all required parameters
-        config = SeqSLAMConfig();
+        config = OpenSeqSLAMConfig();
 
         % Abort if no parameters are returned
         if isempty(config)
@@ -19,8 +19,8 @@ function [results, config] = OpenSeqSLAM2(varargin)
     end
 
     % Run the SeqSLAM process, and get the results
-    results = SeqSLAMRun(config);
+    results = OpenSeqSLAMRun(config);
 
     % Run the results visualisation GUI
-    [results, config] = SeqSLAMResults(results, config);
+    [results, config] = OpenSeqSLAMResults(results, config);
 end

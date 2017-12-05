@@ -8,11 +8,11 @@ The second release of OpenSeqSLAM, repackaged as an easy to use and configure to
 * Closing the Tweak popup resets the selected match in Results GUI (this should only be done when applying a tweak, not closing)
 * The help documentation needs work (check for spelling, grammar, etc.)
 * In PR it is assumed that every query image has a reference image ground truth. Is this a valid assumption???
+* Long paths come up ugly in a number of places (add in some sort of 'smart path trimming'...)
 
 
 ## TODO List (roughly ordered by value):
 
-* Rebrand all subprograms (i.e. in './bin/') to from "SeqSLAM" to "OpenSeqSLAM"
 * Disable match selection in Results GUI when a popup is open (i.e. enforce ad hoc modal structure)
 
 
