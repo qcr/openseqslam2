@@ -318,6 +318,21 @@ classdef ResultsGUI < handle
             end
         end
 
+        function cbPRClicked(obj, src, event)
+            % Figure out which PR point was clicked
+            cs = [obj.results.pr.values.precisions' ...
+                obj.results.pr.values.recalls'];
+            vs = cs - ones(size(cs))*diag(obj.hAxPR.CurrentPoint(1,1:2));
+            [x, mI] = min(sum(vs.^2, 2)); % Index for PR with min distance^2
+
+            % Update the UI to reflect the click
+            obj.hFocusPRSlider.Value = (mI-1) / size(cs, 1);
+            obj.cbUpdatePRFocusValues(obj.hFocusPRSlider, []);
+
+            % Redraw the PR screen
+            obj.drawPrecisionRecall();
+        end
+
         function cbSelectScreen(obj, src, event)
             obj.openScreen(obj.hScreen.Value);
         end
@@ -424,7 +439,7 @@ classdef ResultsGUI < handle
             % corresponding to a given match is poor...
             idxs = find(~isnan(obj.results.matching.selected.matches));
             if obj.hOptsVidSlider.Value > 1
-                dummyMatch = [idxs(round(obj.hOptsVidSlider.Value - 1)) 0];
+                dummyMatch = [idxs(ceil(obj.hOptsVidSlider.Value - 1)) 0];
             else
                 dummyMatch = [0 0];
             end
@@ -492,6 +507,7 @@ classdef ResultsGUI < handle
 
             % Remove any screen dependent callbacks
             obj.hAxMain.ButtonDownFcn = {};
+            obj.hAxPR.ButtonDownFcn = {};
         end
 
         function createGUI(obj)
@@ -781,6 +797,8 @@ classdef ResultsGUI < handle
             obj.hOptsPRGroundTruth.Callback = {@obj.cbConfigureGroundTruth};
             obj.hOptsPRSweepNumValue.Callback = {@obj.cbUpdateNumSweepPoint};
             obj.hOptsVidPlay.Callback = {@obj.cbPlayVideo};
+            addlistener(obj.hOptsVidSlider, 'Value', 'PostSet', ...
+                @obj.cbVideoSliderAdjust);
             obj.hOptsVidExport.Callback = {@obj.cbExportVideo};
             obj.hFocusButton.Callback = {@obj.cbShowSequence};
             obj.hFocusPRVisualise.Callback = {@obj.cbTogglePRValueHighlight};
@@ -1213,6 +1231,9 @@ classdef ResultsGUI < handle
                 obj.hOptsPRSweepNumValue.String = ...
                     SafeData.noEmpty(obj.results.pr.sweep_var.num_steps, 25);
 
+                % Register the callback for the main axis
+                obj.hAxPR.ButtonDownFcn = {@obj.cbPRClicked};
+
                 % Update and draw the content
                 obj.updatePrecisionRecall();
                 obj.drawPrecisionRecall();
@@ -1235,16 +1256,19 @@ classdef ResultsGUI < handle
                 obj.currentVideoMatch = ResultsGUI.nextMatch( ...
                     [0 0], obj.results.matching.selected.matches);
 
-                % Set the correct limits, intervals, and callback on the slider
+                % Set the correct limits and intervals on the slider
                 numMatches = sum(~isnan(obj.results.matching.selected.mask));
                 if numMatches <= 1
                     obj.hOptsVidSlider.Enable = 'off';
                 else
                     obj.hOptsVidSlider.Max = numMatches;
                     obj.hOptsVidSlider.Min = 1;
-                    obj.hOptsVidSlider.SliderStep = [1/(numMatches-1) 0.1];
+                    if (1/(numMatches - 1)) < 0.1
+                        obj.hOptsVidSlider.SliderStep = [1/(numMatches-1) 0.1];
+                    else
+                        obj.hOptsVidSlider.SliderStep = [0.1 0.1];
+                    end
                     obj.hOptsVidSlider.Value = 1;
-                    obj.hOptsVidSlider.Callback = {@obj.cbVideoSliderAdjust};
                 end
 
                 % Draw the content
@@ -1784,13 +1808,9 @@ classdef ResultsGUI < handle
             for k = 1:length(precisions)
                 % Precision = # correct matches / # matches
                 ms = matches{k};
-                if size(ms, 1) > 0
-                    precisions(k) = sum(arrayfun( ...
-                        @(x) obj.results.pr.ground_truth.matrix( ...
-                        ms(x,2), ms(x,1)), 1:size(ms, 1))) / size(ms, 1);
-                else
-                    precisions(k) = 0;
-                end
+                precisions(k) = sum(arrayfun( ...
+                    @(x) obj.results.pr.ground_truth.matrix( ...
+                    ms(x,2), ms(x,1)), 1:size(ms, 1))) / size(ms, 1);
             end
 
             % Calculate the recall for each variable value
@@ -1830,8 +1850,12 @@ classdef ResultsGUI < handle
         function updateValueExplorerSlider(obj)
             % Set the intervals to reflect the number of variable values in the
             % plot
-            obj.hFocusPRSlider.SliderStep = [ ...
-                1/(str2num(obj.hOptsPRSweepNumValue.String)-1) 0.1];
+            smallStep = 1/(str2num(obj.hOptsPRSweepNumValue.String)-1);
+            if smallStep < 0.1
+                obj.hFocusPRSlider.SliderStep = [smallStep 0.1];
+            else
+                obj.hFocusPRSlider.SliderStep = [0.1 0.1];
+            end
 
             % Set it back to the start value, and call the callback
             obj.hFocusPRSlider.Value = 0;

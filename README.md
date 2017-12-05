@@ -12,7 +12,6 @@ The second release of OpenSeqSLAM, repackaged as an easy to use and configure to
 
 ## TODO List (roughly ordered by value):
 
-* Allow clicking on precision-recall plot to control focus
 * Rebrand all subprograms (i.e. in './bin/') to from "SeqSLAM" to "OpenSeqSLAM"
 * Disable match selection in Results GUI when a popup is open (i.e. enforce ad hoc modal structure)
 
