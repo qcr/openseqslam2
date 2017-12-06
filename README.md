@@ -4,6 +4,7 @@ The second release of OpenSeqSLAM, repackaged as an easy to use and configure to
 
 ## Known Bugs (roughly ordered by severity):
 
+* MATLAB's VideoReader is dodgy when first getting to work on Linux (install gstreamer-plugins-base, link against system libstdc++, etc. seem to help... but not all the time...)
 * Under Ubuntu, the window manager sometimes incorrectly places the window title bar over the top of the figure, instead of on top (only current fix is to manually resize window or close and reopen.... not sure who is being stupid here Ubuntu Unity or MATLAB - I suspect Unity)
 * Closing the Tweak popup resets the selected match in Results GUI (this should only be done when applying a tweak, not closing)
 * The help documentation needs work (check for spelling, grammar, etc.)
@@ -18,8 +19,6 @@ The second release of OpenSeqSLAM, repackaged as an easy to use and configure to
 
 ## Potential Future Feature List (may or may not eventuate...):
 
-* Make the Progress GUI correctly display the contrast enhanced difference matrix as an overlay
-* Show the best matches in the matching Progress GUI
 * Use Git LFS to manage storage of the samples archive
 * Make resizable
 * Fix axis management (currently a random mess full of unnecessary calls)

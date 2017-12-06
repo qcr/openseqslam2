@@ -310,11 +310,8 @@ classdef SeqSLAMInstance < handle
                             p = [];
                             p.state = ProgressGUI.STATE_DIFF_MATRIX_CONTRAST;
                             p.percent = perc;
-                            mask = isnan(matrix);
-                            temp = matrix;
-                            temp(isnan(temp)) = 0;
-                            p.diff_matrix = temp + ...
-                                mask .* obj.results.diff_matrix.base;
+                            p.diff_matrix = obj.results.diff_matrix.base;
+                            p.diff_matrix_enhanced = matrix;
                             obj.cbMainUpdate(p);
                         elseif obj.cbPercentReady( ...
                                 ProgressGUI.STATE_DIFF_MATRIX_CONTRAST, perc)
@@ -401,6 +398,7 @@ classdef SeqSLAMInstance < handle
                             p.r = r;
                             p.qs = qs(1,:);
                             p.rs = r_trajs(r,:);
+                            p.best_scores = squeeze(trajs(:,2,floor(end/2)+1));
                             p.diff_matrix = obj.results.diff_matrix.enhanced;
                             obj.cbMainUpdate(p);
                         elseif obj.cbPercentReady( ...

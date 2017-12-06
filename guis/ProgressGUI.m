@@ -38,6 +38,7 @@ classdef ProgressGUI < handle
         hAxC;
         hAxD;
         hAxMain;
+        hAxOverlay;
 
         hPercent;
 
@@ -113,13 +114,8 @@ classdef ProgressGUI < handle
         end
 
         function refreshMain(obj, progress)
-            % Clear the axis if we are entering a new state
+            % Refresh the last percent if we are in a new state
             if ~isempty(obj.progress) && progress.state ~= obj.progress.state
-                cla(obj.hAxA);
-                cla(obj.hAxB);
-                cla(obj.hAxC);
-                cla(obj.hAxD);
-                cla(obj.hAxMain);
                 obj.lastPercentRefresh = 0;
             end
 
@@ -148,6 +144,29 @@ classdef ProgressGUI < handle
     end
 
     methods (Access = private)
+        function clearScreen(obj)
+            cla(obj.hAxA);
+            cla(obj.hAxB);
+            cla(obj.hAxC);
+            cla(obj.hAxD);
+            cla(obj.hAxMain);
+            cla(obj.hAxOverlay);
+
+            obj.hAxA.Visible = 'off';
+            obj.hAxB.Visible = 'off';
+            obj.hAxC.Visible = 'off';
+            obj.hAxD.Visible = 'off';
+            obj.hAxMain.Visible = 'off';
+            obj.hAxOverlay.Visible = 'off';
+
+            obj.hAxA.Title.Visible = 'off';
+            obj.hAxB.Title.Visible = 'off';
+            obj.hAxC.Title.Visible = 'off';
+            obj.hAxD.Title.Visible = 'off';
+            obj.hAxMain.Title.Visible = 'off';
+            obj.hAxOverlay.Title.Visible = 'off';
+        end
+
         function createGUI(obj)
             % Create the figure (and hide it)
             obj.hFig = figure('Visible', 'off');
@@ -252,6 +271,11 @@ classdef ProgressGUI < handle
 
             obj.hAxMain = axes();
             GUISettings.applyUIAxesStyle(obj.hAxMain);
+            obj.hAxMain.Visible = 'off';
+
+            obj.hAxOverlay = axes();
+            GUISettings.applyUIAxesStyle(obj.hAxOverlay);
+            obj.hAxOverlay.Visible = 'off';
 
             % Percent
             obj.hPercent = uicontrol('Style', 'text');
@@ -332,6 +356,9 @@ classdef ProgressGUI < handle
             SpecSize.size(obj.hAxMain, SpecSize.WIDTH, SpecSize.PERCENT, ...
                 obj.hFig, 0.7);
             SpecSize.size(obj.hAxMain, SpecSize.HEIGHT, SpecSize.RATIO, 3/4);
+            SpecSize.size(obj.hAxOverlay, SpecSize.WIDTH, SpecSize.PERCENT, ...
+                obj.hFig, 0.7);
+            SpecSize.size(obj.hAxOverlay, SpecSize.HEIGHT, SpecSize.RATIO, 3/4);
 
             SpecSize.size(obj.hPercent, SpecSize.HEIGHT, SpecSize.WRAP);
             SpecSize.size(obj.hPercent, SpecSize.WIDTH, SpecSize.PERCENT, ...
@@ -415,6 +442,10 @@ classdef ProgressGUI < handle
                 SpecPosition.BELOW, 3*GUISettings.PAD_LARGE);
             SpecPosition.positionIn(obj.hAxMain, obj.hFig, ...
                 SpecPosition.CENTER_X);
+            SpecPosition.positionRelative(obj.hAxOverlay, obj.hSubtitle, ...
+                SpecPosition.BELOW, 3*GUISettings.PAD_LARGE);
+            SpecPosition.positionIn(obj.hAxOverlay, obj.hFig, ...
+                SpecPosition.CENTER_X);
 
             SpecPosition.positionIn(obj.hPercent, obj.hFig, ...
                 SpecPosition.BOTTOM, GUISettings.PAD_MED);
@@ -431,6 +462,10 @@ classdef ProgressGUI < handle
         end
 
         function updatePlots(obj)
+            % Clear the screen
+            obj.clearScreen();
+
+            % Draw the new screen
             if obj.progress.state == ProgressGUI.STATE_PREPROCESS_REF || ...
                     obj.progress.state == ProgressGUI.STATE_PREPROCESS_QUERY
                 % Plot the 4 images
@@ -456,12 +491,7 @@ classdef ProgressGUI < handle
                 GUISettings.axesHide(obj.hAxB);
                 GUISettings.axesHide(obj.hAxC);
                 GUISettings.axesHide(obj.hAxD);
-
-                % Do the prettying up (don't know why I have to do this after
-                % every plot call Matlab...)
-                obj.hAxMain.Visible = 'off';
-            elseif obj.progress.state == ProgressGUI.STATE_DIFF_MATRIX || ...
-                    obj.progress.state == ProgressGUI.STATE_DIFF_MATRIX_CONTRAST
+            elseif obj.progress.state == ProgressGUI.STATE_DIFF_MATRIX
                 % Draw the difference matrix
                 pcolor(obj.hAxMain, obj.progress.diff_matrix);
                 shading(obj.hAxMain, 'flat');
@@ -469,13 +499,19 @@ classdef ProgressGUI < handle
                 % Style the plot
                 GUISettings.axesDiffMatrixStyle(obj.hAxMain, ...
                     size(obj.progress.diff_matrix));
+            elseif obj.progress.state == ProgressGUI.STATE_DIFF_MATRIX_CONTRAST
+                % Draw the difference matrices
+                pcolor(obj.hAxMain, obj.progress.diff_matrix);
+                shading(obj.hAxMain, 'flat');
+                pcolor(obj.hAxOverlay, obj.progress.diff_matrix_enhanced);
+                shading(obj.hAxOverlay, 'flat');
+                obj.hAxOverlay.Color = 'none';
 
-                % Do the prettying up (don't know why I have to do this after
-                % every plot call Matlab...)
-                obj.hAxA.Visible = 'off';
-                obj.hAxB.Visible = 'off';
-                obj.hAxC.Visible = 'off';
-                obj.hAxD.Visible = 'off';
+                % Style the plot
+                GUISettings.axesDiffMatrixStyle(obj.hAxMain, ...
+                    size(obj.progress.diff_matrix));
+                GUISettings.axesDiffMatrixStyle(obj.hAxOverlay, ...
+                    size(obj.progress.diff_matrix));
             elseif obj.progress.state == ProgressGUI.STATE_MATCHING
                 % Draw the background difference matrix
                 imagesc(obj.hAxMain, obj.progress.diff_matrix);
@@ -485,18 +521,14 @@ classdef ProgressGUI < handle
                 plot(obj.hAxMain, [obj.progress.q obj.progress.q], ...
                     [1 size(obj.progress.diff_matrix,1)], 'Color', ...
                     GUISettings.COL_ERROR, 'LineStyle', '--');
+                h = plot(obj.hAxMain, obj.progress.best_scores, '.', ...
+                    'Color', GUISettings.COL_ERROR);
+                h.MarkerSize = h.MarkerSize * 1.5;
                 hold(obj.hAxMain, 'off');
 
                 % Style the plot
                 GUISettings.axesDiffMatrixStyle(obj.hAxMain, ...
                     size(obj.progress.diff_matrix));
-
-                % Do the prettying up (don't know why I have to do this after
-                % every plot call Matlab...)
-                obj.hAxA.Visible = 'off';
-                obj.hAxB.Visible = 'off';
-                obj.hAxC.Visible = 'off';
-                obj.hAxD.Visible = 'off';
             elseif obj.progress.state == ProgressGUI.STATE_MATCHING_FILTERING
                 % TODO can't see any reason to do anything in here (too quick)
             elseif obj.progress.state == ProgressGUI.STATE_DONE
