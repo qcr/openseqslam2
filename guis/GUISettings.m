@@ -7,12 +7,14 @@ classdef GUISettings
 
         % Colouring settings
         COL_SUCCESS = [0 0.6 0];
-        COL_ERROR = 'r';
+        COL_WARNING = [1 0.4 0];
+        COL_ERROR = [1 0 0];
         COL_LOADING = [0.6 0.6 0.6];
-        COL_DEFAULT = 'k';
+        COL_DEFAULT = [0 0 0];
 
         % Sizings (static for now)
         FONT_SCALE = 1.0;
+        LATEX_FACTOR = 1.25;
 
         PAD_SMALL = 5;
         PAD_MED = 10;
@@ -24,7 +26,11 @@ classdef GUISettings
             GUISettings.applyUICommonStyle(ann);
             ann.EdgeColor = 'none';
             ann.FontSize = get(groot, 'factoryTextboxshapeFontSize') * ...
-                GUISettings.FONT_SCALE;
+                GUISettings.FONT_SCALE*GUISettings.LATEX_FACTOR;
+
+            % Force the string to adopt a more consistent style when using
+            % LaTex interpreter
+            ann.Interpreter = 'latex';
         end
 
         function applyFigureStyle(fig)
@@ -86,6 +92,17 @@ classdef GUISettings
             axes.YAxisLocation = 'left';
             axes.XLim = [min(xvals) max(xvals)] + [-0.5 0.5];
             axes.YLim = [min(yvals) max(yvals)] + [-0.5 0.5];
+        end
+
+        function axesPrecisionRecallStyle(axes)
+            axes.Box = 'on';
+            axes.Visible = 'on';
+            axes.XColor = 'k';
+            axes.YColor = 'k';
+            axes.XLim = [0 1];
+            axes.YLim = [0 1];
+            axes.XLabel.String = 'Recall';
+            axes.YLabel.String = 'Precision';
         end
 
         function setFontScale(uicontrol, scale)

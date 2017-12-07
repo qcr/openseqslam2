@@ -14,7 +14,6 @@ classdef SeqSLAMInstance < handle
     methods
         function obj = SeqSLAMInstance(config)
             obj.config = config;
-            obj.loadResults();
         end
 
         function attachUI(obj, ui)
@@ -29,41 +28,34 @@ classdef SeqSLAMInstance < handle
             obj.listeningUI = true;
         end
 
-        function loadResults(obj)
-            % Bail if there are no existing results
-            if ~ConfigIOGUI.containsResults(obj.config.results.path)
-                return;
-            end
-
-            % Load the config of the existing results
-            fn = ResultsGUI.getFileName(config, ResultsGUI.FN_CONFIG);
-            configResults = xml2settings(fn);
-
-            % Go through each of the load options, loading only if BOTH
-            % load requested AND config matches!
-            % TODO
-        end
-
         function run(obj)
-            % Perform each of the 'do' actions, guarding against if they
-            % already exist
+            % Determine if we are actually going to be saving results
+            saving = ~isempty(obj.config.results.path) && ...
+                exist(obj.config.results.path) == 7;
+
+            % Perform each of the 'do' actions, periodically saving results
+            if saving
+                resultsSave(obj.config.results.path, obj.config, 'config.xml');
+            end
             obj.preprocess();
+            if saving
+                resultsSave(obj.config.results.path, ...
+                    obj.results.preprocessed, 'preprocessed.mat');
+            end
             obj.differenceMatrix();
             obj.contrastEnhancement();
+            if saving
+                resultsSave(obj.config.results.path, ...
+                    obj.results.diff_matrix, 'diff_matrix.mat');
+            end
             obj.matching();
             obj.thresholding();
-        end
-
-        function saveResults(obj)
-            % Bail if there is no provided results directory (there should
-            % always be one generally...)
-            % TODO
-
-            % Save the config
-            % TODO
-
-            % Save each of the results in their own separate '*.mat' file
-            % TODO
+            if saving
+                resultsSave(obj.config.results.path, ...
+                    obj.results.matching, 'matching.mat');
+                resultsSave(obj.config.results.path, ...
+                    obj.results.pr, 'precision_recall.mat'); % Always empty
+            end
         end
     end
 
@@ -101,31 +93,68 @@ classdef SeqSLAMInstance < handle
             end
         end
 
-        function indices = indices(datasetConfig)
+        function numbers = numbers(datasetConfig)
             if strcmpi(datasetConfig.type, 'image')
-                indices = datasetConfig.image.index_start:...
-                    datasetConfig.subsample_factor:...
-                    datasetConfig.image.index_end;
+                numbers = datasetConfig.image.numbers(...
+                    1:datasetConfig.subsample_factor:end);
             elseif strcmpi(datasetConfig.type, 'video')
-                indices = 1:datasetConfig.subsample_factor:...
+                numbers = 1:datasetConfig.subsample_factor:...
                     datasetConfig.video.frames;
             end
         end
 
-        function thresholded = threshold(matches, u)
+        function us = usFromMatches(scores, window)
+            % Start with the best scores
+            [best_scores, best_idx] = min(scores);
+
+            % Construct a NaN mask representing the windowed regions
+            mask = ones(size(scores));
+            for k = 1:length(best_idx)
+                a = max(1, best_idx(k)-round(window/2));
+                b = min(size(scores,1), best_idx(k)+round(window/2));
+                mask(a:b,k) = NaN();
+            end
+
+            % Compute the us from the windowed mins
+            us = min(scores.*mask) ./ best_scores;
+        end
+
+        function thresholded = thresholdWindowed(matches, window, u)
+            % Get the u scores, and best indices
+            us = SeqSLAMInstance.usFromMatches(matches.min_scores, window);
+            [best_scores, best_idx] = min(matches.min_scores);
+
             % Mask out with NaNs those that are below threshold
-            mask = single(matches.matches(:,2) > u);
+            mask = single(us > u);
             mask(mask == 0) = NaN();
 
             % Save the thresholding results
             thresholded.mask = mask;
-            thresholded.matches = ...
-                matches.matches(:,1) .* mask;
+            thresholded.matches = best_idx .* mask;
             thresholded.trajectories = ...
-                matches.trajectories .* ...
-                repmat(mask, 1, ...
-                size(matches.trajectories,2), ...
-                size(matches.trajectories,3));
+                matches.best_trajectories .* ...
+                repmat(mask', 1, ...
+                size(matches.best_trajectories,2), ...
+                size(matches.best_trajectories,3));
+        end
+
+        function thresholded = thresholdBasic(matches, threshold)
+            % Get the best scores for each query images (and indices)
+            [best_scores, best_idx] = min(matches.min_scores);
+
+            % Mask out with NaNs those that are above threshold
+            % Create a maske where NaNs represent the scores above threshold
+            mask = single(best_scores < threshold);
+            mask(mask == 0) = NaN();
+
+            % Save the thresholding results
+            thresholded.mask = mask;
+            thresholded.matches = best_idx .* mask;
+            thresholded.trajectories = ...
+                matches.best_trajectories .* ...
+                repmat(mask', 1, ...
+                size(matches.best_trajectories,2), ...
+                size(matches.best_trajectories,3));
         end
     end
 
@@ -140,22 +169,13 @@ classdef SeqSLAMInstance < handle
                 % Cache dataset settings (mainly to avoid typing...)
                 settingsDataset = obj.config.(datasets{ds});
 
-                % Get the indices
-                indices = SeqSLAMInstance.indices(settingsDataset);
+                % Get the numbers for the chosen images
+                numbers = SeqSLAMInstance.numbers(settingsDataset);
 
                 % Allocate memory for all of the processed images
-                nImages = length(indices);
-                c = settingsProcess.crop.(datasets{ds});
-                if isempty(c)
-                    nWidth = ...
-                        settingsProcess.downsample.width;
-                    nHeight = ...
-                        settingsProcess.downsample.height;
-                else
-                    nWidth = c(3) - c(1);
-                    nHeight = c(4) - c(2);
-                end
-                images = zeros(nHeight, nWidth, nImages, 'uint8');
+                nImages = length(numbers);
+                images = zeros(settingsProcess.downsample.height, ...
+                    settingsProcess.downsample.width, nImages, 'uint8');
 
                 % Initialise everything related to dataset
                 if strcmpi(settingsDataset.type, 'video')
@@ -164,16 +184,16 @@ classdef SeqSLAMInstance < handle
                     v = [];
                 end
 
-                % Loop over all of the image indices
-                for k = 1:length(indices)
+                % Loop over all of the image numbers
+                for k = 1:length(numbers)
                     % Calculate percent if needed (used in multiple places)
                     perc = [];
                     if obj.listeningUI
-                        perc = k/length(indices)*100;
+                        perc = k/length(numbers)*100;
                     end
 
                     % Load next image
-                    img = datasetOpenImage(settingsDataset, k, indices, v);
+                    img = datasetOpenImage(settingsDataset, k, numbers, v);
 
                     % Preprocess the image
                     state = ProgressGUI.STATE_PREPROCESS_REF + ds-1;
@@ -197,15 +217,15 @@ classdef SeqSLAMInstance < handle
                             p.image_num = k;
                             if ~isempty(v)
                                 p.image_details = datasetFrameInfo( ...
-                                    indices(k)-1, v.FrameRate, 1, ...
+                                    numbers(k)-1, v.FrameRate, 1, ...
                                     settingsDataset.path, k);
                             else
                                 p.image_details = datasetPictureInfo( ...
                                     settingsDataset.path, ...
                                     settingsDataset.image.token_start, ...
                                     settingsDataset.image.token_end, ...
-                                    indices(k), ...
-                                    settingsDataset.image.index_end, 1, k);
+                                    numbers(k), ...
+                                    settingsDataset.image.numbers(end), 1, k);
                             end
                             obj.cbMainUpdate(p);
                         elseif obj.cbPercentReady(state, perc)
@@ -214,9 +234,9 @@ classdef SeqSLAMInstance < handle
                     end
                 end
 
-                % Save the processed image matrix to the results, and indices
+                % Save the matrix for processed images, and image numbers used
                 obj.results.preprocessed.(datasets{ds}) = images;
-                obj.results.preprocessed.([datasets{ds} '_indices']) = indices;
+                obj.results.preprocessed.([datasets{ds} '_numbers']) = numbers;
             end
         end
 
@@ -290,11 +310,8 @@ classdef SeqSLAMInstance < handle
                             p = [];
                             p.state = ProgressGUI.STATE_DIFF_MATRIX_CONTRAST;
                             p.percent = perc;
-                            mask = isnan(matrix);
-                            temp = matrix;
-                            temp(isnan(temp)) = 0;
-                            p.diff_matrix = temp + ...
-                                mask .* obj.results.diff_matrix.base;
+                            p.diff_matrix = obj.results.diff_matrix.base;
+                            p.diff_matrix_enhanced = matrix;
                             obj.cbMainUpdate(p);
                         elseif obj.cbPercentReady( ...
                                 ProgressGUI.STATE_DIFF_MATRIX_CONTRAST, perc)
@@ -321,8 +338,8 @@ classdef SeqSLAMInstance < handle
             num_qs = size(obj.results.diff_matrix.enhanced,2);
             num_rs = size(obj.results.diff_matrix.enhanced,1);
 
-            % Allocate memory for the matching scores, and the trajectories
-            matches = NaN(num_qs,2);
+            % Allocate memory for min matching scores, and best trajectories
+            matches = NaN(num_rs, num_qs);
             trajs = NaN(num_qs, 2, ds); % q trajectories = r & q coords
 
             % Get matrices corresponding to all of the possible relative search
@@ -381,6 +398,7 @@ classdef SeqSLAMInstance < handle
                             p.r = r;
                             p.qs = qs(1,:);
                             p.rs = r_trajs(r,:);
+                            p.best_scores = squeeze(trajs(:,2,floor(end/2)+1));
                             p.diff_matrix = obj.results.diff_matrix.enhanced;
                             obj.cbMainUpdate(p);
                         elseif obj.cbPercentReady( ...
@@ -390,24 +408,15 @@ classdef SeqSLAMInstance < handle
                     end
                 end
 
-                % Get min score, and second smallest outside the window
-                [min_score, min_idx] = min(r_scores);
-                is = 1:num_rs;
-                outside_min = min(r_scores( ...
-                    is(is < min_idx-settingsMatch.criteria.r_window/2 | ...
-                    is > min_idx+settingsMatch.criteria.r_window/2) ...
-                    ));
-
-                % Store the min index, and the factor to second min
-                matches(q,:) = [min_idx outside_min/min_score];
-
-                % Store the found trajectory
-                trajs(q,:,:) = [qs(1,:); r_trajs(min_idx,:)];
+                % Store all of the r_scores, and trajectory of the minimum score
+                matches(:,q) = r_scores;
+                [x, idx] = min(r_scores);
+                trajs(q,:,:) = [qs(1,:); r_trajs(idx,:)];
             end
 
-            % Save the best match trajectory, index, best factor for each query
-            obj.results.matching.all.trajectories = trajs;
-            obj.results.matching.all.matches = matches;
+            % Save all of the minimum scores, and best trajectories
+            obj.results.matching.all.min_scores = matches;
+            obj.results.matching.all.best_trajectories = trajs;
         end
 
         function thresholding(obj)
@@ -420,9 +429,17 @@ classdef SeqSLAMInstance < handle
             end
 
             % Perform the thresholding
-            obj.results.matching.thresholded = SeqSLAMInstance.threshold( ...
-                obj.results.matching.all, ...
-                obj.config.seqslam.matching.criteria.u);
+            if strcmpi(obj.config.seqslam.matching.method, 'thresh')
+                obj.results.matching.selected = ...
+                    SeqSLAMInstance.thresholdBasic(obj.results.matching.all, ...
+                    obj.config.seqslam.matching.method_thresh.threshold);
+            else
+                obj.results.matching.selected = ...
+                    SeqSLAMInstance.thresholdWindowed( ...
+                    obj.results.matching.all, ...
+                    obj.config.seqslam.matching.method_window.r_window, ...
+                    obj.config.seqslam.matching.method_window.u);
+            end
 
             % Report to the UI if necessary
             if obj.listeningUI

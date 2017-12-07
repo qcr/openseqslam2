@@ -8,8 +8,7 @@ function empty = emptyConfig()
     empty.reference.type = [];
 
     empty.reference.image.ext = [];
-    empty.reference.image.index_start = [];
-    empty.reference.image.index_end = [];
+    empty.reference.image.numbers = [];
     empty.reference.image.token_start = [];
     empty.reference.image.token_end = [];
 
@@ -22,8 +21,7 @@ function empty = emptyConfig()
     empty.query.type = [];
 
     empty.query.image.ext = [];
-    empty.query.image.index_start = [];
-    empty.query.image.index_end = [];
+    empty.query.image.numbers = [];
     empty.query.image.token_start = [];
     empty.query.image.token_end = [];
 
@@ -35,8 +33,6 @@ function empty = emptyConfig()
     empty.results.path = [];
 
     % SeqSLAM settings (image processing)
-    empty.seqslam.image_processing.load = [];
-
     empty.seqslam.image_processing.downsample.width = [];
     empty.seqslam.image_processing.downsample.height = [];
     empty.seqslam.image_processing.downsample.method = [];
@@ -48,22 +44,18 @@ function empty = emptyConfig()
     empty.seqslam.image_processing.normalisation.strength = [];
 
     % SeqSLAM settings (difference matrix)
-    empty.seqslam.diff_matrix.load = [];
-
     empty.seqslam.diff_matrix.contrast.r_window = [];
 
     % SeqSLAM settings (matching)
-    empty.seqslam.matching.load = [];
-
     empty.seqslam.matching.trajectory.d_s = [];
     empty.seqslam.matching.trajectory.v_min = [];
     empty.seqslam.matching.trajectory.v_max = [];
     empty.seqslam.matching.trajectory.v_step = [];
 
-    %empty.seqslam.matching.r_recent = [];
-
-    empty.seqslam.matching.criteria.r_window = [];
-    empty.seqslam.matching.criteria.u = [];
+    empty.seqslam.matching.method = [];
+    empty.seqslam.matching.method_window.r_window = [];
+    empty.seqslam.matching.method_window.u = [];
+    empty.seqslam.matching.method_thresh.threshold = [];
 
     % Visual settings (progress UI)
     empty.visual.progress.percent_freq = [];

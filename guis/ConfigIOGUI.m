@@ -3,11 +3,17 @@ classdef ConfigIOGUI < handle
     properties (Access = private, Constant)
         % Sizing parameters
         FIG_WIDTH_FACTOR = 5;       % Times largest button on bottom row
-        FIG_HEIGHT_FACTOR = 20;     % Times height of buttons at font size
+        FIG_HEIGHT_FACTOR = 24;     % Times height of buttons at font size
     end
 
     properties
         hFig;
+
+        hTitle;
+
+        hHelp;
+
+        hPrevResults;
 
         hConfigImport;
         hConfigExport;
@@ -32,7 +38,6 @@ classdef ConfigIOGUI < handle
         hResultsStatus;
 
         hSettingsSeqSLAM;
-        hSettingsVisual;
         hStart;
 
         config = emptyConfig();
@@ -49,8 +54,17 @@ classdef ConfigIOGUI < handle
             obj.createGUI();
             obj.sizeGUI();
 
+            % Add the help button to the figure
+            obj.hHelp = HelpPopup.addHelpButton(obj.hFig);
+            HelpPopup.setDestination(obj.hHelp, 'configuration');
+            SpecPosition.positionRelative(obj.hHelp, obj.hConfigImport, ...
+                SpecPosition.CENTER_Y);
+
             % Finally, show the figure when we are done configuring
             obj.hFig.Visible = 'on';
+
+            % Samples popup
+            obj.samplesPopup();
         end
 
         function dumpConfigToXML(obj, filename)
@@ -184,6 +198,32 @@ classdef ConfigIOGUI < handle
             obj.dumpConfigToXML(fullfile(p, f));
         end
 
+        function cbOpenResults(obj, src, event)
+            obj.interactivity(false);
+
+            % Request a results directory from the user
+            resultsDir = uigetdir('', ...
+                'Select the directory containing the saved results');
+
+            % Check the directory for existing results (bail if there are none)
+            [present, err] = resultsPresent(resultsDir);
+
+            % Attempt to open the results
+            [results, config, err] = resultsOpen(resultsDir);
+            if ~isempty(err)
+                uiwait(errordlg( ...
+                    ['Opening of results failed due to an error (' err ')'], ...
+                    'Failed to open results'));
+            else
+                % Open up the results in the ResultsGUI, and wait until done
+                resultsui = ResultsGUI(results, config);
+                uiwait(resultsui.hFig);
+                HelpPopup.setDestination(obj.hHelp, 'configuration');
+            end
+
+            obj.interactivity(true);
+        end
+
         function cbSeqSLAMSettings(obj, src, event)
             obj.interactivity(false);
 
@@ -191,6 +231,7 @@ classdef ConfigIOGUI < handle
             obj.strip();
             seqslamgui = ConfigSeqSLAMGUI(obj.config);
             uiwait(seqslamgui.hFig);
+            HelpPopup.setDestination(obj.hHelp, 'configuration');
 
             % Save the parameters returned
             obj.config = seqslamgui.config;
@@ -207,26 +248,27 @@ classdef ConfigIOGUI < handle
             close(obj.hFig);
         end
 
-        function cbVisualSettings(obj, src, event)
-            obj.interactivity(false);
-
-            % Open the GUI, populate it, and wait for the user to finish
-            visualisegui = ConfigVisualGUI();
-            visualisegui.updateConfig(obj.config);
-            uiwait(visualisegui.hFig);
-
-            % Save the parameters returned
-            obj.config = visualisegui.config;
-
-            obj.interactivity(true);
-        end
-
         function createGUI(obj)
             % Create the figure (and hide it)
             obj.hFig = figure('Visible', 'off');
             GUISettings.applyFigureStyle(obj.hFig);
-            obj.hFig.Name = 'SeqSLAM Configuration';
+            obj.hFig.Name = 'OpenSeqSLAM2.0 Configuration';
             obj.hFig.Resize = 'off';
+
+            % Title annotation
+            obj.hTitle = annotation(obj.hFig, 'textbox');
+            GUISettings.applyAnnotationStyle(obj.hTitle);
+            obj.hTitle.HorizontalAlignment = 'center';
+            obj.hTitle.String = {['\hspace{75pt}\textbf{Welcome to ' ...
+                '\textit{OpenSEQSLAM2.0}!}'] ['Press \textit{Start} to ' ...
+                'begin immediately, or use this window to pick datasets, ' ...
+                'configurations, and adjust settings.']};
+
+            % Button for opening previous results
+            obj.hPrevResults = uicontrol('Style', 'pushbutton');
+            obj.hPrevResults.Parent = obj.hFig;
+            GUISettings.applyUIControlStyle(obj.hPrevResults);
+            obj.hPrevResults.String = 'Open previous results';
 
             % Buttons for exporting and importing parameters
             obj.hConfigImport = uicontrol('Style', 'pushbutton');
@@ -331,17 +373,13 @@ classdef ConfigIOGUI < handle
             GUISettings.applyUIControlStyle(obj.hSettingsSeqSLAM);
             obj.hSettingsSeqSLAM.String = 'SeqSLAM Settings';
 
-            % Visualiser settings button
-            obj.hSettingsVisual = uicontrol('Style', 'pushbutton');
-            GUISettings.applyUIControlStyle(obj.hSettingsVisual);
-            obj.hSettingsVisual.String = 'Visualiser Settings';
-
             % Start button
             obj.hStart = uicontrol('Style', 'pushbutton');
             GUISettings.applyUIControlStyle(obj.hStart);
             obj.hStart.String = 'Start';
 
             % Callbacks (must be last, otherwise empty objects passed...)
+            obj.hPrevResults.Callback = {@obj.cbOpenResults};
             obj.hConfigImport.Callback = {@obj.cbImport};
             obj.hConfigExport.Callback = {@obj.cbExport};
             obj.hRefLocation.Callback = {@obj.cbEvaluateDataset, ...
@@ -357,7 +395,6 @@ classdef ConfigIOGUI < handle
             obj.hResultsPicker.Callback = {@obj.cbChooseResults, ...
                 obj.hResultsLocation, obj.hResultsStatus};
             obj.hSettingsSeqSLAM.Callback = {@obj.cbSeqSLAMSettings};
-            obj.hSettingsVisual.Callback = {@obj.cbVisualSettings};
             obj.hStart.Callback= {@obj.cbStart};
         end
 
@@ -372,30 +409,31 @@ classdef ConfigIOGUI < handle
             [p, n, e] = fileparts(path);
             if ~exist(path, 'file')
                 % Inform that the path does not point to an existing file
-                status.String = 'Error: File does not exist!';
+                status.String = 'File does not exist!';
                 status.ForegroundColor = GUISettings.COL_ERROR;
             elseif isdir(path)
                 % Attempt to profile the requested image dataset
-                [ext, a, b, startToken, endToken] = datasetPictureProfile(path);
+                [numbers, ext startToken, endToken] = ...
+                    datasetPictureProfile(path);
 
                 % Report the results
-                if (a == 0 && b == 0) || isempty(ext)
-                    status.String = ['Error: no dataset was found (' ...
+                if length(numbers) == 0 || isempty(ext)
+                    status.String = ['No dataset was found (' ...
                         'a filename patterns wasn''t identified)!'];
                     status.ForegroundColor = GUISettings.COL_ERROR;
                 else
-                    status.String = ['Success: dataset with filenames ''' ...
-                        startToken '[' ...
-                        num2str(a, ['%0' num2str(numel(num2str(b))) 'd']) ...
-                        '-' num2str(b) ']' endToken ''' identified!'];
+                    status.String = ['Dataset with filenames ''' ...
+                        startToken '[' num2str(numbers(1), ...
+                        ['%0' num2str(numel(num2str(numbers(end)))) 'd']) ...
+                        '-' num2str(numbers(end)) ']' endToken ...
+                        ''' identified!'];
                     status.ForegroundColor = GUISettings.COL_SUCCESS;
 
                     % Save the results
                     results = [];
                     results.type = 'image';
                     results.image.ext = ext;
-                    results.image.index_start = a;
-                    results.image.index_end = b;
+                    results.image.numbers = numbers;
                     results.image.token_start = startToken;
                     results.image.token_end = endToken;
                     if status == obj.hRefStatus
@@ -411,7 +449,7 @@ classdef ConfigIOGUI < handle
                 % Attempt to read the video
                 v = VideoReader(path);
                 if v.Duration > 0
-                    status.String = ['Success: video read (' ...
+                    status.String = ['Video read (' ...
                         int2str(v.Duration/60) 'm ' ...
                         num2str(round(mod(v.Duration,60)), '%02d') 's)!'];
                     status.ForegroundColor = GUISettings.COL_SUCCESS;
@@ -430,13 +468,13 @@ classdef ConfigIOGUI < handle
                         obj.cachedQuery = results;
                     end
                 else
-                    status.String = [ 'Error: an empty video ' ...
+                    status.String = ['An empty video ' ...
                         '(duration of 0 seconds) was read!'];
                     status.ForegroundColor = GUISettings.COL_ERROR;
                 end
             else
                 % Unsupported video format
-                status.String = ['Error: ''*' e ...
+                status.String = ['''*' e ...
                     ''' is an unsupported video format'];
                 status.ForegroundColor = GUISettings.COL_ERROR;
             end
@@ -452,18 +490,23 @@ classdef ConfigIOGUI < handle
             status.ForegroundColor = GUISettings.COL_LOADING;
             drawnow();
             obj.interactivity(true);
-            if ~exist(path, 'file')
+            if isempty(path)
+                % Results will not be saved
+                status.String = ['No location selected - ' ...
+                    'results will not be saved automatically'];
+                status.ForegroundColor = GUISettings.COL_WARNING;
+            elseif ~exist(path, 'file')
                 % Inform that the path does not point to an existing directory
-                status.String = 'Error: Selected directory does not exist!';
+                status.String = 'Directory does not exist!';
                 status.ForegroundColor = GUISettings.COL_ERROR;
-            elseif ConfigIOGUI.containsResults(path)
+            elseif resultsPresent(path)
                 % Results directory selected with existing results
-                status.String = ['Success: selected directory contains ' ...
-                    'previous results'];
-                status.ForegroundColor = GUISettings.COL_SUCCESS;
+                status.String = ['Directory contains ' ...
+                    'previous results which will be overwritten'];
+                status.ForegroundColor = GUISettings.COL_WARNING;
             else
                 % A new results directory was selected
-                status.String = ['Success: selected directory contains ' ...
+                status.String = ['Selected directory contains ' ...
                     'no existing results'];
                 status.ForegroundColor = GUISettings.COL_SUCCESS;
             end
@@ -477,6 +520,10 @@ classdef ConfigIOGUI < handle
             else
                 status = 'off';
             end
+
+            obj.hHelp.Enable = status;
+
+            obj.hPrevResults.Enable = status;
 
             obj.hConfigImport.Enable = status;
             obj.hConfigExport.Enable = status;
@@ -496,7 +543,6 @@ classdef ConfigIOGUI < handle
             obj.hResultsStatus.Enable = status;
 
             obj.hSettingsSeqSLAM.Enable = status;
-            obj.hSettingsVisual.Enable = status;
             obj.hStart.Enable = status;
         end
 
@@ -518,23 +564,50 @@ classdef ConfigIOGUI < handle
             obj.evaluateResults(obj.hResultsLocation.String, obj.hResultsStatus);
         end
 
+        function samplesPopup(obj)
+            % Assume the samples have been unzipped if the directory exists,
+            % or do not unzip if do not ask again has been clicked
+            if exist(fullfile(toolboxRoot(), 'datasets', 'samples')) == 7 || ...
+                    exist(fullfile(toolboxRoot(), '.persistent', 'nounzip'))
+                return;
+            end
+
+            % Ask the user if they would like to unzip the samples
+            resp = questdlg(['It appears the samples provided with the ' ...
+                'toolbox have not yet been unzipped. ' ...
+                'Would you like to unzip them?'], 'Unzip samples?', ...
+                'Yes', 'No', 'Do not ask again', 'Yes');
+            if strcmpi(resp, 'yes')
+                h = waitbar(0.5, 'Unzipping...');
+                unzip( ...
+                    fullfile(toolboxRoot(), 'datasets', 'samples.zip'), ...
+                    fullfile(toolboxRoot(), 'datasets'));
+                close(h);
+            elseif strcmpi(resp, 'do not ask again')
+                fclose(fopen( ...
+                    fullfile(toolboxRoot(), '.persistent', 'nounzip'), 'w+'));
+            end
+        end
+
         function sizeGUI(obj)
             % Get some reference dimensions (max width of 3 buttons, and
             % default height of a button)
-            maxWidth = max(...
-                [obj.hSettingsSeqSLAM.Extent(3), ...
-                obj.hSettingsVisual.Extent(3), ...
-                obj.hStart.Extent(3)]);
+            widthUnit = obj.hSettingsSeqSLAM.Extent(3);
             heightUnit = obj.hStart.Extent(4);
 
             % Size and position the figure
             obj.hFig.Position = [0, 0, ...
-                maxWidth * ConfigIOGUI.FIG_WIDTH_FACTOR, ...
+                widthUnit * ConfigIOGUI.FIG_WIDTH_FACTOR, ...
                 heightUnit * ConfigIOGUI.FIG_HEIGHT_FACTOR];
             movegui(obj.hFig, 'center');
 
             % Now that the figure (space for placing UI elements is set),
             % size all of the elements
+            SpecSize.size(obj.hTitle, SpecSize.WIDTH, SpecSize.PERCENT, ...
+                obj.hFig);
+
+            SpecSize.size(obj.hPrevResults, SpecSize.WIDTH, ...
+                SpecSize.PERCENT, obj.hFig, 0.35);
             SpecSize.size(obj.hConfigImport, SpecSize.WIDTH, ...
                 SpecSize.PERCENT, obj.hFig, 0.25);
             SpecSize.size(obj.hConfigExport, SpecSize.WIDTH, ...
@@ -579,21 +652,24 @@ classdef ConfigIOGUI < handle
 
             SpecSize.size(obj.hSettingsSeqSLAM, SpecSize.WIDTH, ...
                 SpecSize.PERCENT, obj.hFig, 0.25);
-            SpecSize.size(obj.hSettingsVisual, SpecSize.WIDTH, ...
-                SpecSize.PERCENT, obj.hFig, 0.25);
             SpecSize.size(obj.hStart, SpecSize.WIDTH, SpecSize.PERCENT, ...
                 obj.hFig, 0.2);
 
             % Then, systematically place
-            SpecPosition.positionIn(obj.hConfigExport, obj.hFig, ...
-                SpecPosition.RIGHT, GUISettings.PAD_MED);
-            SpecPosition.positionIn(obj.hConfigExport, obj.hFig, ...
-                SpecPosition.TOP, GUISettings.PAD_MED);
-            SpecPosition.positionRelative(obj.hConfigImport, ...
-                obj.hConfigExport, SpecPosition.LEFT_OF, ...
+            SpecPosition.positionIn(obj.hTitle, obj.hFig, ...
+                SpecPosition.CENTER_X);
+            SpecPosition.positionIn(obj.hTitle, obj.hFig, ...
+                SpecPosition.TOP);
+
+            SpecPosition.positionIn(obj.hConfigImport, obj.hFig, ...
+                SpecPosition.LEFT, GUISettings.PAD_MED);
+            SpecPosition.positionRelative(obj.hConfigImport, obj.hTitle, ...
+                SpecPosition.BELOW, 2*GUISettings.PAD_LARGE);
+            SpecPosition.positionRelative(obj.hConfigExport, ...
+                obj.hConfigImport, SpecPosition.RIGHT_OF, ...
                 GUISettings.PAD_MED);
-            SpecPosition.positionRelative(obj.hConfigImport, ...
-                obj.hConfigExport, SpecPosition.CENTER_Y);
+            SpecPosition.positionRelative(obj.hConfigExport, ...
+                obj.hConfigImport, SpecPosition.CENTER_Y);
 
             SpecPosition.positionIn(obj.hRef, obj.hFig, ...
                 SpecPosition.CENTER_X);
@@ -666,11 +742,10 @@ classdef ConfigIOGUI < handle
                 SpecPosition.LEFT, GUISettings.PAD_MED);
             SpecPosition.positionIn(obj.hSettingsSeqSLAM, obj.hFig, ...
                 SpecPosition.BOTTOM, GUISettings.PAD_MED);
-            SpecPosition.positionRelative(obj.hSettingsVisual, ...
-                obj.hSettingsSeqSLAM, SpecPosition.RIGHT_OF, ...
-                GUISettings.PAD_MED);
-            SpecPosition.positionRelative(obj.hSettingsVisual, ...
-                obj.hSettingsSeqSLAM, SpecPosition.CENTER_Y);
+            SpecPosition.positionIn(obj.hPrevResults, obj.hFig, ...
+                SpecPosition.CENTER_X);
+            SpecPosition.positionIn(obj.hPrevResults, obj.hFig, ...
+                SpecPosition.BOTTOM, GUISettings.PAD_MED);
             SpecPosition.positionIn(obj.hStart, obj.hFig, ...
                 SpecPosition.RIGHT, GUISettings.PAD_MED);
             SpecPosition.positionRelative(obj.hStart, ...
@@ -703,21 +778,17 @@ classdef ConfigIOGUI < handle
         end
 
         function updateButtons(obj)
-            if ~strncmpi(obj.hRefStatus.String, 'success', 7) || ...
-                    ~strncmpi(obj.hQueryStatus.String, 'success', 7) || ...
-                    ~strncmpi(obj.hResultsStatus.String, 'success', 7)
+            if isequal(obj.hRefStatus.ForegroundColor, ...
+                    GUISettings.COL_ERROR) || isequal( ...
+                    obj.hQueryStatus.ForegroundColor, GUISettings.COL_ERROR) ...
+                    || isequal(obj.hResultsStatus.ForegroundColor, ...
+                    GUISettings.COL_ERROR)
                 obj.hSettingsSeqSLAM.Enable = 'off';
                 obj.hStart.Enable = 'off';
             else
                 obj.hSettingsSeqSLAM.Enable = 'on';
                 obj.hStart.Enable = 'on';
             end
-        end
-    end
-
-    methods (Static)
-        function results = containsResults(directory)
-            results = exist(fullfile(directory, 'config.xml'), 'file');
         end
     end
 end

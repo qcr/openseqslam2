@@ -1,4 +1,4 @@
-function img = datasetOpenImage(ds_config, index, indices, varargin)
+function img = datasetOpenImage(ds_config, index, numbers, varargin)
     % varargin can be used to supply an existing video reader object
     if length(varargin) > 1 || (length(varargin) == 1 && ...
             ~isempty(varargin{1}) && ~strcmp('VideoReader', class(varargin{1})))
@@ -17,12 +17,12 @@ function img = datasetOpenImage(ds_config, index, indices, varargin)
         if isempty(v)
             v = VideoReader(ds_config.path);
         end
-        v.CurrentTime = datasetFrameInfo(indices(index)-1, v.FrameRate, 0);
+        v.CurrentTime = datasetFrameInfo(numbers(index)-1, v.FrameRate, 0);
         img = v.readFrame();
     else
         % Open the relevant image file
         info = ds_config.(ds_config.type);
         img = imread(datasetPictureInfo(ds_config.path, info.token_start, ...
-            info.token_end, indices(index), info.index_end, 0));
+            info.token_end, numbers(index), info.numbers(end), 0));
     end
 end

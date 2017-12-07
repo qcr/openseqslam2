@@ -1,29 +1,27 @@
-# SeqSLAM Toolbox
+# OpenSeqSLAM2.0 Toolbox
 
-An official SeqSLAM Toolbox for MATLAB.
+The second release of OpenSeqSLAM, repackaged as an easy to use and configure toolbox for MATLAB. To get started, simply run "OpenSeqSLAM2" with no arguments.
 
 ## Known Bugs (roughly ordered by severity):
 
-* Running SeqSLAM errors with "Subscripted assignment dimension mismatch" for "images(:,:,k) = imgOut" when running after opening SeqSLAM configuration GUI
-* Percent update frequency is only respected for first step of Progress GUI (suspected because "lastPercent" value is not reset when changing states)
-* Matching performs terribly on day night video dataset (could simply be poor parameter choices)
-* Changing crop box doesn't fade corresponding previews (SeqSLAM configuration GUI)
-* Crop boxes reset to full size when refreshing previews (SeqSLAM configuration GUI)
-* Remove blank difference matrix screen (SeqSLAM configuration GUI)
-* Remove visualiser settings button (initial configuration GUI)
+* MATLAB's VideoReader is dodgy when first getting to work on Linux (install gstreamer-plugins-base, link against system libstdc++, etc. seem to help... but not all the time...)
+* Under Ubuntu, the window manager sometimes incorrectly places the window title bar over the top of the figure, instead of on top (only current fix is to manually resize window or close and reopen.... not sure who is being stupid here Ubuntu Unity or MATLAB - I suspect Unity)
+* Closing the Tweak popup resets the selected match in Results GUI (this should only be done when applying a tweak, not closing)
+* The help documentation needs work (check for spelling, grammar, etc.)
+* In PR it is assumed that every query image has a reference image ground truth. Is this a valid assumption???
+* Long paths come up ugly in a number of places (add in some sort of 'smart path trimming'...)
+* Crash has been observed when closing help during Progress GUI (have not been able to reproduce...)
+
 
 ## TODO List (roughly ordered by value):
 
-* Rebrand to OpenSeqSLAM2.0
-* Annotations for the SeqSLAM configuration visual helpers
-* Integrate absolute thresholding method (both in settings, and dynamic adjusting)
-* Writing and reading of results from a directory (including logic for choosing whether to load existing or not)
-* Allow resized dimensions to change aspect ratio (SeqSLAM configuration GUI - need to understand why this change...)
-* Implement the "outlier fading" functionality in the Difference Matrix Results GUI
-* Re-evaluate regex matching scheme for images (in initial configuration GUI)
+* Disable match selection in Results GUI when a popup is open (i.e. enforce ad hoc modal structure)
+* Should probably change code flow so the start GUI window is returned to after a set of results (and a progress GUI can be exited while running)
 
-## Wish List (not a priority in any way shape or form):
 
-* Make resizeable
-* Fix axis management (currently a random mess full of unneccessary calls)
+## Potential Future Feature List (may or may not eventuate...):
+
+* Use Git LFS to manage storage of the samples archive
+* Make resizable
+* Fix axis management (currently a random mess full of unnecessary calls)
 * Clean up of messy code areas (break GUI creation and sizing functions into manageable sub-functions, etc.)
