@@ -10,6 +10,7 @@ The second release of OpenSeqSLAM, repackaged as an easy to use and configure to
 * The help documentation needs work (check for spelling, grammar, etc.)
 * In PR it is assumed that every query image has a reference image ground truth. Is this a valid assumption???
 * Long paths come up ugly in a number of places (add in some sort of 'smart path trimming'...)
+* Crash has been observed when closing help during Progress GUI (have not been able to reproduce...)
 
 
 ## TODO List (roughly ordered by value):

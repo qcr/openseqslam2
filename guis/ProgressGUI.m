@@ -139,11 +139,15 @@ classdef ProgressGUI < handle
 
             % Close when done
             % TODO maybe there is a more appropriate place for this?
-            close(obj.hFig);
+            delete(obj.hFig);
         end
     end
 
     methods (Access = private)
+        function cbClose(obj, src, event)
+
+        end
+
         function clearScreen(obj)
             cla(obj.hAxA);
             cla(obj.hAxB);
@@ -284,6 +288,9 @@ classdef ProgressGUI < handle
             obj.hPercent.FontWeight = 'bold';
             obj.hPercent.HorizontalAlignment = 'right';
             obj.hPercent.String = '50%';
+
+            % Callbacks (must be last, otherwise empty objects passed...)
+            obj.hFig.CloseRequestFcn = {@obj.cbClose};
         end
 
         function sizeGUI(obj)
