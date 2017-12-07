@@ -3,11 +3,14 @@ classdef ConfigIOGUI < handle
     properties (Access = private, Constant)
         % Sizing parameters
         FIG_WIDTH_FACTOR = 5;       % Times largest button on bottom row
-        FIG_HEIGHT_FACTOR = 20;     % Times height of buttons at font size
+        FIG_HEIGHT_FACTOR = 24;     % Times height of buttons at font size
     end
 
     properties
         hFig;
+
+        hTitle;
+
         hHelp;
 
         hPrevResults;
@@ -54,6 +57,8 @@ classdef ConfigIOGUI < handle
             % Add the help button to the figure
             obj.hHelp = HelpPopup.addHelpButton(obj.hFig);
             HelpPopup.setDestination(obj.hHelp, 'configuration');
+            SpecPosition.positionRelative(obj.hHelp, obj.hConfigImport, ...
+                SpecPosition.CENTER_Y);
 
             % Finally, show the figure when we are done configuring
             obj.hFig.Visible = 'on';
@@ -249,6 +254,15 @@ classdef ConfigIOGUI < handle
             GUISettings.applyFigureStyle(obj.hFig);
             obj.hFig.Name = 'OpenSeqSLAM2.0 Configuration';
             obj.hFig.Resize = 'off';
+
+            % Title annotation
+            obj.hTitle = annotation(obj.hFig, 'textbox');
+            GUISettings.applyAnnotationStyle(obj.hTitle);
+            obj.hTitle.HorizontalAlignment = 'center';
+            obj.hTitle.String = {['\hspace{75pt}\textbf{Welcome to ' ...
+                '\textit{OpenSEQSLAM2.0}!}'] ['Press \textit{Start} to ' ...
+                'begin immediately, or use this window to pick datasets, ' ...
+                'configurations, and adjust settings.']};
 
             % Button for opening previous results
             obj.hPrevResults = uicontrol('Style', 'pushbutton');
@@ -589,6 +603,9 @@ classdef ConfigIOGUI < handle
 
             % Now that the figure (space for placing UI elements is set),
             % size all of the elements
+            SpecSize.size(obj.hTitle, SpecSize.WIDTH, SpecSize.PERCENT, ...
+                obj.hFig);
+
             SpecSize.size(obj.hPrevResults, SpecSize.WIDTH, ...
                 SpecSize.PERCENT, obj.hFig, 0.35);
             SpecSize.size(obj.hConfigImport, SpecSize.WIDTH, ...
@@ -639,10 +656,15 @@ classdef ConfigIOGUI < handle
                 obj.hFig, 0.2);
 
             % Then, systematically place
+            SpecPosition.positionIn(obj.hTitle, obj.hFig, ...
+                SpecPosition.CENTER_X);
+            SpecPosition.positionIn(obj.hTitle, obj.hFig, ...
+                SpecPosition.TOP);
+
             SpecPosition.positionIn(obj.hConfigImport, obj.hFig, ...
                 SpecPosition.LEFT, GUISettings.PAD_MED);
-            SpecPosition.positionIn(obj.hConfigImport, obj.hFig, ...
-                SpecPosition.TOP, GUISettings.PAD_MED);
+            SpecPosition.positionRelative(obj.hConfigImport, obj.hTitle, ...
+                SpecPosition.BELOW, 2*GUISettings.PAD_LARGE);
             SpecPosition.positionRelative(obj.hConfigExport, ...
                 obj.hConfigImport, SpecPosition.RIGHT_OF, ...
                 GUISettings.PAD_MED);
