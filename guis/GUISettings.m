@@ -101,8 +101,8 @@ classdef GUISettings
             axes.YColor = 'k';
             axes.XLim = [0 1];
             axes.YLim = [0 1];
-            axes.XLabel.String = 'Precision';
-            axes.YLabel.String = 'Recall';
+            axes.XLabel.String = 'Recall';
+            axes.YLabel.String = 'Precision';
         end
 
         function setFontScale(uicontrol, scale)

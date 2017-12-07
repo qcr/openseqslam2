@@ -1035,20 +1035,20 @@ classdef ResultsGUI < handle
             % Draw the precision recall plot (use saved values)
             cla(obj.hAxPR);
             hold(obj.hAxPR, 'on');
-            h = plot(obj.hAxPR, obj.results.pr.values.precisions, ...
-                obj.results.pr.values.recalls, 'bo-');
+            h = plot(obj.hAxPR, obj.results.pr.values.recalls, ...
+                obj.results.pr.values.precisions, 'bo-');
             h.MarkerFaceColor = 'b';
-            h.MarkerSize = h.MarkerSize * 0.75;
+            h.MarkerSize = h.MarkerSize * 0.5;
 
             % Draw the highlighting if required
             if obj.hFocusPRVisualise.Value == 1
                 n = obj.selectedPRFocus();
                 p = obj.results.pr.values.precisions(n);
                 r = obj.results.pr.values.recalls(n);
-                h = plot(obj.hAxPR, p, r, 'o');
+                h = plot(obj.hAxPR, r, p, 'o');
                 h.MarkerEdgeColor = GUISettings.COL_WARNING;
                 h.MarkerFaceColor = GUISettings.COL_WARNING;
-                h = plot(obj.hAxPR, [0 p p], [r r 0], '--');
+                h = plot(obj.hAxPR, [0 r r], [p p 0], '--');
                 h.Color = GUISettings.COL_WARNING;
             end
             hold(obj.hAxPR, 'off');
