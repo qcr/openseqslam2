@@ -311,6 +311,11 @@ classdef ResultsGUI < handle
                 obj.toggleVideoScreenLock(false);
                 obj.hOptsVidPlay.String = 'Play';
 
+                % Update the slider value
+                ms = obj.results.matching.selected.matches(...
+                    ~isnan(obj.results.matching.selected.matches));
+                obj.hOptsVidSlider.Value = find(ms == obj.currentVideoMatch(2));
+
                 % Stop the timer, and delete it
                 stop(obj.videoTimer);
                 delete(obj.videoTimer);

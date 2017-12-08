@@ -12,7 +12,6 @@ function [results, config] = OpenSeqSLAM2(varargin)
 
         % Abort if no parameters are returned
         if isempty(config)
-            fprintf('Exited start dialog. Aborting...\n');
             results = [];
             return;
         end
