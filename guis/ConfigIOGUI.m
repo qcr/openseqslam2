@@ -3,7 +3,7 @@ classdef ConfigIOGUI < handle
     properties (Access = private, Constant)
         % Sizing parameters
         FIG_WIDTH_FACTOR = 5;       % Times largest button on bottom row
-        FIG_HEIGHT_FACTOR = 24;     % Times height of buttons at font size
+        FIG_HEIGHT_FACTOR = 26;     % Times height of buttons at font size
     end
 
     properties
@@ -616,7 +616,7 @@ classdef ConfigIOGUI < handle
             SpecSize.size(obj.hRef, SpecSize.WIDTH, ...
                 SpecSize.MATCH, obj.hFig, GUISettings.PAD_MED);
             SpecSize.size(obj.hRef, SpecSize.HEIGHT, ...
-                SpecSize.ABSOLUTE, 5.5*heightUnit);
+                SpecSize.ABSOLUTE, 6*heightUnit);
             SpecSize.size(obj.hRefLocation, SpecSize.WIDTH, ...
                 SpecSize.PERCENT, obj.hRef, 0.9, GUISettings.PAD_SMALL);
             SpecSize.size(obj.hRefPicker, SpecSize.WIDTH, ...
@@ -629,7 +629,7 @@ classdef ConfigIOGUI < handle
             SpecSize.size(obj.hQuery, SpecSize.WIDTH, ...
                 SpecSize.MATCH, obj.hFig, GUISettings.PAD_MED);
             SpecSize.size(obj.hQuery, SpecSize.HEIGHT, ...
-                SpecSize.ABSOLUTE, 5.5*heightUnit);
+                SpecSize.ABSOLUTE, 6*heightUnit);
             SpecSize.size(obj.hQueryLocation, SpecSize.WIDTH, ...
                 SpecSize.PERCENT, obj.hQuery, 0.9, GUISettings.PAD_SMALL);
             SpecSize.size(obj.hQueryPicker, SpecSize.WIDTH, ...
