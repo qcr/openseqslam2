@@ -252,7 +252,7 @@ classdef HelpPopup < handle
             % Statically size for now
             % TODO handle potential resizing gracefully
             drawnow(); % TODO find a non gross way to do this...
-            widthUnit = obj.hHelpTexts(1).Position(3);
+            widthUnit = obj.hHelpTexts(1).Position(3) * toolboxWidthFactor();
             heightUnit = obj.hHelpTexts(1).Position(4);
 
             % Size and position the figure

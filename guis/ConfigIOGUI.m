@@ -592,7 +592,7 @@ classdef ConfigIOGUI < handle
         function sizeGUI(obj)
             % Get some reference dimensions (max width of 3 buttons, and
             % default height of a button)
-            widthUnit = obj.hSettingsSeqSLAM.Extent(3);
+            widthUnit = obj.hSettingsSeqSLAM.Extent(3) * toolboxWidthFactor();
             heightUnit = obj.hStart.Extent(4);
 
             % Size and position the figure
