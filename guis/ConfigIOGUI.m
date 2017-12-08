@@ -3,13 +3,14 @@ classdef ConfigIOGUI < handle
     properties (Access = private, Constant)
         % Sizing parameters
         FIG_WIDTH_FACTOR = 5;       % Times largest button on bottom row
-        FIG_HEIGHT_FACTOR = 24;     % Times height of buttons at font size
+        FIG_HEIGHT_FACTOR = 26;     % Times height of buttons at font size
     end
 
     properties
         hFig;
 
         hTitle;
+        hInfo;
 
         hHelp;
 
@@ -259,10 +260,13 @@ classdef ConfigIOGUI < handle
             obj.hTitle = annotation(obj.hFig, 'textbox');
             GUISettings.applyAnnotationStyle(obj.hTitle);
             obj.hTitle.HorizontalAlignment = 'center';
-            obj.hTitle.String = {['\hspace{75pt}\textbf{Welcome to ' ...
-                '\textit{OpenSEQSLAM2.0}!}'] ['Press \textit{Start} to ' ...
+            obj.hTitle.String = '\textbf{Welcome to \textit{OpenSEQSLAM2.0}!}';
+
+            obj.hInfo = annotation(obj.hFig, 'textbox');
+            GUISettings.applyAnnotationStyle(obj.hInfo);
+            obj.hInfo.String = ['Press \textit{Start} to ' ...
                 'begin immediately, or use this window to pick datasets, ' ...
-                'configurations, and adjust settings.']};
+                'configurations, and adjust settings.'];
 
             % Button for opening previous results
             obj.hPrevResults = uicontrol('Style', 'pushbutton');
@@ -592,7 +596,7 @@ classdef ConfigIOGUI < handle
         function sizeGUI(obj)
             % Get some reference dimensions (max width of 3 buttons, and
             % default height of a button)
-            widthUnit = obj.hSettingsSeqSLAM.Extent(3);
+            widthUnit = obj.hSettingsSeqSLAM.Extent(3) * toolboxWidthFactor();
             heightUnit = obj.hStart.Extent(4);
 
             % Size and position the figure
@@ -604,7 +608,9 @@ classdef ConfigIOGUI < handle
             % Now that the figure (space for placing UI elements is set),
             % size all of the elements
             SpecSize.size(obj.hTitle, SpecSize.WIDTH, SpecSize.PERCENT, ...
-                obj.hFig);
+                obj.hFig, 1.0);
+            SpecSize.size(obj.hInfo, SpecSize.WIDTH, SpecSize.PERCENT, ...
+                obj.hFig, 1.0);
 
             SpecSize.size(obj.hPrevResults, SpecSize.WIDTH, ...
                 SpecSize.PERCENT, obj.hFig, 0.35);
@@ -616,7 +622,7 @@ classdef ConfigIOGUI < handle
             SpecSize.size(obj.hRef, SpecSize.WIDTH, ...
                 SpecSize.MATCH, obj.hFig, GUISettings.PAD_MED);
             SpecSize.size(obj.hRef, SpecSize.HEIGHT, ...
-                SpecSize.ABSOLUTE, 5.5*heightUnit);
+                SpecSize.ABSOLUTE, 6*heightUnit);
             SpecSize.size(obj.hRefLocation, SpecSize.WIDTH, ...
                 SpecSize.PERCENT, obj.hRef, 0.9, GUISettings.PAD_SMALL);
             SpecSize.size(obj.hRefPicker, SpecSize.WIDTH, ...
@@ -629,7 +635,7 @@ classdef ConfigIOGUI < handle
             SpecSize.size(obj.hQuery, SpecSize.WIDTH, ...
                 SpecSize.MATCH, obj.hFig, GUISettings.PAD_MED);
             SpecSize.size(obj.hQuery, SpecSize.HEIGHT, ...
-                SpecSize.ABSOLUTE, 5.5*heightUnit);
+                SpecSize.ABSOLUTE, 6*heightUnit);
             SpecSize.size(obj.hQueryLocation, SpecSize.WIDTH, ...
                 SpecSize.PERCENT, obj.hQuery, 0.9, GUISettings.PAD_SMALL);
             SpecSize.size(obj.hQueryPicker, SpecSize.WIDTH, ...
@@ -660,11 +666,15 @@ classdef ConfigIOGUI < handle
                 SpecPosition.CENTER_X);
             SpecPosition.positionIn(obj.hTitle, obj.hFig, ...
                 SpecPosition.TOP);
+            SpecPosition.positionIn(obj.hInfo, obj.hFig, ...
+                SpecPosition.CENTER_X);
+            SpecPosition.positionRelative(obj.hInfo, obj.hTitle, ...
+                SpecPosition.BELOW, GUISettings.PAD_SMALL);
 
             SpecPosition.positionIn(obj.hConfigImport, obj.hFig, ...
                 SpecPosition.LEFT, GUISettings.PAD_MED);
-            SpecPosition.positionRelative(obj.hConfigImport, obj.hTitle, ...
-                SpecPosition.BELOW, 2*GUISettings.PAD_LARGE);
+            SpecPosition.positionRelative(obj.hConfigImport, obj.hInfo, ...
+                SpecPosition.BELOW, 1.5*GUISettings.PAD_LARGE);
             SpecPosition.positionRelative(obj.hConfigExport, ...
                 obj.hConfigImport, SpecPosition.RIGHT_OF, ...
                 GUISettings.PAD_MED);

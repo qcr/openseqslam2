@@ -36,6 +36,8 @@ classdef HelpPopup < handle
             obj.hHelp.Callback = {@obj.cbHelp};
             SpecPosition.positionIn(obj.hHelp, obj.hFig, ...
                 SpecPosition.TOP);
+            SpecPosition.positionRelative(obj.hHelp, obj.hScrollbar, ...
+                SpecPosition.LEFT_OF);
             obj.hHelp.Visible = 'off';
 
             % Finally, show the figure once done configuring
@@ -288,7 +290,8 @@ classdef HelpPopup < handle
             SpecPosition.positionIn(obj.hScrollbar, obj.hFig, ...
                 SpecPosition.CENTER_Y);
             SpecPosition.positionIn(obj.hScrollbar, obj.hFig, ...
-                SpecPosition.RIGHT, -1 * GUISettings.PAD_MED);
+                SpecPosition.RIGHT);
+            %SpecPosition.RIGHT, -1 * GUISettings.PAD_MED);
         end
 
         function setHeightOffset(obj, offset)

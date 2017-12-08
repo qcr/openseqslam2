@@ -160,7 +160,7 @@ classdef SequencePopup < handle
         function sizePopup(obj)
             % Statically size for now
             % TODO handle potential resizing gracefully
-            widthUnit = obj.hTitle.Extent(3);
+            widthUnit = obj.hTitle.Extent(3) * toolboxWidthFactor();
             heightUnit = obj.hTitle.Extent(4);
 
             % Size and position the figure
