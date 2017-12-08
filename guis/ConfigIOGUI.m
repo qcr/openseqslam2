@@ -10,6 +10,7 @@ classdef ConfigIOGUI < handle
         hFig;
 
         hTitle;
+        hInfo;
 
         hHelp;
 
@@ -259,10 +260,13 @@ classdef ConfigIOGUI < handle
             obj.hTitle = annotation(obj.hFig, 'textbox');
             GUISettings.applyAnnotationStyle(obj.hTitle);
             obj.hTitle.HorizontalAlignment = 'center';
-            obj.hTitle.String = {['\hspace{75pt}\textbf{Welcome to ' ...
-                '\textit{OpenSEQSLAM2.0}!}'] ['Press \textit{Start} to ' ...
+            obj.hTitle.String = '\textbf{Welcome to \textit{OpenSEQSLAM2.0}!}';
+
+            obj.hInfo = annotation(obj.hFig, 'textbox');
+            GUISettings.applyAnnotationStyle(obj.hInfo);
+            obj.hInfo.String = ['Press \textit{Start} to ' ...
                 'begin immediately, or use this window to pick datasets, ' ...
-                'configurations, and adjust settings.']};
+                'configurations, and adjust settings.'];
 
             % Button for opening previous results
             obj.hPrevResults = uicontrol('Style', 'pushbutton');
@@ -604,7 +608,9 @@ classdef ConfigIOGUI < handle
             % Now that the figure (space for placing UI elements is set),
             % size all of the elements
             SpecSize.size(obj.hTitle, SpecSize.WIDTH, SpecSize.PERCENT, ...
-                obj.hFig);
+                obj.hFig, 1.0);
+            SpecSize.size(obj.hInfo, SpecSize.WIDTH, SpecSize.PERCENT, ...
+                obj.hFig, 1.0);
 
             SpecSize.size(obj.hPrevResults, SpecSize.WIDTH, ...
                 SpecSize.PERCENT, obj.hFig, 0.35);
@@ -660,11 +666,15 @@ classdef ConfigIOGUI < handle
                 SpecPosition.CENTER_X);
             SpecPosition.positionIn(obj.hTitle, obj.hFig, ...
                 SpecPosition.TOP);
+            SpecPosition.positionIn(obj.hInfo, obj.hFig, ...
+                SpecPosition.CENTER_X);
+            SpecPosition.positionRelative(obj.hInfo, obj.hTitle, ...
+                SpecPosition.BELOW, GUISettings.PAD_SMALL);
 
             SpecPosition.positionIn(obj.hConfigImport, obj.hFig, ...
                 SpecPosition.LEFT, GUISettings.PAD_MED);
-            SpecPosition.positionRelative(obj.hConfigImport, obj.hTitle, ...
-                SpecPosition.BELOW, 2*GUISettings.PAD_LARGE);
+            SpecPosition.positionRelative(obj.hConfigImport, obj.hInfo, ...
+                SpecPosition.BELOW, 1.5*GUISettings.PAD_LARGE);
             SpecPosition.positionRelative(obj.hConfigExport, ...
                 obj.hConfigImport, SpecPosition.RIGHT_OF, ...
                 GUISettings.PAD_MED);

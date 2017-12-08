@@ -1102,7 +1102,7 @@ classdef ConfigSeqSLAMGUI < handle
         function sizeGUI(obj)
             % Get some reference dimensions (max width of headings, and
             % default height of a button
-            widthUnit = obj.hImPrRefresh.Extent(3) * toolboxWidthFactor();
+            widthUnit = obj.hImPrRefresh.Extent(3);
             heightUnit = obj.hDone.Extent(4);
 
             % Size and position of the figure
