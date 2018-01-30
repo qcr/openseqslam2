@@ -260,7 +260,7 @@ classdef ConfigIOGUI < handle
             obj.hTitle = annotation(obj.hFig, 'textbox');
             GUISettings.applyAnnotationStyle(obj.hTitle);
             obj.hTitle.HorizontalAlignment = 'center';
-            obj.hTitle.String = '\textbf{Welcome to \textit{OpenSEQSLAM2.0}!}';
+            obj.hTitle.String = '\textbf{Welcome to \textit{OpenSeqSLAM2.0}!}';
 
             obj.hInfo = annotation(obj.hFig, 'textbox');
             GUISettings.applyAnnotationStyle(obj.hInfo);
