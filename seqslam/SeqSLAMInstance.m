@@ -44,9 +44,13 @@ classdef SeqSLAMInstance < handle
         end
 
         function run(obj)
-            % Determine if we are actually going to be saving results
-            saving = ~isempty(obj.config.results.path) && ...
-                exist(obj.config.results.path) == 7;
+            % Determine if we are saving results, and setup if necessary
+            saving = ~isempty(obj.config.results.path);
+
+            % Clean up the directory before starting if saving
+            if saving
+                cleanDir(obj.config.results.path);
+            end
 
             % Perform each of the 'do' actions, periodically saving results
             if saving
