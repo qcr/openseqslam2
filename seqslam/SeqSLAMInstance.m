@@ -1,5 +1,16 @@
 classdef SeqSLAMInstance < handle
 
+    properties (Constant)
+        STATE_START = 0;
+        STATE_PREPROCESS_REF = 1;
+        STATE_PREPROCESS_QUERY = 2;
+        STATE_DIFF_MATRIX = 3;
+        STATE_DIFF_MATRIX_CONTRAST = 4;
+        STATE_MATCHING = 5;
+        STATE_MATCHING_FILTERING = 6;
+        STATE_DONE = 7;
+    end
+
     properties
         config;
         results = emptyResults();
@@ -17,15 +28,19 @@ classdef SeqSLAMInstance < handle
         end
 
         function attachUI(obj, ui)
-            if ~strcmp('ProgressGUI', class(ui))
-                return;
+            if strcmp('ProgressGUI', class(ui))
+                obj.cbPercentReady = @ui.refreshPercentDue;
+                obj.cbPercentUpdate = @ui.refreshPercent;
+                obj.cbMainReady = @ui.refreshMainDue;
+                obj.cbMainUpdate = @ui.refreshMain;
+                obj.listeningUI = true;
+            elseif strcmp('ProgressConsole', class(ui))
+                obj.cbPercentReady = @ui.refreshPercentDue;
+                obj.cbPercentUpdate = @ui.refreshPercent;
+                obj.cbMainReady = @(obj, state, perc) false;
+                obj.cbMainUpdate = @(obj, progress) disp([]);
+                obj.listeningUI = true;
             end
-
-            obj.cbPercentReady = @ui.refreshPercentDue;
-            obj.cbPercentUpdate = @ui.refreshPercent;
-            obj.cbMainReady = @ui.refreshMainDue;
-            obj.cbMainUpdate = @ui.refreshMain;
-            obj.listeningUI = true;
         end
 
         function run(obj)
@@ -55,6 +70,16 @@ classdef SeqSLAMInstance < handle
                     obj.results.matching, 'matching.mat');
                 resultsSave(obj.config.results.path, ...
                     obj.results.pr, 'precision_recall.mat'); % Always empty
+            end
+
+            % If necessary, let the UI know that we are done
+            if obj.listeningUI
+                p = [];
+                p.state = SeqSLAMInstance.STATE_DONE;
+                p.percent = 100;
+                obj.cbPercentReady(p.state, p.percent);
+                obj.cbPercentUpdate(p.percent);
+                obj.cbMainUpdate(p);
             end
         end
     end
@@ -196,7 +221,7 @@ classdef SeqSLAMInstance < handle
                     img = datasetOpenImage(settingsDataset, k, numbers, v);
 
                     % Preprocess the image
-                    state = ProgressGUI.STATE_PREPROCESS_REF + ds-1;
+                    state = SeqSLAMInstance.STATE_PREPROCESS_REF + ds-1;
                     [imgOut, imgs] = SeqSLAMInstance.preprocessSingle(img, ...
                         settingsProcess, datasets{ds}, ...
                         obj.listeningUI && obj.cbMainReady(state, perc));
@@ -265,14 +290,14 @@ classdef SeqSLAMInstance < handle
                     if obj.listeningUI
                         perc = ((y-1)*w+x) / (w*h) * 100;
                         if obj.cbMainReady( ...
-                                ProgressGUI.STATE_DIFF_MATRIX, perc)
+                                SeqSLAMInstance.STATE_DIFF_MATRIX, perc)
                             p = [];
-                            p.state = ProgressGUI.STATE_DIFF_MATRIX;
+                            p.state = SeqSLAMInstance.STATE_DIFF_MATRIX;
                             p.percent = perc;
                             p.diff_matrix = matrix;
                             obj.cbMainUpdate(p);
                         elseif obj.cbPercentReady( ...
-                                ProgressGUI.STATE_DIFF_MATRIX, perc)
+                                SeqSLAMInstance.STATE_DIFF_MATRIX, perc)
                             obj.cbPercentUpdate(perc);
                         end
                     end
@@ -306,15 +331,15 @@ classdef SeqSLAMInstance < handle
                         perc = ((x-1)*size(matrix,1)+y) / ...
                             numel(matrix) * 100;
                         if obj.cbMainReady( ...
-                                ProgressGUI.STATE_DIFF_MATRIX_CONTRAST, perc)
+                                SeqSLAMInstance.STATE_DIFF_MATRIX_CONTRAST, perc)
                             p = [];
-                            p.state = ProgressGUI.STATE_DIFF_MATRIX_CONTRAST;
+                            p.state = SeqSLAMInstance.STATE_DIFF_MATRIX_CONTRAST;
                             p.percent = perc;
                             p.diff_matrix = obj.results.diff_matrix.base;
                             p.diff_matrix_enhanced = matrix;
                             obj.cbMainUpdate(p);
                         elseif obj.cbPercentReady( ...
-                                ProgressGUI.STATE_DIFF_MATRIX_CONTRAST, perc)
+                                SeqSLAMInstance.STATE_DIFF_MATRIX_CONTRAST, perc)
                             obj.cbPercentUpdate(perc);
                         end
                     end
@@ -390,9 +415,9 @@ classdef SeqSLAMInstance < handle
                         perc = ((q-1-ds/2)*num_rs + r) / ...
                             ((num_qs-ds)*num_rs) * 100;
                         if obj.cbMainReady( ...
-                                ProgressGUI.STATE_MATCHING, perc)
+                                SeqSLAMInstance.STATE_MATCHING, perc)
                             p = [];
-                            p.state = ProgressGUI.STATE_MATCHING;
+                            p.state = SeqSLAMInstance.STATE_MATCHING;
                             p.percent = perc;
                             p.q = q;
                             p.r = r;
@@ -402,7 +427,7 @@ classdef SeqSLAMInstance < handle
                             p.diff_matrix = obj.results.diff_matrix.enhanced;
                             obj.cbMainUpdate(p);
                         elseif obj.cbPercentReady( ...
-                                ProgressGUI.STATE_MATCHING, perc)
+                                SeqSLAMInstance.STATE_MATCHING, perc)
                             obj.cbPercentUpdate(perc);
                         end
                     end
@@ -423,8 +448,10 @@ classdef SeqSLAMInstance < handle
             % Report to the UI if necessary
             if obj.listeningUI
                 p = [];
-                p.state = ProgressGUI.STATE_MATCHING_FILTERING;
+                p.state = SeqSLAMInstance.STATE_MATCHING_FILTERING;
                 p.percent = 0;
+                obj.cbPercentReady(p.state, p.percent);
+                obj.cbPercentUpdate(p.percent);
                 obj.cbMainUpdate(p);
             end
 
@@ -444,8 +471,10 @@ classdef SeqSLAMInstance < handle
             % Report to the UI if necessary
             if obj.listeningUI
                 p = [];
-                p.state = ProgressGUI.STATE_DONE;
+                p.state = SeqSLAMInstance.STATE_MATCHING_FILTERING;
                 p.percent = 100;
+                obj.cbPercentReady(p.state, p.percent);
+                obj.cbPercentUpdate(p.percent);
                 obj.cbMainUpdate(p);
             end
         end

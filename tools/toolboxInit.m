@@ -4,7 +4,6 @@ cd(fileparts(which('toolboxInit')));
 
 % Only do anything if the toolbox is NOT on the path
 if isempty(which('OpenSeqSLAM2'))
-    fprintf('Adding...\n');
     % Use the root directory to add to the path
     root = toolboxRoot();
     addpath(genpath(root));

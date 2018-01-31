@@ -3,7 +3,7 @@ function [results, config] = OpenSeqSLAM2(varargin)
     run(fullfile(fileparts(which('OpenSeqSLAM2')), 'tools', 'toolboxInit'));
 
     % Construct the input parser, and parse the provided arguments
-    valsProgress = {'', 'graphical', 'text'};
+    valsProgress = {'', 'graphical', 'console'};
     p = inputParser();
     addParameter(p, 'config', '', ...
         @(x) validateattributes(x, {'char'}, {'vector'}));
@@ -43,7 +43,7 @@ function [results, config] = OpenSeqSLAM2(varargin)
     params.progress = validatestring(params.progress, valsProgress);
     if isempty(params.progress)
         if params.batch
-            params.progress = valsProgress{3}; % text default for batch
+            params.progress = valsProgress{3}; % console default for batch
         else
             params.progress = valsProgress{2}; % graphical default for single
         end
