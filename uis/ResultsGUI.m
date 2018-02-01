@@ -170,13 +170,14 @@ classdef ResultsGUI < handle
         function cbConfigureGroundTruth(obj, src, event)
             % Launch the ground truth popup (and wait until done)
             obj.interactivity(false);
-            gtui = GroundTruthPopup(obj.results);
+            gtui = GroundTruthPopup(obj.results.pr.ground_truth, ...
+                size(obj.results.diff_matrix.enhanced));
             uiwait(gtui.hFig);
             obj.interactivity(true);
 
-            % Update the results (these should have only been modified if apply
-            % was selected successfully)
-            obj.results = gtui.results;
+            % Update the ground truth section of the results (changes should
+            % only have happened if a valid selection was made)
+            obj.results.pr.ground_truth = gtui.gt;
 
             % Update the precision recall plot
             obj.refreshPrecisionRecallScreen();
@@ -1801,15 +1802,8 @@ classdef ResultsGUI < handle
                         obj.config.seqslam.matching.method_window.r_window, ...
                         varVals(k));
                 end
-                obj.results.dbg.a = obj.results.matching.all;
-                obj.results.dbg.w = obj.config.seqslam.matching.method_window.r_window;
-                obj.results.dbg.t = thresholded;
                 matches{k} = ResultsGUI.matchCoords(thresholded.matches);
             end
-            obj.results.dbg.vals = varVals;
-            obj.results.dbg.sA = sweepStart;
-            obj.results.dbg.sB = sweepEnd;
-            obj.results.dbg.matches = matches;
 
             % Calculate the precision for each variable value
             precisions = zeros(size(matches));

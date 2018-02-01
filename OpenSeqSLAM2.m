@@ -9,10 +9,14 @@ function [results, config] = OpenSeqSLAM2(varargin)
         @(x) validateattributes(x, {'char'}, {'vector'}));
     addParameter(p, 'progress', '', ...
         @(x) ischar(validatestring(x, valsProgress)));
+    addParameter(p, 'results_ui', true, ...
+        @(x) validateattributes(x, {'logical'}, {'scalar'}));
     addParameter(p, 'batch_param', '', ...
         @(x) validateattributes(x, {'char'}, {'scalartext'}));
     addParameter(p, 'batch_values', [], ...
         @(x) validateattributes(x, {'numeric'}, {'vector'}));
+    addParameter(p, 'ground_truth', '', ...
+        @(x) validateattributes(x, {'char', 'numeric'}, {'vector'}));
     parse(p, varargin{:});
     params = p.Results;
 
@@ -70,8 +74,9 @@ function [results, config] = OpenSeqSLAM2(varargin)
     else
         results = OpenSeqSLAMRun(config, 'mode', params.progress);
     end
-    return;
 
-    % Run the results visualisation GUI
-    [results, config] = OpenSeqSLAMResults(results, config);
+    % Run the appropriate results validation UI if requested
+    if params.results_ui
+        [results, config] = OpenSeqSLAMResults(results, config);
+    end
 end

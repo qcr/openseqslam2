@@ -32,6 +32,7 @@ function results = OpenSeqSLAMRun(config, varargin)
     end
 
     % Start running through each of the jobs
+    results = cell(size(jobs));
     for k = 1:length(jobs)
         % Do any required pre-processing for the job
         j = jobs{k};
@@ -50,12 +51,12 @@ function results = OpenSeqSLAMRun(config, varargin)
             progressconsole = ProgressConsole(c);
             fprintf('Running OpenSeqSLAM job');
             if params.batch
-                fprintf(' (%s = %d)', j{1}, j{2});
+                fprintf(' (%s = %s)', j{1}, num2str(j{2}));
             end
             fprintf(':');
             progressconsole.run();
             fprintf('\n');
-            results = progressconsole.results;
+            r = progressconsole.results;
         else
             % Run the progress GUI, saving the results
             progressui = ProgressGUI(c);
@@ -67,8 +68,20 @@ function results = OpenSeqSLAMRun(config, varargin)
             end
 
             progressui.run();
-            results = progressui.results;
+            r = progressui.results;
         end
+
+        % Store the results (only store path if in batch mode)
+        if params.batch
+            results{k} = c.results.path;
+        else
+            results = r;
+        end
+    end
+
+    % Perform the precision recall process if in batch mode
+    if params.batch
+        % TODO
     end
 
     % Close the batch mode UI if necessary

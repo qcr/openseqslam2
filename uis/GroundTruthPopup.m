@@ -3,6 +3,10 @@ classdef GroundTruthPopup < handle
     properties (Constant)
         FIG_WIDTH_FACTOR = 4;
         FIG_HEIGHT_FACTOR = 31;
+
+        SOURCE_VEL = 1;
+        SOURCE_CSV = 2;
+        SOURCE_MAT = 3;
     end
 
     properties
@@ -27,20 +31,20 @@ classdef GroundTruthPopup < handle
 
         hApply;
 
-        results = emptyResults();
+        targetSize;
+        gt = emptyGroundTruth();
 
         selectedCSV = [];
-        selectedCSVData = [];
         selectedMAT = [];
-        selectedMATData = [];
         selectedVar = [];
         selectedMatrix = [];
     end
 
     methods
-        function obj = GroundTruthPopup(results)
+        function obj = GroundTruthPopup(gt, targetSize)
             % Save the provided data
-            obj.results = results;
+            obj.gt = gt;
+            obj.targetSize = targetSize;
 
             % Create and size the popup
             obj.createPopup();
@@ -59,6 +63,87 @@ classdef GroundTruthPopup < handle
         end
     end
 
+    methods (Static)
+        function [gt, err] = gtFromVel(vel, tol, diffSize)
+            gt = []; err = [];
+
+            % Note: there are no errors to detect here
+            % Construct and return the ground truth matrix
+            qs = 1:diffSize(2);
+            rs = round(linspace(1, 1 + (length(qs)-1)*vel, length(qs)));
+            gt = zeros(length(rs), length(qs));
+            for k = 1:length(qs)
+                gt = GroundTruthPopup.addGroundTruthValue(gt, qs(k), rs(k), ...
+                    tol);
+            end
+        end
+
+        function [gt, err] = gtFromCSV(filename, diffSize)
+            gt = []; err = [];
+
+            % Read in the csv
+            v = csvread(filename);
+
+            % Perform validity checks
+            if size(v,2) > 3
+                err = ['Data has too many values (' ...
+                    num2str(size(v,2)) ') per row (3 expected)'];
+            elseif min(min(v)) < 0
+                err = 'Data is invalid (negative values were detected)';
+            elseif max(v(:,1)) > diffSize(2)
+                err = ['Data found with query image number (' ...
+                    num2str(max(v(:,1))) ') greater than number of ' ...
+                    'query images in the difference matrix (' ...
+                    num2str(diffSize(2)) ')'];
+            elseif max(v(:,2)) > diffSize(1)
+                err = ['Data found with reference image number (' ...
+                    num2str(max(v(:,2))) ') greater than number of ' ...
+                    'reference images in the difference matrix (' ...
+                    num2str(diffSize(1)) ')'];
+            end
+
+            % Construct and return the ground truth matrix
+            gt = zeros(diffSize);
+            for k = 1:size(v, 1)
+                gt = GroundTruthPopup.addGroundTruthValue(gt, v(k,1), ...
+                    v(k,2), v(k,3));
+            end
+        end
+
+        function [gt, err] = gtFromMAT(filename, varname, diffSize)
+            gt = []; err = [];
+
+            % Get the list of variables, checking the variable is availabe
+            vars = whos('-file', filename);
+            v = vars(find(arrayfun(@(x) strcmp(x.name, varname), vars)));
+            if isempty(v)
+                err = ['Could not find variable ' varname 'in MAT-file at ' ...
+                    filename];
+                return;
+            end
+
+            % Open the variable
+            data = load(filename, v.name);
+            v = getfield(data, v.name);
+
+            % Perform validity checks
+            if ~isequal(size(v), diffSize)
+                err = ['The size of the ground truth data (' ...
+                    num2str(size(v, 1)) 'x' num2str(size(v,2)) ...
+                    ') does not match the size of the difference matrix (' ...
+                    num2str(diffSize(1)) 'x' num2str(diffSize(2)) ')'];
+                return;
+            elseif ~isempty(v(v(v(v ~= 0) ~= 1) ~=0.5))
+                err = ['Invalid values were detected in the ground truth ' ...
+                    'data (only 0, 0.5, and 1 are supported values)'];
+                return;
+            end
+
+            % Construct and return the ground truth matrix
+            gt = v;
+        end
+    end
+
     methods (Access = private, Static)
         function matrix = addGroundTruthValue(matrix, q, r, t)
             rRange = r-t:r+t;
@@ -71,20 +156,16 @@ classdef GroundTruthPopup < handle
     methods (Access = private)
         function cbApply(obj, src, event)
             % Handle error cases
-            err = [];
-            if obj.hTypeValue.Value == 2 && isempty(obj.selectedCSVData)
-                err = 'No valid ground truth data was loaded from a *.csv file';
-            elseif obj.hTypeValue.Value == 3 && isempty(obj.selectedMATData)
-                err = 'No valid ground truth data was loaded from a *.mat file';
-            end
-            if ~isempty(err)
-                uiwait(errordlg(err, 'Cannot apply empty ground truth data'));
+            if isempty(obj.selectedMatrix)
+                uiwait(errordlg( ...
+                    'No valid ground truth data has been selected', ...
+                    'Cannot apply empty ground truth data'));
                 return;
             end
 
             % Strip out the chosen data, and construct the ground truth matrix
             obj.strip();
-            obj.results.pr.ground_truth.matrix = obj.selectedMatrix > 0;
+            obj.gt.matrix = obj.selectedMatrix > 0;
 
             % Close the figure
             close(obj.hFig)
@@ -114,7 +195,6 @@ classdef GroundTruthPopup < handle
         function cbSelectSourceFile(obj, src, event)
             % Attempt to open the source file, then update all ground truth data
             obj.openSourceFile();
-            obj.updateGroundTruth();
             obj.drawScreen();
         end
 
@@ -212,8 +292,10 @@ classdef GroundTruthPopup < handle
             cla(obj.hAxis);
 
             % Either draw the matrix or show the error
-            if (obj.hTypeValue.Value == 2 && isempty(obj.selectedCSV)) || ...
-                    (obj.hTypeValue.Value == 3 && isempty(obj.selectedMAT))
+            if (obj.hTypeValue.Value == GroundTruthPopup.SOURCE_CSV && ...
+                    isempty(obj.selectedCSV)) || ...
+                    (obj.hTypeValue.Value == GroundTruthPopup.SOURCE_MAT && ...
+                    isempty(obj.selectedMAT))
                 obj.hAxis.Visible = 'off';
                 obj.hError.Visible = 'on';
             else
@@ -222,15 +304,16 @@ classdef GroundTruthPopup < handle
 
                 % Draw the currently selected ground truth matrix
                 imagesc(obj.selectedMatrix, 'Parent', obj.hAxis);
-                GUISettings.axesDiffMatrixStyle(obj.hAxis, ...
-                    size(obj.results.diff_matrix.enhanced));
+                GUISettings.axesDiffMatrixStyle(obj.hAxis, obj.targetSize);
             end
 
             % Update the details text if necessary
-            if obj.hTypeValue.Value == 2 && ~isempty(obj.selectedCSV)
+            if obj.hTypeValue.Value == GroundTruthPopup.SOURCE_CSV && ...
+                    ~isempty(obj.selectedCSV)
                 obj.hFilePathDetails.String = {['Ground truth matrix loaded ' ...
                     'from:'], obj.selectedCSV};
-            elseif obj.hTypeValue.Value == 3 && ~isempty(obj.selectedMAT)
+            elseif obj.hTypeValue.Value == GroundTruthPopup.SOURCE_MAT && ...
+                    ~isempty(obj.selectedMAT)
                 obj.hFilePathDetails.String = {['Ground truth matrix loaded ' ...
                     'from ''' obj.selectedVar ''' in:'], obj.selectedMAT};
             else
@@ -241,10 +324,10 @@ classdef GroundTruthPopup < handle
         function openSourceFile(obj)
             % Attempt to get a file of the appropriate type from the user
             f = 0; p = 0;
-            if obj.hTypeValue.Value == 3
+            if obj.hTypeValue.Value == GroundTruthPopup.SOURCE_MAT
                 [f, p] = uigetfile('*.mat', ...
                     'Select a *.mat file containing a ground truth matrix');
-            elseif obj.hTypeValue.Value == 2
+            elseif obj.hTypeValue.Value == GroundTruthPopup.SOURCE_CSV
                 [f, p] = uigetfile('*.csv', ...
                     'Select a *.csv file containing ground truth data');
             end
@@ -255,95 +338,64 @@ classdef GroundTruthPopup < handle
             end
             f = fullfile(p, f);
 
-            % Attempt to load the file
-            err = [];
-            data = [];
-            v = [];
-            if obj.hTypeValue.Value == 3
-                % Get the user to select variable to use, then check validity
+            % Prompt variable selection if choosing a MAT file
+            if obj.hTypeValue.Value == GroundTruthPopup.SOURCE_MAT
+                % Get the user to select variable to use
                 vars = whos('-file', f);
                 v = listdlg('PromptString', ...
                     'Which variable represents the ground truth matrix:', ...
                     'SelectionMode', 'Single', 'ListString', {vars.name});
-                if ~isempty(v)
-                    v = vars(v).name;
-                    data = load(f, v);
-                    data = getfield(data, v);
+                if isempty(v)
+                    return;
+                end
+                v = vars(v).name;
+
+                % Attempt to open the ground truth matrix
+                [gt, err] = GroundTruthPopup.gtFromMAT(f, v, obj.targetSize);
+
+                % Exit if there was an error
+                if ~isempty(err)
+                    uiwait(errordlg(err, 'Ground Truth Data Read Failed'));
+                    return;
                 end
 
-                if isempty(data)
-                    err = 'No data was loaded (data is empty)';
-                elseif ~isequal(size(data), ...
-                        size(obj.results.diff_matrix.enhanced))
-                    err = ['The size of the data (' num2str(size(data, 1)) ...
-                        'x' num2str(size(data,2)) ') does not match the ' ...
-                        'size of the difference matrix (' ...
-                        num2str(size(obj.results.diff_matrix.enhanced, 1)) ...
-                        'x' ...
-                        num2str(size(obj.results.diff_matrix.enhanced, 2)) ')'];
-                elseif ~isempty(data(data(data(data ~=0 ) ~= 1) ~= 0.5))
-                    err = ['Invalid values were detected in the data (' ...
-                        'only 0, 0.5, and 1 are supported values)'];
-                end
-            elseif obj.hTypeValue.Value == 2
-                % Read in the csv, and check validity
-                data = csvread(f);
-                if size(data,2) > 3
-                    err = ['Data has too many values (' ...
-                        num2str(size(data,2)) ') per row (3 expected)'];
-                elseif min(min(data)) < 0
-                    err = 'Data is invalid (negative values were detected)';
-                elseif max(data(:,1)) > size(obj.results.diff_matrix.enhanced,2)
-                    err = ['Data found with query image number (' ...
-                        num2str(max(data(:,1))) ') greater than number of ' ...
-                        'query images in the difference matrix (' ...
-                        num2str(size(obj.results.diff_matrix.enhanced,2)) ')'];
-                elseif max(data(:,2)) > size(obj.results.diff_matrix.enhanced,1)
-                    err = ['Data found with reference image number (' ...
-                        num2str(max(data(:,2))) ') greater than number of ' ...
-                        'reference images in the difference matrix (' ...
-                        num2str(size(obj.results.diff_matrix.enhanced,1)) ')'];
-                end
-            end
-
-            % Bail if there was an error
-            if ~isempty(err)
-                uiwait(errordlg(err, 'Ground Truth Data Read Failed'));
-                return;
-            end
-
-            % We have valid ground truth data, turn it into something that
-            % we can use
-            if obj.hTypeValue.Value == 3
+                % Valid, save the selection
                 obj.selectedMAT = f;
                 obj.selectedVar = v;
-                obj.selectedMatrix = data;
-                obj.selectedMATData = data;
-            elseif obj.hTypeValue.Value == 2
+                obj.selectedMatrix = gt;
+            elseif obj.hTypeValue.Value == GroundTruthPopup.SOURCE_CSV
+                % Attempt to opent he ground truth matrix
+                [gt, err] = GroundTruthPopup.gtFromCSV(f, obj.targetSize);
+
+                % Exit if there was an error
+                if ~isempty(err)
+                    uiwait(errordlg(err, 'Ground Truth Data Read Failed'));
+                    return;
+                end
+
+                % Valid, save the selection
                 obj.selectedCSV = f;
-                obj.selectedCSVData = data;
+                obj.selectedMatrix = gt;
             end
         end
 
         function populate(obj)
             % Load the values in from the results
-            source = SafeData.noEmpty(obj.results.pr.ground_truth.type, ...
-                'velocity');
+            source = SafeData.noEmpty(obj.gt.type, 'velocity');
             if strcmpi(source, 'file')
-                file = SafeData.noEmpty( ...
-                    obj.results.pr.ground_truth.file.path, '*.csv');
+                file = SafeData.noEmpty(obj.gt.file.path, '*.csv');
                 if endswith(file, 'mat')
-                    obj.hTypeValue.Value = 3;
+                    obj.hTypeValue.Value = GroundTruthPopup.SOURCE_MAT;
                 else
-                    obj.hTypeValue.Value = 2;
+                    obj.hTypeValue.Value = GroundTruthPopup.SOURCE_CSV;
                 end
             else
-                obj.hTypeValue.Value = 1;
+                obj.hTypeValue.Value = GroundTruthPopup.SOURCE_VEL;
             end
             obj.hVelocityVelValue.String = SafeData.noEmpty( ...
-                obj.results.pr.ground_truth.velocity.vel, 1);
+                obj.gt.velocity.vel, 1);
             obj.hVelocityTolValue.String = SafeData.noEmpty( ...
-                obj.results.pr.ground_truth.velocity.tol, 5);
+                obj.gt.velocity.tol, 5);
 
             % Execute any required callbacks manually
             obj.cbSelectSource(obj.hTypeValue, []);
@@ -459,50 +511,39 @@ classdef GroundTruthPopup < handle
         function strip(obj)
             % ONLY strip out the values for the currently selected method
             if obj.hTypeValue.Value == 1
-                obj.results.pr.ground_truth.type = 'velocity';
-                obj.results.pr.ground_truth.file.path = [];
-                obj.results.pr.ground_truth.velocity.vel = ...
-                    str2num(obj.hVelocityVelValue.String);
-                obj.results.pr.ground_truth.velocity.tol = ...
-                    str2num(obj.hVelocityTolValue.String);
+                obj.gt.type = 'velocity';
+                obj.gt.file.path = [];
+                obj.gt.velocity.vel = str2num(obj.hVelocityVelValue.String);
+                obj.gt.velocity.tol = str2num(obj.hVelocityTolValue.String);
             elseif obj.hTypeValue.Value == 2
-                obj.results.pr.ground_truth.type = 'file';
-                obj.results.pr.ground_truth.file.path = obj.selectedCSV;
-                obj.results.pr.ground_truth.velocity.vel = [];
-                obj.results.pr.ground_truth.velocity.tol = [];
+                obj.gt.type = 'file';
+                obj.rgt.file.path = obj.selectedCSV;
+                obj.gt.velocity.vel = [];
+                obj.gt.velocity.tol = [];
             elseif obj.hTypeValue.Value == 3
-                obj.results.pr.ground_truth.type = 'file';
-                obj.results.pr.ground_truth.file.path = obj.selectedMAT;
-                obj.results.pr.ground_truth.velocity.vel = [];
-                obj.results.pr.ground_truth.velocity.tol = [];
+                obj.gt.type = 'file';
+                obj.gt.file.path = obj.selectedMAT;
+                obj.gt.velocity.vel = [];
+                obj.gt.velocity.tol = [];
             end
         end
 
         function updateGroundTruth(obj)
-            % Reconstruct the ground truth matrix as requested
-            if obj.hTypeValue.Value == 1
-                % Update the data
-                v = str2num(obj.hVelocityVelValue.String);
-                t = str2num(obj.hVelocityTolValue.String);
-                qs = 1:size(obj.results.diff_matrix.enhanced, 2);
-                rs = round(linspace(1, 1 + (length(qs)-1)*v, length(qs)));
-                obj.selectedMatrix = zeros(length(rs), length(qs));
-                for k = 1:length(qs)
-                    obj.selectedMatrix = ...
-                        GroundTruthPopup.addGroundTruthValue( ...
-                        obj.selectedMatrix, qs(k), rs(k), t);
-                end
-            elseif obj.hTypeValue.Value == 2 && ~isempty(obj.selectedCSVData)
-                obj.selectedMatrix = zeros( ...
-                    size(obj.results.diff_matrix.enhanced));
-                for k = 1:size(obj.selectedCSVData,1)
-                    obj.selectedMatrix = ...
-                        GroundTruthPopup.addGroundTruthValue( ...
-                        obj.selectedMatrix, obj.selectedCSVData(k,1), ...
-                        obj.selectedCSVData(k,2), obj.selectedCSVData(k,3));
-                end
-            elseif obj.hTypeValue.Value == 3 && ~isempty(obj.selectedMATData)
-                obj.selectedMatrix = obj.selectedMATData;
+            % Reconstruct the ground truth matrix based on selected parameters
+            if obj.hTypeValue.Value == GroundTruthPopup.SOURCE_VEL
+                obj.selectedMatrix = GroundTruthPopup.gtFromVel( ...
+                    str2num(obj.hVelocityVelValue.String), ...
+                    str2num(obj.hVelocityTolValue.String), obj.targetSize);
+            elseif obj.hTypeValue.Value == GroundTruthPopup.SOURCE_CSV && ...
+                    ~isempty(obj.selectedCSV)
+                obj.selectedMatrix = GroundTruthPopup.gtFromCSV( ...
+                    obj.selectedCSV, obj.targetSize);
+            elseif obj.hTypeValue.Value == GroundTruthPopup.SOURCE_MAT && ...
+                    ~isempty(obj.selectedMAT)
+                obj.selectedMatrix = GroundTruthPopup.gtFromMAT( ...
+                    obj.selectedMAT, obj.selectedVar, obj.targetSize);
+            else
+                obj.selectedMatrix = [];
             end
         end
     end
