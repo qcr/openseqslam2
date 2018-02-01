@@ -6,6 +6,7 @@ function empty = emptyGroundTruth()
     empty.matrix = [];
     empty.type = [];
     empty.file.path = [];
+    empty.file.var = [];
     empty.velocity.vel = [];
     empty.velocity.tol = [];
 end

@@ -168,7 +168,12 @@ classdef GroundTruthPopup < handle
             obj.gt.matrix = obj.selectedMatrix > 0;
 
             % Close the figure
-            close(obj.hFig)
+            delete(obj.hFig)
+        end
+
+        function cbClose(obj, src, event)
+            obj.selectedMatrix = [];
+            delete(obj.hFig);
         end
 
         function cbSelectSource(obj, src, event)
@@ -208,7 +213,7 @@ classdef GroundTruthPopup < handle
             % Create the figure (and hide it)
             obj.hFig = figure('Visible', 'off');
             GUISettings.applyFigureStyle(obj.hFig);
-            obj.hFig.Name = 'Match Selection Tweaker';
+            obj.hFig.Name = 'Ground Truth Configuration';
 
             % Create the title
             obj.hTitle = uicontrol('Style', 'text');
@@ -286,6 +291,7 @@ classdef GroundTruthPopup < handle
             obj.hVelocityTolValue.Callback = {@obj.cbUpdateGroundTruth};
             obj.hFilePathSelect.Callback = {@obj.cbSelectSourceFile};
             obj.hApply.Callback = {@obj.cbApply};
+            obj.hFig.CloseRequestFcn = {@obj.cbClose};
         end
 
         function drawScreen(obj)

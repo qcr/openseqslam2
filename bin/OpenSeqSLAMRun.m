@@ -32,7 +32,6 @@ function results = OpenSeqSLAMRun(config, varargin)
     end
 
     % Start running through each of the jobs
-    results = cell(size(jobs));
     for k = 1:length(jobs)
         % Do any required pre-processing for the job
         j = jobs{k};
@@ -71,17 +70,13 @@ function results = OpenSeqSLAMRun(config, varargin)
             r = progressui.results;
         end
 
-        % Store the results (only store path if in batch mode)
+        % Store the results only save the useful parts for batch mode
         if params.batch
-            results{k} = c.results.path;
+            results.tests(k).diff_matrix = r.diff_matrix;
+            results.tests(k).matching = r.matching;
         else
             results = r;
         end
-    end
-
-    % Perform the precision recall process if in batch mode
-    if params.batch
-        % TODO
     end
 
     % Close the batch mode UI if necessary
