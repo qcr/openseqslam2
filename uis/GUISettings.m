@@ -94,6 +94,18 @@ classdef GUISettings
             axes.YLim = [min(yvals) max(yvals)] + [-0.5 0.5];
         end
 
+        function [out] = axesF1Style(axes, values, valueLabel)
+            axes.Box = 'on';
+            axes.Visible = 'on';
+            axes.XColor = 'k';
+            axes.YColor = 'k';
+            axes.XLim = [min(values) max(values)];
+            axes.YLim = [0 1];
+            axes.XLabel.String = valueLabel;
+            axes.XLabel.Interpreter = 'none';
+            axes.YLabel.String = 'F1 Score';
+        end
+
         function axesPrecisionRecallStyle(axes)
             axes.Box = 'on';
             axes.Visible = 'on';

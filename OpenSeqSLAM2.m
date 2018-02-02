@@ -143,6 +143,10 @@ function [results, config] = OpenSeqSLAM2(varargin)
             params.batch, 'batch_param', params.batch_param, 'batch_values', ...
             params.batch_values);
 
+        % Add batch details to results
+        results.batch_param = params.batch_param;
+        results.batch_values = params.batch_values;
+
         % Calculate precision recall for results
         results.ground_truth = ground_truth;
         for k = 1:length(results.tests)
@@ -151,10 +155,12 @@ function [results, config] = OpenSeqSLAM2(varargin)
             results.precisions(k) = p;
             results.recalls(k) = r;
         end
+
+        % Save the batch results (they are not saved anywhere earlier)
+        resultsSave(config.results.path, results, 'batch_results.mat');
     else
         results = OpenSeqSLAMRun(config, 'mode', params.progress);
     end
-    return;
 
     % Run the appropriate results validation UI if requested
     if params.results_ui

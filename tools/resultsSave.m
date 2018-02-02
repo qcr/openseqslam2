@@ -20,6 +20,9 @@ function err = resultsSave(path, data, fname)
     elseif strcmp(fname, 'precision_recall.mat')
         pr = data;
         save(fullfile(path, 'precision_recall.mat'), 'pr');
+    elseif strcmp(fname, 'batch_results.mat')
+        results = data;
+        save(fullfile(path, 'batch_results.mat'), 'results');
     else
         err = ['There is not supprted saving method for filename ''' fname '''.'];
     end

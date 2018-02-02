@@ -1,7 +1,7 @@
 function [results, config] = OpenSeqSLAMResults(results, config)
     % Completely separate execution path, depending on whether the results are
     % for batch, or single
-    if isscalar(results)
+    if ~isfield(results, 'batch_param')
         % Run the results visualisation GUI, and wait until the GUI finishes
         resultsui = ResultsGUI(results, config);
         uiwait(resultsui.hFig);
@@ -11,12 +11,11 @@ function [results, config] = OpenSeqSLAMResults(results, config)
         config = resultsui.config;
     else
         % Run the batch results visualisation GUI, and wait until done
-        % TODO
+        resultsui = ResultsBatchGUI(results);
         uiwait(resultsui.hFig);
 
-        % Return the final batch results, and the config (which should not have
-        % been modified)
+        % Return the final batch results (shouldn't be modified)
         results = resultsui.results;
-        config = resultsui.config;
+        config = config;
     end
 end
