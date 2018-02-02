@@ -64,7 +64,7 @@ function [results, config] = OpenSeqSLAM2(varargin)
                 error(['Invalid ground truth *.mat specification. A ' ...
                     'char vector for filename, and char vector for variable' ...
                     ' name is expected.']);
-            elseif ~strcmpi(e, '.mat') && ~strcmpi(e, '*.csv')
+            elseif ~strcmpi(e, '.mat') && ~strcmpi(e, '.csv')
                 error(['Invalid ground truth file requested. Only *.csv ' ...
                     'and *.mat are supported.']);
             end
@@ -101,14 +101,14 @@ function [results, config] = OpenSeqSLAM2(varargin)
     % Construct valid ground truth data (either from GUI, or inflating request)
     sz = [length(SeqSLAMInstance.numbers(config.query)), ...
         length(SeqSLAMInstance.numbers(config.reference))];
-    if isempty(params.ground_truth)
+    if params.batch && isempty(params.ground_truth)
         gtui = GroundTruthPopup(emptyGroundTruth(), sz);
         uiwait(gtui.hFig);
         if isempty(gtui.selectedMatrix)
             error('No valid ground truth matrix was selected. Aborting.');
         end
         ground_truth = gtui.gt;
-    else
+    elseif params.batch
         ground_truth = emptyGroundTruth();
         if params.ground_truth_type == GroundTruthPopup.SOURCE_VEL
             [ground_truth.matrix, err] = GroundTruthPopup.gtFromVel( ...
@@ -121,6 +121,7 @@ function [results, config] = OpenSeqSLAM2(varargin)
                 params.ground_truth{1}, params.ground_truth{2}, sz);
         end
         if isempty(err)
+            ground_truth.matrix = ground_truth.matrix > 0;
             ground_truth.type = params.ground_truth_type;
             if ground_truth.type == GroundTruthPopup.SOURCE_VEL
                 ground_truth.velocity.vel = params.ground_truth{1};
@@ -144,7 +145,12 @@ function [results, config] = OpenSeqSLAM2(varargin)
 
         % Calculate precision recall for results
         results.ground_truth = ground_truth;
-        % TODO
+        for k = 1:length(results.tests)
+            [p, r] = calcPR(results.tests(k).matching.selected.matches, ...
+                ground_truth.matrix);
+            results.precisions(k) = p;
+            results.recalls(k) = r;
+        end
     else
         results = OpenSeqSLAMRun(config, 'mode', params.progress);
     end

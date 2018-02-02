@@ -1,6 +1,12 @@
 function [p, r] = calcPR(matches, gtMatrix)
-    % Calculate precision
+    % Turn the matches into the corresponding coordinates
+    cs = matches2coords(matches);
 
-    % Calculate recall
-    %
+    % Calculate precision (# correct matches / # matches)
+    p = sum(arrayfun(@(x) gtMatrix(cs(x,2), cs(x,1)), 1:size(cs,1))) / ...
+        size(cs,1);
+
+    % Calculate recall (# correct matches / # available matches)
+    r = sum(arrayfun(@(x) gtMatrix(cs(x,2), cs(x,1)), 1:size(cs,1))) / ...
+        sum(max(gtMatrix));
 end
