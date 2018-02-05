@@ -15,6 +15,8 @@ The second release of OpenSeqSLAM, repackaged as an easy to use and configure to
 
 ## TODO List (roughly ordered by value):
 
+* Pull all new parameters into the UI (including batch operation possibly)
+* Clean up implementation of "OpenSeqSLAM2" (currently a hacked together mess)
 * Disable match selection in Results GUI when a popup is open (i.e. enforce ad hoc modal structure)
 * Should probably change code flow so the start GUI window is returned to after a set of results (and a progress GUI can be exited while running)
 

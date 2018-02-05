@@ -52,7 +52,7 @@ function empty = emptyConfig()
     empty.seqslam.matching.trajectory.v_max = [];
     empty.seqslam.matching.trajectory.v_step = [];
 
-    empty.seqslam.matching.method = [];
+    empty.seqslam.matching.method = []; % window, thresh
     empty.seqslam.matching.method_window.r_window = [];
     empty.seqslam.matching.method_window.u = [];
     empty.seqslam.matching.method_thresh.threshold = [];
@@ -63,4 +63,9 @@ function empty = emptyConfig()
     empty.visual.progress.diff_matrix_freq = [];
     empty.visual.progress.enhance_freq = [];
     empty.visual.progress.match_freq = [];
+
+    % Super parameters (parameters that modify / override parameters)
+    empty.super.downsample_multiplier = [];
+    empty.super.trajectory_angle = [];
+    empty.super.auto_optimise_selection = []; % empty, p, r, f1
 end

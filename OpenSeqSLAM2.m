@@ -143,6 +143,15 @@ function [results, config] = OpenSeqSLAM2(varargin)
             params.batch, 'batch_param', params.batch_param, 'batch_values', ...
             params.batch_values);
 
+        % Optimise if requested TODO do this for non-batch as well!!!
+        if ~isempty(config.super.auto_optimise_selection)
+            for k = 1:length(results.tests)
+                results.tests(k).matching.selected = optimalMatch( ...
+                    results.tests(k).matching.all, config.seqslam.matching, ...
+                    ground_truth.matrix, config.super.auto_optimise_selection);
+            end
+        end
+
         % Add batch details to results
         results.batch_param = params.batch_param;
         results.batch_values = params.batch_values;
@@ -150,10 +159,9 @@ function [results, config] = OpenSeqSLAM2(varargin)
         % Calculate precision recall for results
         results.ground_truth = ground_truth;
         for k = 1:length(results.tests)
-            [p, r] = calcPR(results.tests(k).matching.selected.matches, ...
+            [results.precisions(k), results.recalls(k)] = calcPR( ...
+                results.tests(k).matching.selected.matches, ...
                 ground_truth.matrix);
-            results.precisions(k) = p;
-            results.recalls(k) = r;
         end
 
         % Save the batch results (they are not saved anywhere earlier)
