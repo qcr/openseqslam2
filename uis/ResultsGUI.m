@@ -855,7 +855,7 @@ classdef ResultsGUI < handle
             % Useful temporaries
             szDiff = size(obj.results.diff_matrix.enhanced);
             d = obj.selectedDiff;
-            ds = obj.config.seqslam.matching.trajectory.d_s;
+            ds = obj.config.seqslam.search.d_s;
 
             % Clear the axis to start
             cla(obj.hAxMain);
@@ -973,9 +973,9 @@ classdef ResultsGUI < handle
                     ' with #' num2str(m(2)) ')'];
 
                 % Get maximum "distance", and limits for the focus cutout
-                ds = max(obj.config.seqslam.matching.trajectory.d_s, ...
+                ds = max(obj.config.seqslam.search.d_s, ...
                     1 + range(t(:,2,:)));
-                if ds == obj.config.seqslam.matching.trajectory.d_s
+                if ds == obj.config.seqslam.search.d_s
                     rLimits = m(2) - floor(ds/2) + [0 ds-1];
                 else
                     rLimits = [min(t(:,2,:)) max(t(:,2,:))];

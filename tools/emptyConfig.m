@@ -46,12 +46,14 @@ function empty = emptyConfig()
     % SeqSLAM settings (difference matrix)
     empty.seqslam.diff_matrix.contrast.r_window = [];
 
-    % SeqSLAM settings (matching)
-    empty.seqslam.matching.trajectory.d_s = [];
-    empty.seqslam.matching.trajectory.v_min = [];
-    empty.seqslam.matching.trajectory.v_max = [];
-    empty.seqslam.matching.trajectory.v_step = [];
+    % SeqSLAM settings (search)
+    empty.seqslam.search.d_s = [];
+    empty.seqslam.search.v_min = [];
+    empty.seqslam.search.v_max = [];
+    empty.seqslam.search.method = []; % traj, cone, hybrid
+    empty.seqslam.search.method_traj.v_step = [];
 
+    % SeqSLAM settings (matching)
     empty.seqslam.matching.method = []; % window, thresh
     empty.seqslam.matching.method_window.r_window = [];
     empty.seqslam.matching.method_window.u = [];

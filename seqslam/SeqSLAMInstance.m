@@ -89,6 +89,41 @@ classdef SeqSLAMInstance < handle
     end
 
     methods (Static)
+        function [score, trajectory] = searchScore(searchSettings, qs, rs, ...
+                diffMatrix, bestRs)
+            if strcmp(searchSettings.method, 'cone')
+                % Get number of bests in the 'cone'
+                bests = sum(arrayfun(@(x) ismember(bestRs(x), rs(:,x)), ...
+                    1:length(bestRs)));
+
+                % Compute the score
+                score = 1 - bests / searchSettings.d_s;
+                trajectory = rs(ceil(end/2), :); % Arbitrarily choose middle...
+            else
+                % Eliminate trajectories which don't have a best value
+                if strcmp(searchSettings.method, 'hybrid')
+                    rs = rs(any(ismember(rs, bestRs), 2), :);
+                end
+
+                % Bail if we haven't found a valid trajectory
+                if isempty(rs)
+                    score = NaN();
+                    trajectory = NaN(1, searchSettings.d_s);
+                    return;
+                end
+
+                % Get diff matrix values associated with each valid trajectory
+                s1 = sub2ind(size(diffMatrix), rs(:), ...
+                    reshape(qs(1:size(rs,1),:), [], 1)); % Linear indices
+                s2 = diffMatrix(s1); % Unshaped scores from the matrix
+                s3 = reshape(s2, size(rs)); % Reshaped scores
+
+                % Sum trajectories, find min, and best trajectory
+                [score, trajInd] = min(sum(s3,2));
+                trajectory = rs(trajInd,:);
+            end
+        end
+
         function [imgOut, imgs] = preprocessSingle(img, s, dsName, full)
             % Grayscale
             imgG = rgb2gray(img);
@@ -184,6 +219,37 @@ classdef SeqSLAMInstance < handle
                 repmat(mask', 1, ...
                 size(matches.best_trajectories,2), ...
                 size(matches.best_trajectories,3));
+        end
+
+        function [qs, rs] = trajectoryOffsets(searchSettings)
+            % Get qs, centred around 0. Centring is done so that:
+            % - odd ds has floor(ds/2) forward and back
+            % - even ds has floor(ds/2) back, and floor(ds/2)-1 forward
+            qs = (0:searchSettings.d_s-1) - floor(searchSettings.d_s/2);
+
+            % Get min and max trajectories
+            trajMin = round(qs.*searchSettings.v_min);
+            trajMax = round(qs.*searchSettings.v_max);
+
+            % Get all unique velocities
+            uniqueStarts = trajMin:-1:trajMax;
+            uniqueVs = uniqueStarts ./ floor(searchSettings.d_s/2) * -1;
+
+            % Decide on velocities to use
+            if strcmp(searchSettings.method, 'cone') || ...
+                    strcmp(searchSettings.method, 'hybrid')
+                vs = uniqueVs; % Treat all as a possibility
+            else
+                vs = searchSettings.v_min:searchSettings.method_traj.v_step:...
+                    searchSettings.v_max;
+                vs = unique(arrayfun(@(x) closest(x, uniqueVs), vs));
+            end
+
+            % Get the trajectory for each chosen velocity
+            rs = round(repmat(qs, length(vs), 1) .* vs');
+
+            % Update qs to match the shape of rs
+            qs = repmat(qs, size(rs,1), 1);
         end
     end
 
@@ -355,6 +421,81 @@ classdef SeqSLAMInstance < handle
         end
 
         function matching(obj)
+            % Cache settings (save typing...)
+            settingsSearch = obj.config.seqslam.search;
+            ds = settingsSearch.d_s;
+            numQs = size(obj.results.diff_matrix.enhanced,2);
+            numRs = size(obj.results.diff_matrix.enhanced,1);
+
+            % Allocate memory for min matching scores, and best trajectories
+            matches = NaN(numRs, numQs);
+            trajs = NaN(numQs, 2, ds); % q trajectories = r & q coords
+
+            % Precompute all possible trajectories for the search method
+            [qsRel, rsRel] = SeqSLAMInstance.trajectoryOffsets(settingsSearch);
+
+            % Precompute best reference match for each query image
+            [~,bestRs] = min(obj.results.diff_matrix.base);
+
+            % Loop through each of the query images, checking how it performs
+            % when attempting to match to each reference image
+            rScores = NaN(numRs, 1);
+            rTrajs = NaN(numRs, ds);
+            for q = (-min(qsRel(1,:)) + 1) : (numQs - max(qsRel(1,:)))
+                % Set q indices
+                qs = qsRel + q; % We know these are all 'safe'...
+                bests = bestRs(qs(1,:));
+
+                % Loop through each of the possible references, getting a best
+                % score associated with that reference image
+                for r = 1:numRs
+                    % Set r indices & eliminate trajectories outside of bounds
+                    rs = rsRel + r;
+                    rs = rs(all(rs > 0 & rs <= numRs, 2), :);
+                    if isempty(rs)
+                        continue;
+                    end
+
+                    % Search for the best score
+                    [rScores(r) rTrajs(r,:)] = SeqSLAMInstance.searchScore( ...
+                        settingsSearch, qs, rs, ...
+                        obj.results.diff_matrix.enhanced, bests);
+
+                    % Report to the UI if necessary
+                    if obj.listeningUI
+                        perc = ((q-1-ds/2)*numRs + r) / ...
+                            ((numQs-ds)*numRs) * 100;
+                        if obj.cbMainReady( ...
+                                SeqSLAMInstance.STATE_MATCHING, perc)
+                            p = [];
+                            p.state = SeqSLAMInstance.STATE_MATCHING;
+                            p.percent = perc;
+                            p.q = q;
+                            p.r = r;
+                            p.qs = qs(1,:);
+                            p.rs = rTrajs(r,:);
+                            p.best_scores = squeeze(trajs(:,2,floor(end/2)+1));
+                            p.diff_matrix = obj.results.diff_matrix.enhanced;
+                            obj.cbMainUpdate(p);
+                        elseif obj.cbPercentReady( ...
+                                SeqSLAMInstance.STATE_MATCHING, perc)
+                            obj.cbPercentUpdate(perc);
+                        end
+                    end
+                end
+
+                % Store all of the scores, and trajectory of the minimum score
+                matches(:,q) = rScores;
+                [x, idx] = min(rScores);
+                trajs(q,:,:) = [qs(1,:); rTrajs(idx,:)];
+            end
+
+            % Save all of the minimum scores, and best trajectories
+            obj.results.matching.all.min_scores = matches;
+            obj.results.matching.all.best_trajectories = trajs;
+        end
+
+        function matching2(obj)
             % ds is split between searching forwards and backwards from the
             % current query image. If ds is odd, then the search is floor(ds/2)
             % back and forwards (giving a total trajectory length of ds). If
