@@ -164,6 +164,9 @@ function [results, config] = OpenSeqSLAM2(varargin)
                 ground_truth.matrix);
         end
 
+        % HPC HACK TO SAVE MEMORY TODO REMOVE
+        results.tests = [];
+
         % Save the batch results (they are not saved anywhere earlier)
         resultsSave(config.results.path, results, 'batch_results.mat');
     else

@@ -32,7 +32,9 @@ function results = OpenSeqSLAMRun(config, varargin)
     end
 
     % Start running through each of the jobs
-    for k = 1:length(jobs)
+    diffs = cell(1, length(jobs));
+    match = cell(1, length(jobs));
+    parfor k = 1:length(jobs)
         % Do any required pre-processing for the job
         j = jobs{k};
         c = config;
@@ -57,26 +59,34 @@ function results = OpenSeqSLAMRun(config, varargin)
             fprintf('\n');
             r = progressconsole.results;
         else
-            % Run the progress GUI, saving the results
-            progressui = ProgressGUI(c);
+            % % Run the progress GUI, saving the results
+            % progressui = ProgressGUI(c);
 
-            % Update batch UI if necessary
-            if ~isempty(batchui)
-                batchui.updateJob(j, k);
-                batchui.hFig.WindowStyle = 'modal';
-            end
+            % % Update batch UI if necessary
+            % if ~isempty(batchui)
+            %     batchui.updateJob(j, k);
+            %     batchui.hFig.WindowStyle = 'modal';
+            % end
 
-            progressui.run();
-            r = progressui.results;
+            % progressui.run();
+            % r = progressui.results;
         end
 
         % Store the results only save the useful parts for batch mode
         if params.batch
-            results.tests(k).diff_matrix = r.diff_matrix;
-            results.tests(k).matching = r.matching;
+            % results.tests(k).diff_matrix = r.diff_matrix;
+            % results.tests(k).matching = r.matching;
+            diffs{k} = r.diff_matrix;
+            match{k} = r.matching;
         else
-            results = r;
+            % results = r;
         end
+    end
+
+    % TODO remove
+    for k = 1:length(jobs)
+        results.tests(k).diff_matrix = diffs{k};
+        results.tests(k).matching = match{k};
     end
 
     % Close the batch mode UI if necessary
