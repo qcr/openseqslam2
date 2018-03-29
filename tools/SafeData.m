@@ -37,7 +37,9 @@ classdef SafeData < uint16
             if isempty(s)
                 v = [];
             else
-                v = cellfun(@(x) str2num(x), strsplit(s, ','));
+                v = cellfun(@(x) str2num(x), strsplit(s, ','), ...
+                    'UniformOutput', false);
+                v = [v{:}];
             end
         end
 

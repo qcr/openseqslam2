@@ -63,7 +63,7 @@
       </settings-group>
     </settings-group>
   </settings-group>
-  <settings-group name="visual">
+  <settings-group name="ui">
     <settings-group name="progress">
       <setting name="percent_freq" type="numeric" value="1"/>
       <setting name="preprocess_freq" type="numeric" value="5"/>

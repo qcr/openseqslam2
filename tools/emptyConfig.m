@@ -2,34 +2,15 @@ function empty = emptyConfig()
     % Creates and returns an empty config (creates all of the possible struct
     % elements)
 
-    % Reference dataset
+    % Reference dataset settings
     empty.reference.path = [];
     empty.reference.subsample_factor = [];
-    empty.reference.type = [];
 
-    empty.reference.image.ext = [];
-    empty.reference.image.numbers = [];
-    empty.reference.image.token_start = [];
-    empty.reference.image.token_end = [];
-
-    empty.reference.video.ext = [];
-    empty.reference.video.frames = [];
-
-    % Query dataset
+    % Query dataset settings
     empty.query.path = [];
     empty.query.subsample_factor = [];
-    empty.query.type = [];
 
-    empty.query.image.ext = [];
-    empty.query.image.numbers = [];
-    empty.query.image.token_start = [];
-    empty.query.image.token_end = [];
-
-    empty.query.video.ext = [];
-    empty.query.video.frames = [];
-    empty.query.video.frame_rate = [];
-
-    % Results
+    % Results settings
     empty.results.path = [];
 
     % SeqSLAM settings (image processing)
@@ -59,15 +40,43 @@ function empty = emptyConfig()
     empty.seqslam.matching.method_window.u = [];
     empty.seqslam.matching.method_thresh.threshold = [];
 
-    % Visual settings (progress UI)
-    empty.visual.progress.percent_freq = [];
-    empty.visual.progress.preprocess_freq = [];
-    empty.visual.progress.diff_matrix_freq = [];
-    empty.visual.progress.enhance_freq = [];
-    empty.visual.progress.match_freq = [];
+    % Ground truth settings
+    empty.ground_truth = emptyGroundTruth();
 
-    % Super parameters (parameters that modify / override parameters)
-    empty.super.downsample_multiplier = [];
-    empty.super.trajectory_angle = [];
-    empty.super.auto_optimise_selection = []; % empty, p, r, f1
+    % Batch mode settings
+    empty.batch.enabled = []; % true or false
+    empty.batch.param = [];
+    empty.batch.values = [];
+    empty.batch.parallelise = []; % true or false
+    empty.batch.trim_results = []; % true or false
+
+    % User intergace settings
+    empty.ui.progress.type = []; % graphical, console
+    empty.ui.results = []; % true or false
+    empty.ui.progress.percent_freq = [];
+    empty.ui.progress.preprocess_freq = [];
+    empty.ui.progress.diff_matrix_freq = [];
+    empty.ui.progress.enhance_freq = [];
+    empty.ui.progress.match_freq = [];
+
+    % NOTE: These are derived and should never need to be set manually!!!!
+    % --- START DERIVED ---
+    empty.reference.type = []; % image, video
+    empty.reference.image.ext = [];
+    empty.reference.image.numbers = [];
+    empty.reference.image.token_start = [];
+    empty.reference.image.token_end = [];
+    empty.reference.video.ext = [];
+    empty.reference.video.frames = [];
+
+    empty.query.type = []; % image, video
+    empty.query.image.ext = [];
+    empty.query.image.numbers = [];
+    empty.query.image.token_start = [];
+    empty.query.image.token_end = [];
+    empty.query.video.ext = [];
+    empty.query.video.frames = [];
+    empty.query.video.frame_rate = [];
+    % --- END DERIVED ---
+
 end

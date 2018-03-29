@@ -64,6 +64,22 @@ classdef GroundTruthPopup < handle
     end
 
     methods (Static)
+        function [gt, err] = getGtMatrix(gtdata, diffSize)
+            gt = [];
+            if ~gtdata.exists
+                err = 'Ground truth existance configured as false';
+            elseif strcmp(gtdata.type, 'mat')
+                [gt, err] = GroundTruthPopup.gtFromMAT(gtdata.file.path, ...
+                    gtdata.file.var, diffSize);
+            elseif strcmp(gtdata.type, 'csv')
+                [gt, err] = GroundTruthPopup.gtFromCSV(gtdata.file.path, ...
+                    diffSize);
+            else
+                [gt, err] = GroundTruthPopup,gtFromVel(gtdata.velocity.vel, ...
+                    gtdata.velocity.tol, diffSize);
+            end
+        end
+
         function [gt, err] = gtFromVel(vel, tol, diffSize)
             gt = []; err = [];
 
@@ -142,6 +158,40 @@ classdef GroundTruthPopup < handle
             % Construct and return the ground truth matrix
             gt = v;
         end
+
+        function [str, col] = gtDescription(gtdata)
+            if isempty(gtdata) || isempty(gtdata.exists) || ...
+                    ~gtdata.exists %|| isempty(gtdata.matrix)
+                str = ['No ground truth matrix available. Please ' ...
+                    'configure to select one...'];
+                col = GUISettings.COL_ERROR;
+            elseif any(strcmp(gtdata.type, {'csv', 'mat'}))
+                if isempty(gtdata.file.path)
+                    str = 'No data for ground truth file found';
+                    col = GUISettings.COL_WARNING;
+                elseif ~exist(gtdata.file.path)
+                    str = ['File @ ' gtdata.file.path 'could not be found'];
+                    col = GUISettings.COL_WARNING;
+                else
+                    str = ['Loaded from ' gtdata.file.path];
+                    if strcmp(gtdata.type, 'mat')
+                        str = [str '; and using variable ' gtdata.file.var];
+                    end
+                    col = GUISettings.COL_SUCCESS;
+                end
+            elseif strcmp(gtdata.type, 'velocity')
+                if isempty(gtdata.velocity.vel) || ...
+                        isempty(gtdata.velocity.tol)
+                    str = ['Failed to load data for velocity based ground truth'];
+                    col = GUISettings.COL_WARNING;
+                else
+                    str = ['Ground truth with vel = ' ...
+                        num2str(gtdata.velocity.vel) ' & tol = ' ...
+                        num2str(gtdata.velocity.tol)];
+                    col = GUISettings.COL_SUCCESS;
+                end
+            end
+        end
     end
 
     methods (Access = private, Static)
@@ -159,7 +209,7 @@ classdef GroundTruthPopup < handle
             if isempty(obj.selectedMatrix)
                 uiwait(errordlg( ...
                     'No valid ground truth data has been selected', ...
-                    'Cannot apply empty ground truth data'));
+                    'Cannot apply empty ground truth data', 'modal'));
                 return;
             end
 
@@ -173,6 +223,7 @@ classdef GroundTruthPopup < handle
 
         function cbClose(obj, src, event)
             obj.selectedMatrix = [];
+            obj.gt = [];
             delete(obj.hFig);
         end
 
@@ -361,7 +412,8 @@ classdef GroundTruthPopup < handle
 
                 % Exit if there was an error
                 if ~isempty(err)
-                    uiwait(errordlg(err, 'Ground Truth Data Read Failed'));
+                    uiwait(errordlg(err, 'Ground Truth Data Read Failed', ...
+                        'modal'));
                     return;
                 end
 
@@ -375,7 +427,8 @@ classdef GroundTruthPopup < handle
 
                 % Exit if there was an error
                 if ~isempty(err)
-                    uiwait(errordlg(err, 'Ground Truth Data Read Failed'));
+                    uiwait(errordlg(err, 'Ground Truth Data Read Failed', ...
+                        'modal'));
                     return;
                 end
 
@@ -516,21 +569,25 @@ classdef GroundTruthPopup < handle
 
         function strip(obj)
             % ONLY strip out the values for the currently selected method
+            obj.gt.exists = true;
             if obj.hTypeValue.Value == 1
                 obj.gt.type = 'velocity';
                 obj.gt.file.path = [];
                 obj.gt.velocity.vel = str2num(obj.hVelocityVelValue.String);
                 obj.gt.velocity.tol = str2num(obj.hVelocityTolValue.String);
             elseif obj.hTypeValue.Value == 2
-                obj.gt.type = 'file';
-                obj.rgt.file.path = obj.selectedCSV;
+                obj.gt.type = 'csv';
+                obj.gt.file.path = obj.selectedCSV;
                 obj.gt.velocity.vel = [];
                 obj.gt.velocity.tol = [];
             elseif obj.hTypeValue.Value == 3
-                obj.gt.type = 'file';
+                obj.gt.type = 'mat';
                 obj.gt.file.path = obj.selectedMAT;
+                obj.gt.file.var = obj.selectedVar;
                 obj.gt.velocity.vel = [];
                 obj.gt.velocity.tol = [];
+            else
+                obj.gt.exists = false;
             end
         end
 

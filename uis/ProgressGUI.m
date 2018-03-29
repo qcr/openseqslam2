@@ -72,7 +72,7 @@ classdef ProgressGUI < handle
         end
 
         function due = refreshPercentDue(obj, state, perc)
-            rate = obj.config.visual.progress.percent_freq;
+            rate = obj.config.ui.progress.percent_freq;
             due = state ~= obj.progress.state || ...
                 floor(perc / rate) > floor(obj.lastPercentRefresh / rate);
         end
@@ -80,13 +80,13 @@ classdef ProgressGUI < handle
         function due = refreshMainDue(obj, state, perc)
             if (state == SeqSLAMInstance.STATE_PREPROCESS_REF || ...
                     state == SeqSLAMInstance.STATE_PREPROCESS_QUERY)
-                rate = obj.config.visual.progress.preprocess_freq;
+                rate = obj.config.ui.progress.preprocess_freq;
             elseif (state == SeqSLAMInstance.STATE_DIFF_MATRIX)
-                rate = obj.config.visual.progress.diff_matrix_freq;
+                rate = obj.config.ui.progress.diff_matrix_freq;
             elseif (state == SeqSLAMInstance.STATE_DIFF_MATRIX_CONTRAST)
-                rate = obj.config.visual.progress.enhance_freq;
+                rate = obj.config.ui.progress.enhance_freq;
             elseif (state == SeqSLAMInstance.STATE_MATCHING)
-                rate = obj.config.visual.progress.match_freq;
+                rate = obj.config.ui.progress.match_freq;
             else
                 rate = 1;
             end

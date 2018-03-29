@@ -20,7 +20,6 @@ function empty = emptyResults()
     empty.matching.selected.trajectories = [];
 
     % Precision recall data
-    empty.pr.ground_truth = emptyGroundTruth();
     empty.pr.matching_method = [];
     empty.pr.sweep_var.start = [];
     empty.pr.sweep_var.end = [];

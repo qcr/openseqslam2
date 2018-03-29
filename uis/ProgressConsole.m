@@ -10,10 +10,12 @@ classdef ProgressConsole < handle
         instance;
 
         results = emptyResults();
+
+        quietMode;
     end
 
     methods
-        function obj = ProgressConsole(config)
+        function obj = ProgressConsole(config, varargin)
             % Save the config
             obj.config = config;
 
@@ -22,13 +24,20 @@ classdef ProgressConsole < handle
             obj.progress.state = SeqSLAMInstance.STATE_START;
             obj.progress.percent = 0;
 
+            % Turn on quiet mode if provided
+            if ~isempty(varargin) && varargin{1}
+                obj.quietMode = true;
+            else
+                obj.quietMode = false;
+            end
+
             % Create, and attach to, the SeqSLAM instance
             obj.instance = SeqSLAMInstance(config);
             obj.instance.attachUI(obj);
         end
 
         function due = refreshPercentDue(obj, state, perc)
-            rate = obj.config.visual.progress.percent_freq;
+            rate = obj.config.ui.progress.percent_freq;
             obj.newState = state ~= obj.progress.state;
             if obj.newState
                 obj.progress.state = state;
@@ -41,7 +50,15 @@ classdef ProgressConsole < handle
             % Move to the next state if a change was detected
             if obj.newState
                 obj.newState = false;
-                ProgressConsole.printStateText(obj.progress.state);
+                if ~obj.quietMode
+                    ProgressConsole.printStateText(obj.progress.state);
+                else
+                    % Need this arbitrary print in here to make MATLAB actually
+                    % flush the print to the console when in parallel for loops
+                    % (otherwise it doesn't print anything until the end of the
+                    % loop iteration.... stupid stupid MATLAB...)
+                    fprintf('\b');
+                end
             end
 
             % Update the cached percent values
@@ -49,8 +66,10 @@ classdef ProgressConsole < handle
             obj.lastPercentRefresh = percent;
 
             % Print the new percent values
-            if obj.progress.state ~= SeqSLAMInstance.STATE_DONE
-                fprintf('\b\b\b\b%s%%', pad(num2str(floor(percent)), 3, 'left'));
+            if obj.progress.state ~= SeqSLAMInstance.STATE_DONE && ...
+                    ~obj.quietMode
+                fprintf('\b\b\b\b%s%%', ...
+                    pad(num2str(floor(percent)), 3, 'left'));
             end
         end
 
