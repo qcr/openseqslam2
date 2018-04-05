@@ -1,15 +1,6 @@
 classdef ProgressGUI < handle
 
     properties (Constant)
-        STATE_START = 0;
-        STATE_PREPROCESS_REF = 1;
-        STATE_PREPROCESS_QUERY = 2;
-        STATE_DIFF_MATRIX = 3;
-        STATE_DIFF_MATRIX_CONTRAST = 4;
-        STATE_MATCHING = 5;
-        STATE_MATCHING_FILTERING = 6;
-        STATE_DONE = 7;
-
         FIG_WIDTH_FACTOR = 4.5;
         FIG_HEIGHT_FACTOR = 20;
     end
@@ -68,7 +59,7 @@ classdef ProgressGUI < handle
 
             % Create an initial progress state
             progress = [];
-            progress.state = ProgressGUI.STATE_START;
+            progress.state = SeqSLAMInstance.STATE_START;
             progress.percent = 0;
             obj.refreshMain(progress);
 
@@ -81,21 +72,21 @@ classdef ProgressGUI < handle
         end
 
         function due = refreshPercentDue(obj, state, perc)
-            rate = obj.config.visual.progress.percent_freq;
+            rate = obj.config.ui.progress.percent_freq;
             due = state ~= obj.progress.state || ...
                 floor(perc / rate) > floor(obj.lastPercentRefresh / rate);
         end
 
         function due = refreshMainDue(obj, state, perc)
-            if (state == ProgressGUI.STATE_PREPROCESS_REF || ...
-                    state == ProgressGUI.STATE_PREPROCESS_QUERY)
-                rate = obj.config.visual.progress.preprocess_freq;
-            elseif (state == ProgressGUI.STATE_DIFF_MATRIX)
-                rate = obj.config.visual.progress.diff_matrix_freq;
-            elseif (state == ProgressGUI.STATE_DIFF_MATRIX_CONTRAST)
-                rate = obj.config.visual.progress.enhance_freq;
-            elseif (state == ProgressGUI.STATE_MATCHING)
-                rate = obj.config.visual.progress.match_freq;
+            if (state == SeqSLAMInstance.STATE_PREPROCESS_REF || ...
+                    state == SeqSLAMInstance.STATE_PREPROCESS_QUERY)
+                rate = obj.config.ui.progress.preprocess_freq;
+            elseif (state == SeqSLAMInstance.STATE_DIFF_MATRIX)
+                rate = obj.config.ui.progress.diff_matrix_freq;
+            elseif (state == SeqSLAMInstance.STATE_DIFF_MATRIX_CONTRAST)
+                rate = obj.config.ui.progress.enhance_freq;
+            elseif (state == SeqSLAMInstance.STATE_MATCHING)
+                rate = obj.config.ui.progress.match_freq;
             else
                 rate = 1;
             end
@@ -473,8 +464,8 @@ classdef ProgressGUI < handle
             obj.clearScreen();
 
             % Draw the new screen
-            if obj.progress.state == ProgressGUI.STATE_PREPROCESS_REF || ...
-                    obj.progress.state == ProgressGUI.STATE_PREPROCESS_QUERY
+            if obj.progress.state == SeqSLAMInstance.STATE_PREPROCESS_REF || ...
+                    obj.progress.state == SeqSLAMInstance.STATE_PREPROCESS_QUERY
                 % Plot the 4 images
                 imshow(obj.progress.image_init, 'Parent', obj.hAxA);
                 imshow(obj.progress.image_grey, 'Parent', obj.hAxB);
@@ -498,7 +489,7 @@ classdef ProgressGUI < handle
                 GUISettings.axesHide(obj.hAxB);
                 GUISettings.axesHide(obj.hAxC);
                 GUISettings.axesHide(obj.hAxD);
-            elseif obj.progress.state == ProgressGUI.STATE_DIFF_MATRIX
+            elseif obj.progress.state == SeqSLAMInstance.STATE_DIFF_MATRIX
                 % Draw the difference matrix
                 pcolor(obj.hAxMain, obj.progress.diff_matrix);
                 shading(obj.hAxMain, 'flat');
@@ -506,7 +497,7 @@ classdef ProgressGUI < handle
                 % Style the plot
                 GUISettings.axesDiffMatrixStyle(obj.hAxMain, ...
                     size(obj.progress.diff_matrix));
-            elseif obj.progress.state == ProgressGUI.STATE_DIFF_MATRIX_CONTRAST
+            elseif obj.progress.state == SeqSLAMInstance.STATE_DIFF_MATRIX_CONTRAST
                 % Draw the difference matrices
                 pcolor(obj.hAxMain, obj.progress.diff_matrix);
                 shading(obj.hAxMain, 'flat');
@@ -519,7 +510,7 @@ classdef ProgressGUI < handle
                     size(obj.progress.diff_matrix));
                 GUISettings.axesDiffMatrixStyle(obj.hAxOverlay, ...
                     size(obj.progress.diff_matrix));
-            elseif obj.progress.state == ProgressGUI.STATE_MATCHING
+            elseif obj.progress.state == SeqSLAMInstance.STATE_MATCHING
                 % Draw the background difference matrix
                 imagesc(obj.hAxMain, obj.progress.diff_matrix);
                 hold(obj.hAxMain, 'on');
@@ -536,9 +527,9 @@ classdef ProgressGUI < handle
                 % Style the plot
                 GUISettings.axesDiffMatrixStyle(obj.hAxMain, ...
                     size(obj.progress.diff_matrix));
-            elseif obj.progress.state == ProgressGUI.STATE_MATCHING_FILTERING
+            elseif obj.progress.state == SeqSLAMInstance.STATE_MATCHING_FILTERING
                 % TODO can't see any reason to do anything in here (too quick)
-            elseif obj.progress.state == ProgressGUI.STATE_DONE
+            elseif obj.progress.state == SeqSLAMInstance.STATE_DONE
                 % Should never be plotting here...
             end
         end
@@ -558,67 +549,67 @@ classdef ProgressGUI < handle
             obj.hStatus56.ForegroundColor = GUISettings.COL_LOADING;
 
             % Change colors based on progression through states
-            if obj.progress.state == ProgressGUI.STATE_PREPROCESS_REF
+            if obj.progress.state == SeqSLAMInstance.STATE_PREPROCESS_REF
                 obj.hStatus1.ForegroundColor = GUISettings.COL_DEFAULT;
             end
-            if obj.progress.state > ProgressGUI.STATE_PREPROCESS_REF
+            if obj.progress.state > SeqSLAMInstance.STATE_PREPROCESS_REF
                 obj.hStatus1.ForegroundColor = GUISettings.COL_SUCCESS;
                 obj.hStatus12.ForegroundColor = GUISettings.COL_SUCCESS;
                 obj.hStatus2.ForegroundColor = GUISettings.COL_DEFAULT;
             end
-            if obj.progress.state > ProgressGUI.STATE_PREPROCESS_QUERY
+            if obj.progress.state > SeqSLAMInstance.STATE_PREPROCESS_QUERY
                 obj.hStatus2.ForegroundColor = GUISettings.COL_SUCCESS;
                 obj.hStatus23.ForegroundColor = GUISettings.COL_SUCCESS;
                 obj.hStatus3.ForegroundColor = GUISettings.COL_DEFAULT;
             end
-            if obj.progress.state > ProgressGUI.STATE_DIFF_MATRIX
+            if obj.progress.state > SeqSLAMInstance.STATE_DIFF_MATRIX
                 obj.hStatus3.ForegroundColor = GUISettings.COL_SUCCESS;
                 obj.hStatus34.ForegroundColor = GUISettings.COL_SUCCESS;
                 obj.hStatus4.ForegroundColor = GUISettings.COL_DEFAULT;
             end
-            if obj.progress.state > ProgressGUI.STATE_DIFF_MATRIX_CONTRAST
+            if obj.progress.state > SeqSLAMInstance.STATE_DIFF_MATRIX_CONTRAST
                 obj.hStatus4.ForegroundColor = GUISettings.COL_SUCCESS;
                 obj.hStatus45.ForegroundColor = GUISettings.COL_SUCCESS;
                 obj.hStatus5.ForegroundColor = GUISettings.COL_DEFAULT;
             end
-            if obj.progress.state > ProgressGUI.STATE_MATCHING
+            if obj.progress.state > SeqSLAMInstance.STATE_MATCHING
                 obj.hStatus5.ForegroundColor = GUISettings.COL_SUCCESS;
                 obj.hStatus56.ForegroundColor = GUISettings.COL_SUCCESS;
                 obj.hStatus6.ForegroundColor = GUISettings.COL_DEFAULT;
             end
-            if obj.progress.state > ProgressGUI.STATE_MATCHING_FILTERING
+            if obj.progress.state > SeqSLAMInstance.STATE_MATCHING_FILTERING
                 obj.hStatus6.ForegroundColor = GUISettings.COL_SUCCESS;
             end
         end
 
         function updateTitle(obj)
-            if obj.progress.state == ProgressGUI.STATE_PREPROCESS_REF
+            if obj.progress.state == SeqSLAMInstance.STATE_PREPROCESS_REF
                 obj.hTitle.Visible = 'on';
                 obj.hTitle.String = '1 - Preprocessing Reference Images';
                 obj.hSubtitle.Visible = 'on';
                 obj.hSubtitle.String = obj.progress.image_details;
-            elseif obj.progress.state == ProgressGUI.STATE_PREPROCESS_QUERY
+            elseif obj.progress.state == SeqSLAMInstance.STATE_PREPROCESS_QUERY
                 obj.hTitle.Visible = 'on';
                 obj.hTitle.String = '2 - Preprocessing Query Images';
                 obj.hSubtitle.Visible = 'on';
                 obj.hSubtitle.String = obj.progress.image_details;
-            elseif obj.progress.state == ProgressGUI.STATE_DIFF_MATRIX
+            elseif obj.progress.state == SeqSLAMInstance.STATE_DIFF_MATRIX
                 obj.hTitle.Visible = 'on';
                 obj.hTitle.String = '3 - Constructing Difference Matrix';
                 obj.hSubtitle.Visible = 'off';
-            elseif obj.progress.state == ProgressGUI.STATE_DIFF_MATRIX_CONTRAST
+            elseif obj.progress.state == SeqSLAMInstance.STATE_DIFF_MATRIX_CONTRAST
                 obj.hTitle.Visible = 'on';
                 obj.hTitle.String = '4 - Enhancing Difference Matrix Contrast';
                 obj.hSubtitle.Visible = 'off';
-            elseif obj.progress.state == ProgressGUI.STATE_MATCHING
+            elseif obj.progress.state == SeqSLAMInstance.STATE_MATCHING
                 obj.hTitle.Visible = 'on';
                 obj.hTitle.String = '5 - Searching for Matches';
                 obj.hSubtitle.Visible = 'off';
-            elseif obj.progress.state == ProgressGUI.STATE_MATCHING_FILTERING
+            elseif obj.progress.state == SeqSLAMInstance.STATE_MATCHING_FILTERING
                 obj.hTitle.Visible = 'on';
                 obj.hTitle.String = '6 - Filtering Best Matches';
                 obj.hSubtitle.Visible = 'off';
-            elseif obj.progress.state == ProgressGUI.STATE_DONE
+            elseif obj.progress.state == SeqSLAMInstance.STATE_DONE
                 obj.hTitle.String = 'Done!';
                 obj.hSubtitle.Visible = 'off';
             else

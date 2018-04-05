@@ -243,6 +243,9 @@ classdef TweakMatchesPopup < handle
                 v = str2num(obj.hWindowUValue.String);
                 ylim = [1 max(data)];
             end
+            if any(isnan(ylim))
+                return;
+            end
             xlim = [1 length(data)];
             ylim = ylim + [-1 1] * range(ylim) * 0.05;
 
@@ -251,14 +254,15 @@ classdef TweakMatchesPopup < handle
             hold(obj.hAxis, 'on');
             plot(obj.hAxis, data, '.');
             if obj.hMethodValue.Value == 2
-                r = rectangle(obj.hAxis, 'Position', ...
-                    [xlim(1) ylim(1) range(xlim) v - ylim(1)]);
+                coords = [xlim(1) ylim(1) range(xlim) v - ylim(1)];
             else
-                r = rectangle(obj.hAxis, 'Position', ...
-                    [xlim(1) v range(xlim) abs(ylim(2) - v)]);
+                coords = [xlim(1) v range(xlim) abs(ylim(2) - v)];
             end
-            r.LineStyle = 'none';
-            r.FaceColor = [GUISettings.COL_SUCCESS 0.25];
+            if coords(3) > 0 && coords(4) > 0
+                r = rectangle(obj.hAxis, 'Position', coords);
+                r.LineStyle = 'none';
+                r.FaceColor = [GUISettings.COL_SUCCESS 0.25];
+            end
             obj.hLine = imline(obj.hAxis, xlim, [v v]);
             obj.hLine.setColor(GUISettings.COL_SUCCESS);
             obj.hLine.setPositionConstraintFcn(@obj.constrainedPosition);

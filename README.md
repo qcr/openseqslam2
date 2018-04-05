@@ -5,7 +5,7 @@ The second release of OpenSeqSLAM, repackaged as an easy to use and configure to
 ## Known Bugs (roughly ordered by severity):
 
 * MATLAB's VideoReader is dodgy when first getting to work on Linux (install gstreamer-plugins-base, link against system libstdc++, etc. seem to help... but not all the time...)
-* Under Ubuntu, the window manager sometimes incorrectly places the window title bar over the top of the figure, instead of on top (only current fix is to manually resize window or close and reopen.... not sure who is being stupid here Ubuntu Unity or MATLAB - I suspect Unity)
+* Under Ubuntu, the window manager sometimes incorrectly places the window title bar over the top of the figure, instead of on top (only current fix is to manually resize window or close and reopen... not sure who is being stupid here Ubuntu Unity or MATLAB - I suspect Unity)
 * Closing the Tweak popup resets the selected match in Results GUI (this should only be done when applying a tweak, not closing)
 * The help documentation needs work (check for spelling, grammar, etc.)
 * In PR it is assumed that every query image has a reference image ground truth. Is this a valid assumption???
@@ -15,6 +15,8 @@ The second release of OpenSeqSLAM, repackaged as an easy to use and configure to
 
 ## TODO List (roughly ordered by value):
 
+* Properly add different image resize methods for image preprocessing
+* Make the "focus" area size in the ResultsGUI relative to datset size instead of being an absolute value
 * Disable match selection in Results GUI when a popup is open (i.e. enforce ad hoc modal structure)
 * Should probably change code flow so the start GUI window is returned to after a set of results (and a progress GUI can be exited while running)
 

@@ -3,7 +3,7 @@ oldDir = pwd;
 cd(fileparts(which('toolboxInit')));
 
 % Only do anything if the toolbox is NOT on the path
-if isempty(which('SeqSLAM'))
+if isempty(which('OpenSeqSLAM2'))
     % Use the root directory to add to the path
     root = toolboxRoot();
     addpath(genpath(root));

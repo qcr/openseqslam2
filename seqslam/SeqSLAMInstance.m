@@ -1,5 +1,16 @@
 classdef SeqSLAMInstance < handle
 
+    properties (Constant)
+        STATE_START = 0;
+        STATE_PREPROCESS_REF = 1;
+        STATE_PREPROCESS_QUERY = 2;
+        STATE_DIFF_MATRIX = 3;
+        STATE_DIFF_MATRIX_CONTRAST = 4;
+        STATE_MATCHING = 5;
+        STATE_MATCHING_FILTERING = 6;
+        STATE_DONE = 7;
+    end
+
     properties
         config;
         results = emptyResults();
@@ -17,21 +28,29 @@ classdef SeqSLAMInstance < handle
         end
 
         function attachUI(obj, ui)
-            if ~strcmp('ProgressGUI', class(ui))
-                return;
+            if strcmp('ProgressGUI', class(ui))
+                obj.cbPercentReady = @ui.refreshPercentDue;
+                obj.cbPercentUpdate = @ui.refreshPercent;
+                obj.cbMainReady = @ui.refreshMainDue;
+                obj.cbMainUpdate = @ui.refreshMain;
+                obj.listeningUI = true;
+            elseif strcmp('ProgressConsole', class(ui))
+                obj.cbPercentReady = @ui.refreshPercentDue;
+                obj.cbPercentUpdate = @ui.refreshPercent;
+                obj.cbMainReady = @(obj, state, perc) false;
+                obj.cbMainUpdate = @(obj, progress) disp([]);
+                obj.listeningUI = true;
             end
-
-            obj.cbPercentReady = @ui.refreshPercentDue;
-            obj.cbPercentUpdate = @ui.refreshPercent;
-            obj.cbMainReady = @ui.refreshMainDue;
-            obj.cbMainUpdate = @ui.refreshMain;
-            obj.listeningUI = true;
         end
 
         function run(obj)
-            % Determine if we are actually going to be saving results
-            saving = ~isempty(obj.config.results.path) && ...
-                exist(obj.config.results.path) == 7;
+            % Determine if we are saving results, and setup if necessary
+            saving = ~isempty(obj.config.results.path);
+
+            % Clean up the directory before starting if saving
+            if saving
+                cleanDir(obj.config.results.path);
+            end
 
             % Perform each of the 'do' actions, periodically saving results
             if saving
@@ -56,10 +75,55 @@ classdef SeqSLAMInstance < handle
                 resultsSave(obj.config.results.path, ...
                     obj.results.pr, 'precision_recall.mat'); % Always empty
             end
+
+            % If necessary, let the UI know that we are done
+            if obj.listeningUI
+                p = [];
+                p.state = SeqSLAMInstance.STATE_DONE;
+                p.percent = 100;
+                obj.cbPercentReady(p.state, p.percent);
+                obj.cbPercentUpdate(p.percent);
+                obj.cbMainUpdate(p);
+            end
         end
     end
 
     methods (Static)
+        function [score, trajectory] = searchScore(searchSettings, qs, rs, ...
+                diffMatrix, bestRs)
+            if strcmp(searchSettings.method, 'cone')
+                % Get number of bests in the 'cone'
+                bests = sum(arrayfun(@(x) ismember(bestRs(x), rs(:,x)), ...
+                    1:length(bestRs)));
+
+                % Compute the score
+                score = 1 - bests / searchSettings.d_s;
+                trajectory = rs(ceil(end/2), :); % Arbitrarily choose middle...
+            else
+                % Eliminate trajectories which don't have a best value
+                if strcmp(searchSettings.method, 'hybrid')
+                    rs = rs(any(ismember(rs, bestRs), 2), :);
+                end
+
+                % Bail if we haven't found a valid trajectory
+                if isempty(rs)
+                    score = NaN();
+                    trajectory = NaN(1, searchSettings.d_s);
+                    return;
+                end
+
+                % Get diff matrix values associated with each valid trajectory
+                s1 = sub2ind(size(diffMatrix), rs(:), ...
+                    reshape(qs(1:size(rs,1),:), [], 1)); % Linear indices
+                s2 = diffMatrix(s1); % Unshaped scores from the matrix
+                s3 = reshape(s2, size(rs)); % Reshaped scores
+
+                % Sum trajectories, find min, and best trajectory
+                [score, trajInd] = min(sum(s3,2));
+                trajectory = rs(trajInd,:);
+            end
+        end
+
         function [imgOut, imgs] = preprocessSingle(img, s, dsName, full)
             % Grayscale
             imgG = rgb2gray(img);
@@ -156,6 +220,37 @@ classdef SeqSLAMInstance < handle
                 size(matches.best_trajectories,2), ...
                 size(matches.best_trajectories,3));
         end
+
+        function [qs, rs] = trajectoryOffsets(searchSettings)
+            % Get qs, centred around 0. Centring is done so that:
+            % - odd ds has floor(ds/2) forward and back
+            % - even ds has floor(ds/2) back, and floor(ds/2)-1 forward
+            qs = (0:searchSettings.d_s-1) - floor(searchSettings.d_s/2);
+
+            % Get min and max trajectories
+            trajMin = round(qs.*searchSettings.v_min);
+            trajMax = round(qs.*searchSettings.v_max);
+
+            % Get all unique velocities
+            uniqueStarts = trajMin:-1:trajMax;
+            uniqueVs = uniqueStarts ./ floor(searchSettings.d_s/2) * -1;
+
+            % Decide on velocities to use
+            if strcmp(searchSettings.method, 'cone') || ...
+                    strcmp(searchSettings.method, 'hybrid')
+                vs = uniqueVs; % Treat all as a possibility
+            else
+                vs = searchSettings.v_min:searchSettings.method_traj.v_step:...
+                    searchSettings.v_max;
+                vs = unique(arrayfun(@(x) closest(x, uniqueVs), vs));
+            end
+
+            % Get the trajectory for each chosen velocity
+            rs = round(repmat(qs, length(vs), 1) .* vs');
+
+            % Update qs to match the shape of rs
+            qs = repmat(qs, size(rs,1), 1);
+        end
     end
 
     methods (Access = private)
@@ -196,7 +291,7 @@ classdef SeqSLAMInstance < handle
                     img = datasetOpenImage(settingsDataset, k, numbers, v);
 
                     % Preprocess the image
-                    state = ProgressGUI.STATE_PREPROCESS_REF + ds-1;
+                    state = SeqSLAMInstance.STATE_PREPROCESS_REF + ds-1;
                     [imgOut, imgs] = SeqSLAMInstance.preprocessSingle(img, ...
                         settingsProcess, datasets{ds}, ...
                         obj.listeningUI && obj.cbMainReady(state, perc));
@@ -265,14 +360,14 @@ classdef SeqSLAMInstance < handle
                     if obj.listeningUI
                         perc = ((y-1)*w+x) / (w*h) * 100;
                         if obj.cbMainReady( ...
-                                ProgressGUI.STATE_DIFF_MATRIX, perc)
+                                SeqSLAMInstance.STATE_DIFF_MATRIX, perc)
                             p = [];
-                            p.state = ProgressGUI.STATE_DIFF_MATRIX;
+                            p.state = SeqSLAMInstance.STATE_DIFF_MATRIX;
                             p.percent = perc;
                             p.diff_matrix = matrix;
                             obj.cbMainUpdate(p);
                         elseif obj.cbPercentReady( ...
-                                ProgressGUI.STATE_DIFF_MATRIX, perc)
+                                SeqSLAMInstance.STATE_DIFF_MATRIX, perc)
                             obj.cbPercentUpdate(perc);
                         end
                     end
@@ -306,15 +401,15 @@ classdef SeqSLAMInstance < handle
                         perc = ((x-1)*size(matrix,1)+y) / ...
                             numel(matrix) * 100;
                         if obj.cbMainReady( ...
-                                ProgressGUI.STATE_DIFF_MATRIX_CONTRAST, perc)
+                                SeqSLAMInstance.STATE_DIFF_MATRIX_CONTRAST, perc)
                             p = [];
-                            p.state = ProgressGUI.STATE_DIFF_MATRIX_CONTRAST;
+                            p.state = SeqSLAMInstance.STATE_DIFF_MATRIX_CONTRAST;
                             p.percent = perc;
                             p.diff_matrix = obj.results.diff_matrix.base;
                             p.diff_matrix_enhanced = matrix;
                             obj.cbMainUpdate(p);
                         elseif obj.cbPercentReady( ...
-                                ProgressGUI.STATE_DIFF_MATRIX_CONTRAST, perc)
+                                SeqSLAMInstance.STATE_DIFF_MATRIX_CONTRAST, perc)
                             obj.cbPercentUpdate(perc);
                         end
                     end
@@ -326,92 +421,73 @@ classdef SeqSLAMInstance < handle
         end
 
         function matching(obj)
-            % ds is split between searching forwards and backwards from the
-            % current query image. If ds is odd, then the search is floor(ds/2)
-            % back and forwards (giving a total trajectory length of ds). If
-            % ds is even, then the search is floor(ds/2) back and floor(ds/2)-1
-            % forwards (giving a total trajectory length of ds).
-
             % Cache settings (save typing...)
-            settingsMatch = obj.config.seqslam.matching;
-            ds = settingsMatch.trajectory.d_s;
-            num_qs = size(obj.results.diff_matrix.enhanced,2);
-            num_rs = size(obj.results.diff_matrix.enhanced,1);
+            settingsSearch = obj.config.seqslam.search;
+            ds = settingsSearch.d_s;
+            numQs = size(obj.results.diff_matrix.enhanced,2);
+            numRs = size(obj.results.diff_matrix.enhanced,1);
 
             % Allocate memory for min matching scores, and best trajectories
-            matches = NaN(num_rs, num_qs);
-            trajs = NaN(num_qs, 2, ds); % q trajectories = r & q coords
+            matches = NaN(numRs, numQs);
+            trajs = NaN(numQs, 2, ds); % q trajectories = r & q coords
 
-            % Get matrices corresponding to all of the possible relative search
-            % trajectories
-            vs = settingsMatch.trajectory.v_min : ...
-                settingsMatch.trajectory.v_step : ...
-                settingsMatch.trajectory.v_max;
-            qs_rel = repmat([0:ds-1], length(vs), 1) - floor(ds/2);
-            rs_rel = round(repmat(vs', 1, ds) .* qs_rel);
+            % Precompute all possible trajectories for the search method
+            [qsRel, rsRel] = SeqSLAMInstance.trajectoryOffsets(settingsSearch);
 
-            % Only bother with the velocities which produce unique trajectories
-            [x, iA, iC] = unique(rs_rel, 'rows', 'stable');
-            qs_rel = qs_rel(iA,:);
-            rs_rel = rs_rel(iA,:);
-            q_rel_min = min(qs_rel(1,:));
-            q_rel_max = max(qs_rel(1,:));
+            % Precompute best reference match for each query image
+            [~,bestRs] = min(obj.results.diff_matrix.base);
 
-            % Loop through each of the query images that allow the requested
-            % trajectory window of size ds, finding the best trajectory for
-            % each reference image
-            r_scores = NaN(num_rs, 1);
-            r_trajs = NaN(num_rs, ds);
-            for q = (-q_rel_min + 1) : (num_qs - q_rel_max)
+            % Loop through each of the query images, checking how it performs
+            % when attempting to match to each reference image
+            rScores = NaN(numRs, 1);
+            rTrajs = NaN(numRs, ds);
+            for q = (-min(qsRel(1,:)) + 1) : (numQs - max(qsRel(1,:)))
                 % Set q indices
-                qs = qs_rel + q; % We know these are all 'safe'...
+                qs = qsRel + q; % We know these are all 'safe'...
+                bests = bestRs(qs(1,:));
 
-                % Loop through each of the possible references, getting a score
-                % for the best trajectory
-                for r = 1:num_rs
-                    % Set r indices (deleting rows where there is an
-                    % invalid value)
-                    rs = rs_rel + r;
-                    rs = rs(all(rs > 0 & rs <= num_rs, 2),:);
-
-                    % Get the minimum score for this reference image
-                    % (if there is one)
-                    if ~isempty(rs)
-                        s1 = sub2ind(size(obj.results.diff_matrix.enhanced), ...
-                            rs(:), reshape(qs(1:size(rs,1),:), [], 1)); %Indices
-                        s2 = obj.results.diff_matrix.enhanced(s1); % Scores
-                        s3 = reshape(s2, size(rs)); % Reshaped scores
-                        [r_scores(r), ind] = min(sum(s3,2));
-                        r_trajs(r,:) = rs(ind,:);
+                % Loop through each of the possible references, getting a best
+                % score associated with that reference image
+                for r = 1:numRs
+                    % Set r indices & eliminate trajectories outside of bounds
+                    rs = rsRel + r;
+                    rs = rs(all(rs > 0 & rs <= numRs, 2), :);
+                    if isempty(rs)
+                        continue;
                     end
+
+                    % Search for the best score
+                    [rScores(r) rTrajs(r,:)] = SeqSLAMInstance.searchScore( ...
+                        settingsSearch, qs, rs, ...
+                        obj.results.diff_matrix.enhanced, bests);
 
                     % Report to the UI if necessary
                     if obj.listeningUI
-                        perc = ((q-1-ds/2)*num_rs + r) / ...
-                            ((num_qs-ds)*num_rs) * 100;
+                        perc = ((q-1-ds/2)*numRs + r) / ...
+                            ((numQs-ds)*numRs) * 100;
                         if obj.cbMainReady( ...
-                                ProgressGUI.STATE_MATCHING, perc)
+                                SeqSLAMInstance.STATE_MATCHING, perc)
                             p = [];
-                            p.state = ProgressGUI.STATE_MATCHING;
+                            p.state = SeqSLAMInstance.STATE_MATCHING;
                             p.percent = perc;
                             p.q = q;
                             p.r = r;
                             p.qs = qs(1,:);
-                            p.rs = r_trajs(r,:);
+                            p.rs = rTrajs(r,:);
                             p.best_scores = squeeze(trajs(:,2,floor(end/2)+1));
                             p.diff_matrix = obj.results.diff_matrix.enhanced;
                             obj.cbMainUpdate(p);
                         elseif obj.cbPercentReady( ...
-                                ProgressGUI.STATE_MATCHING, perc)
+                                SeqSLAMInstance.STATE_MATCHING, perc)
                             obj.cbPercentUpdate(perc);
                         end
                     end
                 end
 
-                % Store all of the r_scores, and trajectory of the minimum score
-                matches(:,q) = r_scores;
-                [x, idx] = min(r_scores);
-                trajs(q,:,:) = [qs(1,:); r_trajs(idx,:)];
+                % Store all of the scores, and trajectory of the minimum score
+                matches(:,q) = rScores;
+                [x, idx] = min(rScores);
+                trajs(q,:,:) = [qs(1,:); rTrajs(idx,:)];
             end
 
             % Save all of the minimum scores, and best trajectories
@@ -423,8 +499,10 @@ classdef SeqSLAMInstance < handle
             % Report to the UI if necessary
             if obj.listeningUI
                 p = [];
-                p.state = ProgressGUI.STATE_MATCHING_FILTERING;
+                p.state = SeqSLAMInstance.STATE_MATCHING_FILTERING;
                 p.percent = 0;
+                obj.cbPercentReady(p.state, p.percent);
+                obj.cbPercentUpdate(p.percent);
                 obj.cbMainUpdate(p);
             end
 
@@ -444,8 +522,10 @@ classdef SeqSLAMInstance < handle
             % Report to the UI if necessary
             if obj.listeningUI
                 p = [];
-                p.state = ProgressGUI.STATE_DONE;
+                p.state = SeqSLAMInstance.STATE_MATCHING_FILTERING;
                 p.percent = 100;
+                obj.cbPercentReady(p.state, p.percent);
+                obj.cbPercentUpdate(p.percent);
                 obj.cbMainUpdate(p);
             end
         end

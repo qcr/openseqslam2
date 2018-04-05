@@ -1,8 +1,8 @@
-classdef ConfigIOGUI < handle
+classdef SetupGUI < handle
 
     properties (Access = private, Constant)
         % Sizing parameters
-        FIG_WIDTH_FACTOR = 5;       % Times largest button on bottom row
+        FIG_WIDTH_FACTOR = 10;      % Times largest button on bottom row
         FIG_HEIGHT_FACTOR = 26;     % Times height of buttons at font size
     end
 
@@ -38,7 +38,7 @@ classdef ConfigIOGUI < handle
         hResultsPicker;
         hResultsStatus;
 
-        hSettingsSeqSLAM;
+        hConfigure;
         hStart;
 
         config = emptyConfig();
@@ -50,7 +50,7 @@ classdef ConfigIOGUI < handle
     end
 
     methods
-        function obj = ConfigIOGUI()
+        function obj = SetupGUI()
             % Create and size the GUI
             obj.createGUI();
             obj.sizeGUI();
@@ -86,6 +86,91 @@ classdef ConfigIOGUI < handle
             obj.config = s;
             obj.populate();
             success = true;
+        end
+    end
+
+    methods (Static)
+        function [data, status, col] = deriveDatasetData(path)
+            data = []; status = []; col = 'k';
+
+            % Takes a path, and derives all of related dataset data
+            [p, n, e] = fileparts(path);
+            if ~exist(path, 'file')
+                % Inform that the path does not point to an existing file
+                status = 'File does not exist!';
+                col = GUISettings.COL_ERROR;
+            elseif isdir(path)
+                % Attempt to profile the requested image dataset
+                [numbers, ext startToken, endToken] = ...
+                    datasetPictureProfile(path);
+
+                % Report the results
+                if length(numbers) == 0 || isempty(ext)
+                    status = ['No dataset was found (' ...
+                        'a filename patterns wasn''t identified)!'];
+                    col = GUISettings.COL_ERROR;
+                else
+                    status = ['Dataset with filenames ''' ...
+                        startToken '[' num2str(numbers(1), ...
+                        ['%0' num2str(numel(num2str(numbers(end)))) 'd']) ...
+                        '-' num2str(numbers(end)) ']' endToken ...
+                        ''' identified!'];
+                    col = GUISettings.COL_SUCCESS;
+
+                    % Save the derived data
+                    data = [];
+                    data.type = 'image';
+                    data.image.ext = ext;
+                    data.image.numbers = numbers;
+                    data.image.token_start = startToken;
+                    data.image.token_end = endToken;
+                end
+            elseif any(ismember({VideoReader.getFileFormats().Extension}, ...
+                    e(2:end)))
+                % Attempt to read the video
+                v = VideoReader(path);
+                if v.Duration > 0
+                    status= ['Video read (' ...
+                        int2str(v.Duration/60) 'm ' ...
+                        num2str(round(mod(v.Duration,60)), '%02d') 's)!'];
+                    col = GUISettings.COL_SUCCESS;
+
+                    % Save the results
+                    data = [];
+                    data.type = 'video';
+                    data.video.ext = e(2:end);
+                    data.video.frames = floor(v.Duration * v.FrameRate);
+                    data.video.frame_rate = v.FrameRate;
+                else
+                    status = ['An empty video ' ...
+                        '(duration of 0 seconds) was read!'];
+                    col = GUISettings.COL_ERROR;
+                end
+            else
+                % Unsupported video format
+                status = ['''*' e ...
+                    ''' is an unsupported video format'];
+                col = GUISettings.COL_ERROR;
+            end
+        end
+
+        function merged = mergeWithDerived(config, derivedRef, derivedQuery)
+            % TODO: this is feral.....
+            merged = config;
+            merged.reference = derivedRef;
+            merged.query = derivedQuery;
+            merged.reference.path = config.reference.path;
+            merged.query.path = config.query.path;
+            merged.reference.subsample_factor = ...
+                config.reference.subsample_factor;
+            merged.query.subsample_factor = ...
+                config.query.subsample_factor;
+        end
+
+        function [gt, err] = loadGroundTruthMatrix(config)
+            [gt, err] = GroundTruthPopup.getGtMatrix(config.ground_truth, ...
+                [length(SeqSLAMInstance.numbers(config.query)), ...
+                length(SeqSLAMInstance.numbers(config.reference))]);
         end
     end
 
@@ -157,19 +242,19 @@ classdef ConfigIOGUI < handle
             % Prompt the user to select and XML file
             [f, p] = uigetfile('*.xml', 'Select an XML configuration file');
             if isnumeric(f) || isnumeric(p)
-                uiwait(errordlg( ...
+                uiwait(msgbox( ...
                     ['No file was selected, ' ...
                     'no configuration was loaded'], ...
-                    'No file selected'));
+                    'No file selected', 'modal'));
                 return;
             end
             xmlfile = fullfile(p, f);
             [p, f, e] = fileparts(xmlfile);
             if ~strcmpi(e, '.xml')
-                uiwait(errordlg( ...
+                uiwait(msgbox( ...
                     ['No *.xml file was selected, ' ...
                     'no configuration was loaded'], ...
-                    'No *.xml file selected'));
+                    'No *.xml file selected', 'modal'));
                 return;
             end
 
@@ -179,7 +264,7 @@ classdef ConfigIOGUI < handle
                 uiwait(errordlg( ...
                     ['Import failed, ' ...
                     'are you sure this is a valid config file?'], ...
-                    'Import from *.xml file failed'));
+                    'Import from *.xml file failed', 'modal'));
                 return;
             end
         end
@@ -188,10 +273,10 @@ classdef ConfigIOGUI < handle
             % Prompt user to select where they'd like to export
             [f, p] = uiputfile('*.xml', 'Select export location');
             if isnumeric(f) || isnumeric(p)
-                uiwait(errordlg( ...
+                uiwait(msgbox( ...
                     ['No save location was selected, ' ...
                     'configuration was not exported'], ...
-                    'No save location selected'));
+                    'No save location selected', 'modal'));
                 return;
             end
 
@@ -214,7 +299,7 @@ classdef ConfigIOGUI < handle
             if ~isempty(err)
                 uiwait(errordlg( ...
                     ['Opening of results failed due to an error (' err ')'], ...
-                    'Failed to open results'));
+                    'Failed to open results', 'modal'));
             else
                 % Open up the results in the ResultsGUI, and wait until done
                 resultsui = ResultsGUI(results, config);
@@ -225,12 +310,12 @@ classdef ConfigIOGUI < handle
             obj.interactivity(true);
         end
 
-        function cbSeqSLAMSettings(obj, src, event)
+        function cbConfigure(obj, src, event)
             obj.interactivity(false);
 
             % Open the GUI, populate it, and wait for the user to finish
             obj.strip();
-            seqslamgui = ConfigSeqSLAMGUI(obj.config);
+            seqslamgui = ConfigureGUI(obj.config);
             uiwait(seqslamgui.hFig);
             HelpPopup.setDestination(obj.hHelp, 'configuration');
 
@@ -241,8 +326,33 @@ classdef ConfigIOGUI < handle
         end
 
         function cbStart(obj, src, event)
-            % Extract all of the data from the UI, and store in the object
+            % Store a temp config for if we fail
+            configTemp = obj.config;
+
+            % Extract all of the data from the UI, including the derived data
             obj.strip();
+
+            % Load the ground truth in here (even reload so we can check it
+            % still passes size checks...)
+            if obj.config.ground_truth.exists
+                [gt, err] = SetupGUI.loadGroundTruthMatrix(obj.confg);
+                if ~isempty(err)
+                    errordlg(err, 'Ground Truth opening failed', 'modal');
+                    return;
+                else
+                    obj.config.ground_truth.matrix = gt;
+                end
+            end
+
+            % Evaluate the validity of the config
+            err = evaluateConfig(obj.config);
+            if ~isempty(err)
+                errordlg({['The requested configuration is not valid due to '...
+                    'the following error:'], '', err}, ...
+                    'Invalid configuration', 'modal');
+                obj.config = configTemp; % Revert to unmodified config
+                return;
+            end
 
             % Report that the figure naturally finished, and then close
             obj.done = true;
@@ -260,7 +370,7 @@ classdef ConfigIOGUI < handle
             obj.hTitle = annotation(obj.hFig, 'textbox');
             GUISettings.applyAnnotationStyle(obj.hTitle);
             obj.hTitle.HorizontalAlignment = 'center';
-            obj.hTitle.String = '\textbf{Welcome to \textit{OpenSEQSLAM2.0}!}';
+            obj.hTitle.String = '\textbf{Welcome to \textit{OpenSeqSLAM2.0}!}';
 
             obj.hInfo = annotation(obj.hFig, 'textbox');
             GUISettings.applyAnnotationStyle(obj.hInfo);
@@ -372,10 +482,10 @@ classdef ConfigIOGUI < handle
             obj.hResultsStatus.HorizontalAlignment = 'right';
             obj.hResultsStatus.String = '';
 
-            % SeqSLAM settings button
-            obj.hSettingsSeqSLAM = uicontrol('Style', 'pushbutton');
-            GUISettings.applyUIControlStyle(obj.hSettingsSeqSLAM);
-            obj.hSettingsSeqSLAM.String = 'SeqSLAM Settings';
+            % Configure button
+            obj.hConfigure = uicontrol('Style', 'pushbutton');
+            GUISettings.applyUIControlStyle(obj.hConfigure);
+            obj.hConfigure.String = 'Configure';
 
             % Start button
             obj.hStart = uicontrol('Style', 'pushbutton');
@@ -398,7 +508,7 @@ classdef ConfigIOGUI < handle
                 obj.hResultsStatus};
             obj.hResultsPicker.Callback = {@obj.cbChooseResults, ...
                 obj.hResultsLocation, obj.hResultsStatus};
-            obj.hSettingsSeqSLAM.Callback = {@obj.cbSeqSLAMSettings};
+            obj.hConfigure.Callback = {@obj.cbConfigure};
             obj.hStart.Callback= {@obj.cbStart};
         end
 
@@ -410,77 +520,13 @@ classdef ConfigIOGUI < handle
             status.String = 'Validating...';
             status.ForegroundColor = GUISettings.COL_LOADING;
             drawnow();
-            [p, n, e] = fileparts(path);
-            if ~exist(path, 'file')
-                % Inform that the path does not point to an existing file
-                status.String = 'File does not exist!';
-                status.ForegroundColor = GUISettings.COL_ERROR;
-            elseif isdir(path)
-                % Attempt to profile the requested image dataset
-                [numbers, ext startToken, endToken] = ...
-                    datasetPictureProfile(path);
-
-                % Report the results
-                if length(numbers) == 0 || isempty(ext)
-                    status.String = ['No dataset was found (' ...
-                        'a filename patterns wasn''t identified)!'];
-                    status.ForegroundColor = GUISettings.COL_ERROR;
-                else
-                    status.String = ['Dataset with filenames ''' ...
-                        startToken '[' num2str(numbers(1), ...
-                        ['%0' num2str(numel(num2str(numbers(end)))) 'd']) ...
-                        '-' num2str(numbers(end)) ']' endToken ...
-                        ''' identified!'];
-                    status.ForegroundColor = GUISettings.COL_SUCCESS;
-
-                    % Save the results
-                    results = [];
-                    results.type = 'image';
-                    results.image.ext = ext;
-                    results.image.numbers = numbers;
-                    results.image.token_start = startToken;
-                    results.image.token_end = endToken;
-                    if status == obj.hRefStatus
-                        obj.cachedReference = [];
-                        obj.cachedReference = results;
-                    elseif status == obj.hQueryStatus
-                        obj.cachedQuery = [];
-                        obj.cachedQuery = results;
-                    end
-                end
-            elseif any(ismember({VideoReader.getFileFormats().Extension}, ...
-                    e(2:end)))
-                % Attempt to read the video
-                v = VideoReader(path);
-                if v.Duration > 0
-                    status.String = ['Video read (' ...
-                        int2str(v.Duration/60) 'm ' ...
-                        num2str(round(mod(v.Duration,60)), '%02d') 's)!'];
-                    status.ForegroundColor = GUISettings.COL_SUCCESS;
-
-                    % Save the results
-                    results = [];
-                    results.type = 'video';
-                    results.video.ext = e(2:end);
-                    results.video.frames = floor(v.Duration * v.FrameRate);
-                    results.video.frame_rate = v.FrameRate;
-                    if status == obj.hRefStatus
-                        obj.cachedReference = [];
-                        obj.cachedReference = results;
-                    elseif status == obj.hQueryStatus
-                        obj.cachedQuery = [];
-                        obj.cachedQuery = results;
-                    end
-                else
-                    status.String = ['An empty video ' ...
-                        '(duration of 0 seconds) was read!'];
-                    status.ForegroundColor = GUISettings.COL_ERROR;
-                end
-            else
-                % Unsupported video format
-                status.String = ['''*' e ...
-                    ''' is an unsupported video format'];
-                status.ForegroundColor = GUISettings.COL_ERROR;
+            [data, str, col] = SetupGUI.deriveDatasetData(path);
+            status.String = str;
+            status.ForegroundColor = col;
+            if status == obj.hRefStatus
+                obj.cachedReference = data;
+            elseif status == obj.hQueryStatus
+                obj.cachedQuery = data;
             end
 
             obj.interactivity(true);
@@ -546,19 +592,19 @@ classdef ConfigIOGUI < handle
             obj.hResultsPicker.Enable = status;
             obj.hResultsStatus.Enable = status;
 
-            obj.hSettingsSeqSLAM.Enable = status;
+            obj.hConfigure.Enable = status;
             obj.hStart.Enable = status;
         end
 
         function populate(obj)
             % Dump all data from the config struct into the UI
             obj.hRefLocation.String = obj.config.reference.path;
-            obj.hRefSampleValue.String = ...
-                num2str(obj.config.reference.subsample_factor);
+            obj.hRefSampleValue.String = num2str( ...
+                SafeData.noEmpty(obj.config.reference.subsample_factor, 1));
 
             obj.hQueryLocation.String = obj.config.query.path;
-            obj.hQuerySampleValue.String = ...
-                num2str(obj.config.query.subsample_factor);
+            obj.hQuerySampleValue.String = num2str( ...
+                SafeData.noEmpty(obj.config.query.subsample_factor, 1));
 
             obj.hResultsLocation.String = obj.config.results.path;
 
@@ -596,13 +642,13 @@ classdef ConfigIOGUI < handle
         function sizeGUI(obj)
             % Get some reference dimensions (max width of 3 buttons, and
             % default height of a button)
-            widthUnit = obj.hSettingsSeqSLAM.Extent(3) * toolboxWidthFactor();
+            widthUnit = obj.hConfigure.Extent(3) * toolboxWidthFactor();
             heightUnit = obj.hStart.Extent(4);
 
             % Size and position the figure
             obj.hFig.Position = [0, 0, ...
-                widthUnit * ConfigIOGUI.FIG_WIDTH_FACTOR, ...
-                heightUnit * ConfigIOGUI.FIG_HEIGHT_FACTOR];
+                widthUnit * SetupGUI.FIG_WIDTH_FACTOR, ...
+                heightUnit * SetupGUI.FIG_HEIGHT_FACTOR];
             movegui(obj.hFig, 'center');
 
             % Now that the figure (space for placing UI elements is set),
@@ -656,7 +702,7 @@ classdef ConfigIOGUI < handle
             SpecSize.size(obj.hResultsStatus, SpecSize.WIDTH, ...
                 SpecSize.MATCH, obj.hResults, GUISettings.PAD_MED);
 
-            SpecSize.size(obj.hSettingsSeqSLAM, SpecSize.WIDTH, ...
+            SpecSize.size(obj.hConfigure, SpecSize.WIDTH, ...
                 SpecSize.PERCENT, obj.hFig, 0.25);
             SpecSize.size(obj.hStart, SpecSize.WIDTH, SpecSize.PERCENT, ...
                 obj.hFig, 0.2);
@@ -748,9 +794,9 @@ classdef ConfigIOGUI < handle
             SpecPosition.positionRelative(obj.hResultsStatus, ...
                 obj.hResultsPicker, SpecPosition.BELOW, 0.5*heightUnit);
 
-            SpecPosition.positionIn(obj.hSettingsSeqSLAM, obj.hFig, ...
+            SpecPosition.positionIn(obj.hConfigure, obj.hFig, ...
                 SpecPosition.LEFT, GUISettings.PAD_MED);
-            SpecPosition.positionIn(obj.hSettingsSeqSLAM, obj.hFig, ...
+            SpecPosition.positionIn(obj.hConfigure, obj.hFig, ...
                 SpecPosition.BOTTOM, GUISettings.PAD_MED);
             SpecPosition.positionIn(obj.hPrevResults, obj.hFig, ...
                 SpecPosition.CENTER_X);
@@ -759,22 +805,10 @@ classdef ConfigIOGUI < handle
             SpecPosition.positionIn(obj.hStart, obj.hFig, ...
                 SpecPosition.RIGHT, GUISettings.PAD_MED);
             SpecPosition.positionRelative(obj.hStart, ...
-                obj.hSettingsSeqSLAM, SpecPosition.CENTER_Y);
+                obj.hConfigure, SpecPosition.CENTER_Y);
         end
 
         function strip(obj)
-            % Start with the cached data
-            if isfield(obj.cachedReference, 'image')
-                obj.config.reference = obj.cachedReference;
-            elseif isfield(obj.cachedReference, 'video')
-                obj.config.reference = obj.cachedReference;
-            end
-            if isfield(obj.cachedQuery, 'image')
-                obj.config.query = obj.cachedQuery;
-            elseif isfield(obj.cachedQuery, 'video')
-                obj.config.query = obj.cachedQuery;
-            end
-
             % Strip data from the UI, and store it over the top
             obj.config.reference.path = obj.hRefLocation.String;
             obj.config.reference.subsample_factor = ...
@@ -785,6 +819,11 @@ classdef ConfigIOGUI < handle
                 str2num(obj.hQuerySampleValue.String);
 
             obj.config.results.path = obj.hResultsLocation.String;
+
+            % Merge the data with the cached data (it is assumed that the
+            % deriving operation has already been performed...)
+            obj.config = SetupGUI.mergeWithDerived(obj.config, ...
+                obj.cachedReference, obj.cachedQuery);
         end
 
         function updateButtons(obj)
@@ -793,10 +832,10 @@ classdef ConfigIOGUI < handle
                     obj.hQueryStatus.ForegroundColor, GUISettings.COL_ERROR) ...
                     || isequal(obj.hResultsStatus.ForegroundColor, ...
                     GUISettings.COL_ERROR)
-                obj.hSettingsSeqSLAM.Enable = 'off';
+                obj.hConfigure.Enable = 'off';
                 obj.hStart.Enable = 'off';
             else
-                obj.hSettingsSeqSLAM.Enable = 'on';
+                obj.hConfigure.Enable = 'on';
                 obj.hStart.Enable = 'on';
             end
         end

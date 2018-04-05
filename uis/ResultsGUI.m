@@ -119,11 +119,6 @@ classdef ResultsGUI < handle
     end
 
     methods (Access = private, Static)
-        function cs = matchCoords(matches)
-            cs = [(1:length(matches)); matches]';
-            cs = cs(~isnan(matches),:); % Coords corresponding to each match
-        end
-
         function next = nextMatch(current, matches)
             % Get index of matches
             inds = find(~isnan(matches));
@@ -170,13 +165,16 @@ classdef ResultsGUI < handle
         function cbConfigureGroundTruth(obj, src, event)
             % Launch the ground truth popup (and wait until done)
             obj.interactivity(false);
-            gtui = GroundTruthPopup(obj.results);
+            gtui = GroundTruthPopup(obj.results.pr.ground_truth, ...
+                size(obj.results.diff_matrix.enhanced));
             uiwait(gtui.hFig);
             obj.interactivity(true);
 
-            % Update the results (these should have only been modified if apply
-            % was selected successfully)
-            obj.results = gtui.results;
+            % Update the ground truth section of the results (only if a valid
+            % selection was made
+            if ~isempty(gtui.gt)
+                obj.config.ground_truth = gtui.gt;
+            end
 
             % Update the precision recall plot
             obj.refreshPrecisionRecallScreen();
@@ -198,8 +196,9 @@ classdef ResultsGUI < handle
             % Request a save location, exiting if none is provided
             [f, p] = uiputfile('*', 'Select export location');
             if isnumeric(f) || isnumeric(p)
-                uiwait(errordlg(['No save location was selected, ' ...
-                    'video was not exported'], 'No save location selected'));
+                uiwait(msgbox(['No save location was selected, ' ...
+                    'video was not exported'], 'No save location selected', ...
+                    'modal'));
                 return;
             end
 
@@ -255,7 +254,7 @@ classdef ResultsGUI < handle
 
         function cbMatchClicked(obj, src, event)
             % Figure out which match was clicked
-            cs = ResultsGUI.matchCoords(obj.results.matching.selected.matches);
+            cs = matches2coords(obj.results.matching.selected.matches);
             vs = cs - ones(size(cs))*diag(obj.hAxMain.CurrentPoint(1,1:2));
             [x, mI] = min(sum(vs.^2, 2)); % Index for match with min distance^2
             obj.selectedMatch = cs(mI,:);
@@ -347,8 +346,9 @@ classdef ResultsGUI < handle
             resultsDir = uigetdir('', ...
                 'Select the directory where the results will be saved');
             if isnumeric(resultsDir)
-                uiwait(errordlg(['No save location was selected, ' ...
-                    'results were not saved'], 'No save location selected'));
+                uiwait(msgbox(['No save location was selected, ' ...
+                    'results were not saved'], 'No save location selected', ...
+                    'modal'));
                 return;
             end
 
@@ -364,7 +364,7 @@ classdef ResultsGUI < handle
                 'precision_recall.mat');
 
             uiwait(msgbox({'Results were saved to:' resultsDir}, ...
-                'Save Successful'));
+                'Save Successful', 'modal'));
         end
 
         function cbShowSequence(obj, src, event)
@@ -859,7 +859,7 @@ classdef ResultsGUI < handle
             % Useful temporaries
             szDiff = size(obj.results.diff_matrix.enhanced);
             d = obj.selectedDiff;
-            ds = obj.config.seqslam.matching.trajectory.d_s;
+            ds = obj.config.seqslam.search.d_s;
 
             % Clear the axis to start
             cla(obj.hAxMain);
@@ -977,9 +977,9 @@ classdef ResultsGUI < handle
                     ' with #' num2str(m(2)) ')'];
 
                 % Get maximum "distance", and limits for the focus cutout
-                ds = max(obj.config.seqslam.matching.trajectory.d_s, ...
+                ds = max(obj.config.seqslam.search.d_s, ...
                     1 + range(t(:,2,:)));
-                if ds == obj.config.seqslam.matching.trajectory.d_s
+                if ds == obj.config.seqslam.search.d_s
                     rLimits = m(2) - floor(ds/2) + [0 ds-1];
                 else
                     rLimits = [min(t(:,2,:)) max(t(:,2,:))];
@@ -1726,36 +1726,9 @@ classdef ResultsGUI < handle
         end
 
         function updateGroundTruthDescription(obj)
-            if isempty(obj.results.pr.ground_truth.matrix)
-                d = 'No ground truth matrix available. Please configure...';
-                col = GUISettings.COL_ERROR;
-            elseif strcmp(obj.results.pr.ground_truth.type, 'file')
-                if isempty(obj.results.pr.ground_truth.file.path)
-                    d = 'No data for ground truth file found';
-                    col = GUISettings.COL_WARNING;
-                elseif ~exist(obj.results.pr.ground_truth.file.path)
-                    d = ['File @ ' obj.results.pr.ground_truth.file.path ...
-                        'could not be found'];
-                    col = GUISettings.COL_WARNING;
-                else
-                    d = ['Loaded from ' obj.results.pr.ground_truth.file.path];
-                    col = GUISettings.COL_SUCCESS;
-                end
-            elseif strcmp(obj.results.pr.ground_truth.type, 'velocity')
-                if isempty(obj.results.pr.ground_truth.velocity.vel) || ...
-                        isempty(obj.results.pr.ground_truth.velocity.tol)
-                    d = ['Failed to load data for velocity based ground truth'];
-                    col = GUISettings.COL_WARNING;
-                else
-                    d = ['Ground truth with vel = ' ...
-                        num2str(obj.results.pr.ground_truth.velocity.vel) ...
-                        ' & tol = ' ...
-                        num2str(obj.results.pr.ground_truth.velocity.tol)];
-                    col = GUISettings.COL_SUCCESS;
-                end
-            end
-            obj.hOptsPRGroundTruthDetails.String = d;
-            obj.hOptsPRGroundTruthDetails.ForegroundColor = col;
+            [obj.hOptsPRGroundTruthDetails.String, ...
+                obj.hOptsPRGroundTruthDetails.ForegroundColor] = ...
+                GroundTruthPopup.gtDescription(obj.config.ground_truth);
         end
 
         function updateMatches(obj)
@@ -1801,43 +1774,23 @@ classdef ResultsGUI < handle
                         obj.config.seqslam.matching.method_window.r_window, ...
                         varVals(k));
                 end
-                obj.results.dbg.a = obj.results.matching.all;
-                obj.results.dbg.w = obj.config.seqslam.matching.method_window.r_window;
-                obj.results.dbg.t = thresholded;
-                matches{k} = ResultsGUI.matchCoords(thresholded.matches);
-            end
-            obj.results.dbg.vals = varVals;
-            obj.results.dbg.sA = sweepStart;
-            obj.results.dbg.sB = sweepEnd;
-            obj.results.dbg.matches = matches;
-
-            % Calculate the precision for each variable value
-            precisions = zeros(size(matches));
-            for k = 1:length(precisions)
-                % Precision = # correct matches / # matches
-                ms = matches{k};
-                precisions(k) = sum(arrayfun( ...
-                    @(x) obj.results.pr.ground_truth.matrix( ...
-                    ms(x,2), ms(x,1)), 1:size(ms, 1))) / size(ms, 1);
+                matches{k} = thresholded.matches;
             end
 
-            % Calculate the recall for each variable value
-            recalls = zeros(size(matches));
+            % Calculate precision / recall for each variable value
+            ps = zeros(size(matches));
+            rs = zeros(size(matches));
             for k = 1:length(matches)
-                % Recall = # correct matches / total # of matches
-                ms = matches{k};
-                recalls(k) = sum(arrayfun( ...
-                    @(x) obj.results.pr.ground_truth.matrix( ...
-                    ms(x,2), ms(x,1)), 1:size(ms, 1))) / ...
-                    size(obj.results.pr.ground_truth.matrix, 2);
+                [ps(k), rs(k)] = calcPR(matches{k}, ...
+                    obj.config.ground_truth.matrix);
             end
 
             % Save the results
             obj.results.pr.sweep_var.start = sweepStart;
             obj.results.pr.sweep_var.end = sweepEnd;
             obj.results.pr.sweep_var.num_steps = numSteps;
-            obj.results.pr.values.precisions = precisions;
-            obj.results.pr.values.recalls = recalls;
+            obj.results.pr.values.precisions = ps;
+            obj.results.pr.values.recalls = rs;
         end
 
         function updateSelectedMatch(obj)
