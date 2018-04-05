@@ -8,10 +8,7 @@ function results = OpenSeqSLAMRun(config)
             configs(k) = config;
             configs(k) = setDeepField(configs(k), config.batch.param, ...
                 config.batch.values(k));
-            fs = strsplit(config.batch.param, '.');
-            configs(k).results.path = fullfile(config.results.path, ...
-                [fs{end} '-' ...
-                strrep(num2str(config.batch.values(k)), '.', '-')]);
+            configs(k).results.path = resultsBatchPath(config, k);
         end
 
         % Clean out the root results directory
@@ -124,7 +121,8 @@ function results = OpenSeqSLAMRun(config)
                 rs(k).matching.selected.matches, results.ground_truth.matrix);
         end
 
-        % Save the batch results (they are not saved anywhere earlier)
+        % Save the batch results and config (they are not saved anywhere earlier)
+        resultsSave(config.results.path, config, 'batch_config.xml');
         resultsSave(config.results.path, results, 'batch_results.mat');
     else
         results = rs(1);

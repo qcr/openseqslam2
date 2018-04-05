@@ -335,7 +335,7 @@ classdef SetupGUI < handle
             % Load the ground truth in here (even reload so we can check it
             % still passes size checks...)
             if obj.config.ground_truth.exists
-                [gt, err] = SetupGUI.loadGroundTruthMatrix(obj.confg);
+                [gt, err] = SetupGUI.loadGroundTruthMatrix(obj.config);
                 if ~isempty(err)
                     errordlg(err, 'Ground Truth opening failed', 'modal');
                     return;

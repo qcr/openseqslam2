@@ -11,7 +11,7 @@ function [results, config] = OpenSeqSLAMResults(results, config)
         config = resultsui.config;
     else
         % Run the batch results visualisation GUI, and wait until done
-        resultsui = ResultsBatchGUI(results);
+        resultsui = ResultsBatchGUI(results, config);
         uiwait(resultsui.hFig);
 
         % Return the final batch results (shouldn't be modified)

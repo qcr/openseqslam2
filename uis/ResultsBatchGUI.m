@@ -9,6 +9,7 @@ classdef ResultsBatchGUI < handle
         hFig;
 
         hTitle;
+        hIndividual;
         hParameter;
         hParameterValue;
         hValues;
@@ -17,13 +18,15 @@ classdef ResultsBatchGUI < handle
         hAxPR;
         hAxF1;
 
+        config; % Note: config of the batch test, not each individual!
         results; % Note: is a batch results, not a normal results struct!
     end
 
     methods
-        function obj = ResultsBatchGUI(results)
-            % Save the batch results
+        function obj = ResultsBatchGUI(results, config)
+            % Save the batch results, and config
             obj.results = results;
+            obj.config = config;
 
             % Create and size the GUI
             obj.createGUI();
@@ -42,6 +45,39 @@ classdef ResultsBatchGUI < handle
     end
 
     methods (Access = private)
+        function cbOpenIndividualResult(obj, src, event)
+            % Prompt the user to select which iteration they want to open
+            strTitle = 'Individual parameter results selection';
+            strPrompt = ['View results for which value of ' ...
+                obj.results.batch_param '?'];
+            [ind, selected] = listdlg('Name', strTitle, 'SelectionMode', ...
+                'single', 'PromptString', strPrompt, 'ListString', ...
+                arrayfun(@(x) num2str(x), obj.results.batch_values, ...
+                'UniformOutput', false));
+            if ~selected
+                return;
+            end
+
+            % Open and display the individual result
+            [r, c, err] = resultsOpen(resultsBatchPath(obj.config, ind));
+            if ~isempty(err)
+                uiwait(errordlg({['Opening of individual results failed ' ...
+                    'with the error: '], err}, ...
+                    'Failed to open individual results', 'modal'));
+                return;
+            end
+            [gt, err] = SetupGUI.loadGroundTruthMatrix(c);
+            if ~isempty(err)
+                uiwait(errordlg( ...
+                    ['Failed to load requested ground truth matrix: ' err], ...
+                    'Loading config ground truth failed', 'modal'));
+                return;
+            end
+            c.ground_truth.matrix = gt;
+            resultsui = ResultsGUI(r, c);
+            uiwait(resultsui.hFig);
+        end
+
         function createGUI(obj)
             % Create the figure (and hide it)
             obj.hFig = figure('Visible', 'off');
@@ -55,6 +91,11 @@ classdef ResultsBatchGUI < handle
             GUISettings.setFontScale(obj.hTitle, 2.5);
             obj.hTitle.FontWeight = 'bold';
             obj.hTitle.String = 'Batch Parameter Sweep Statistics';
+
+            obj.hIndividual = uicontrol('Style', 'pushbutton');
+            obj.hIndividual.Parent = obj.hFig;
+            GUISettings.applyUIControlStyle(obj.hIndividual);
+            obj.hIndividual.String = 'View individual results...';
 
             obj.hParameter = uicontrol('Style', 'text');
             obj.hParameter.Parent = obj.hFig;
@@ -91,6 +132,9 @@ classdef ResultsBatchGUI < handle
             obj.hAxF1 = axes();
             GUISettings.applyUIAxesStyle(obj.hAxF1);
             obj.hAxF1.Visible = 'off';
+
+            % Callbacks (must be last, otherwise empty objects passed...)
+            obj.hIndividual.Callback = {@obj.cbOpenIndividualResult};
         end
 
         function drawPlots(obj)
@@ -141,15 +185,17 @@ classdef ResultsBatchGUI < handle
             % size all of the elements
             SpecSize.size(obj.hTitle, SpecSize.WIDTH, SpecSize.WRAP);
             SpecSize.size(obj.hTitle, SpecSize.HEIGHT, SpecSize.WRAP);
+            SpecSize.size(obj.hIndividual, SpecSize.WIDTH, ...
+                SpecSize.PERCENT, obj.hFig, 0.15);
             SpecSize.size(obj.hParameter, SpecSize.WIDTH, SpecSize.WRAP);
             SpecSize.size(obj.hParameter, SpecSize.HEIGHT, SpecSize.WRAP);
-            SpecSize.size(obj.hParameterValue, SpecSize.WIDTH, SpecSize.PERCENT, ...
-                obj.hFig, 0.3);
+            SpecSize.size(obj.hParameterValue, SpecSize.WIDTH, ...
+                SpecSize.PERCENT, obj.hFig, 0.3);
             SpecSize.size(obj.hParameterValue, SpecSize.HEIGHT, SpecSize.WRAP);
             SpecSize.size(obj.hValues, SpecSize.WIDTH, SpecSize.WRAP);
             SpecSize.size(obj.hValues, SpecSize.HEIGHT, SpecSize.WRAP);
-            SpecSize.size(obj.hValuesValue, SpecSize.WIDTH, SpecSize.PERCENT, ...
-                obj.hFig, 0.4);
+            SpecSize.size(obj.hValuesValue, SpecSize.WIDTH, ...
+                SpecSize.PERCENT, obj.hFig, 0.4);
             obj.hValuesValue.String = textwrap(obj.hValuesValue, ...
                 {obj.hValuesValue.String});
             SpecSize.size(obj.hValuesValue, SpecSize.HEIGHT, SpecSize.WRAP);
@@ -166,6 +212,10 @@ classdef ResultsBatchGUI < handle
                 SpecPosition.TOP, GUISettings.PAD_LARGE);
             SpecPosition.positionIn(obj.hTitle, obj.hFig, ...
                 SpecPosition.CENTER_X);
+            SpecPosition.positionRelative(obj.hIndividual, obj.hTitle, ...
+                SpecPosition.BELOW, GUISettings.PAD_MED);
+            SpecPosition.positionIn(obj.hIndividual, obj.hFig, ...
+                SpecPosition.RIGHT, 2*GUISettings.PAD_LARGE);
 
             SpecPosition.positionRelative(obj.hParameter, obj.hTitle, ...
                 SpecPosition.BELOW, 3*GUISettings.PAD_LARGE);
