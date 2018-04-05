@@ -10,7 +10,7 @@ function [results, config] = OpenSeqSLAM2(varargin)
     if isempty(varargin)
         config = OpenSeqSLAMSetup();
         if isempty(config)
-            warning('No configuration was selected in the GUI. Aborting.');
+            % warning('No configuration was selected in the GUI. Aborting.');
             return;
         end
     else
@@ -29,11 +29,13 @@ function [results, config] = OpenSeqSLAM2(varargin)
                 'Check configuraiton in GUI for further details.'])
         end
         config = SetupGUI.mergeWithDerived(config, derRef, derQuery);
-        [gt, err] = SetupGUI.loadGroundTruthMatrix(config);
-        if ~isempty(err)
-            error(['Failed to load requested ground truth matrix: ' err]);
+        if config.ground_truth.exists
+            [gt, err] = SetupGUI.loadGroundTruthMatrix(config);
+            if ~isempty(err)
+                error(['Failed to load requested ground truth matrix: ' err]);
+            end
+            config.ground_truth.matrix = gt;
         end
-        config.ground_truth.matrix = gt;
         err = evaluateConfig(config);
         if ~isempty(err)
             error(['Config failed validation: ' err]);

@@ -5,8 +5,10 @@ function settings2xml(s, saveLocation)
     s.reference.path = strrep(s.reference.path, toolboxRoot(), VAR_ROOT);
     s.query.path = strrep(s.query.path, toolboxRoot(), VAR_ROOT);
     s.results.path = strrep(s.results.path, toolboxRoot(), VAR_ROOT);
-    s.ground_truth.file.path = strrep(s.ground_truth.file.path, ...
-        toolboxRoot(), VAR_ROOT);
+    if ~isempty(s.ground_truth.file.path)
+        s.ground_truth.file.path = strrep(s.ground_truth.file.path, ...
+            toolboxRoot(), VAR_ROOT);
+    end
 
     % Create the document node, and root element
     doc = com.mathworks.xml.XMLUtils.createDocument('seqslam-settings');

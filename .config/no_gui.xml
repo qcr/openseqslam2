@@ -14,10 +14,10 @@
       <setting name="type" type="string" value="video"/>
       <settings-group name="video">
          <setting name="ext" type="string" value="avi"/>
-         <setting name="frames" type="numeric" value="14603"/>
+         <setting name="frames" type="numeric" value="16176"/>
          <setting name="frame_rate" type="numeric" value="50"/>
       </settings-group>
-      <setting name="path" type="string" value="$TOOLBOX_ROOT/datasets/samples/daynight/day_trunc.avi"/>
+      <setting name="path" type="string" value="$TOOLBOX_ROOT/datasets/samples/daynight/night_trunc.avi"/>
       <setting name="subsample_factor" type="numeric" value="50"/>
    </settings-group>
    <settings-group name="results">
@@ -73,13 +73,13 @@
    </settings-group>
    <settings-group name="ui">
       <settings-group name="progress">
-         <setting name="type" type="string" value="graphical"/>
+         <setting name="type" type="string" value="console"/>
          <setting name="percent_freq" type="numeric" value="1"/>
          <setting name="preprocess_freq" type="numeric" value="5"/>
          <setting name="diff_matrix_freq" type="numeric" value="5"/>
          <setting name="enhance_freq" type="numeric" value="5"/>
          <setting name="match_freq" type="numeric" value="5"/>
       </settings-group>
-      <setting name="results" type="boolean" value="1"/>
+      <setting name="results" type="boolean" value="0"/>
    </settings-group>
 </seqslam-settings>

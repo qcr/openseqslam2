@@ -240,7 +240,8 @@ classdef SetupGUI < handle
 
         function cbImport(obj, src, event)
             % Prompt the user to select and XML file
-            [f, p] = uigetfile('*.xml', 'Select an XML configuration file');
+            [f, p] = uigetfile('*.xml', 'Select an XML configuration file', ...
+                fullfile(toolboxRoot(), '.config'));
             if isnumeric(f) || isnumeric(p)
                 uiwait(msgbox( ...
                     ['No file was selected, ' ...
@@ -271,7 +272,8 @@ classdef SetupGUI < handle
 
         function cbExport(obj, src, event)
             % Prompt user to select where they'd like to export
-            [f, p] = uiputfile('*.xml', 'Select export location');
+            [f, p] = uiputfile('*.xml', 'Select export location', ...
+                fullfile(toolboxRoot(), '.config'));
             if isnumeric(f) || isnumeric(p)
                 uiwait(msgbox( ...
                     ['No save location was selected, ' ...

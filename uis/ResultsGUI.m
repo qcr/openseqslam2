@@ -165,7 +165,7 @@ classdef ResultsGUI < handle
         function cbConfigureGroundTruth(obj, src, event)
             % Launch the ground truth popup (and wait until done)
             obj.interactivity(false);
-            gtui = GroundTruthPopup(obj.results.pr.ground_truth, ...
+            gtui = GroundTruthPopup(obj.config.ground_truth, ...
                 size(obj.results.diff_matrix.enhanced));
             uiwait(gtui.hFig);
             obj.interactivity(true);

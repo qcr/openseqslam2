@@ -28,7 +28,7 @@ function results = OpenSeqSLAMRun(config)
     % Start running through each of the jobs (we need a different path of
     % execution for the parallel option)
     % TODO make this more succint...
-    if config.batch.parallelise
+    if config.batch.enabled && config.batch.parallelise
         fprintf('Setting up the parallel pool...\n');
         if isempty(gcp('nocreate'))
             parpool(feature('numcores'));

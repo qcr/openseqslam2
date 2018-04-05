@@ -230,6 +230,17 @@ classdef ConfigureGUI < handle
             obj.openScreen(obj.hScreen.Value);
         end
 
+        function cbChooseSearchMethod(obj, src, event)
+            if obj.hMatchSearchMethodValue.Value == 1
+                status = 'on';
+            else
+                status = 'off';
+            end
+            obj.hMatchSearchVstep.Visible = status;
+            obj.hMatchSearchVstepValue.Visible = status;
+            obj.drawMatchDiagrams();
+        end
+
         function cbConfigureGroundTruth(obj, src, event)
             % Launch the ground truth popup
             if isempty(obj.cachedGroundTruth)
@@ -879,6 +890,7 @@ classdef ConfigureGUI < handle
             obj.hMatchSearchLengthValue.Callback = {@obj.cbRefreshDiagrams};
             obj.hMatchSearchVminValue.Callback = {@obj.cbRefreshDiagrams};
             obj.hMatchSearchVmaxValue.Callback = {@obj.cbRefreshDiagrams};
+            obj.hMatchSearchMethodValue.Callback = {@obj.cbChooseSearchMethod};
             obj.hMatchSearchVstepValue.Callback = {@obj.cbRefreshDiagrams};
             obj.hMatchCriMethodValue.Callback = {@obj.cbSelectMatchMethod};
             obj.hMatchCriWindowValue.Callback = {@obj.cbRefreshDiagrams};
@@ -927,9 +939,12 @@ classdef ConfigureGUI < handle
             h.MarkerSize = h.MarkerSize * 6;
             for k = [vmin:vstep:vmax vmax]
                 th = atan(k);
-                h =plot(obj.hMatchSearchAx, ...
-                    [center-offBack center+offFront], ...
-                    [center-offBack*sin(th) center+offFront*sin(th)], 'k');
+                if k == vmin || k == vmax || ...
+                        obj.hMatchSearchMethodValue.Value == 1
+                    h =plot(obj.hMatchSearchAx, ...
+                        [center-offBack center+offFront], ...
+                        [center-offBack*sin(th) center+offFront*sin(th)], 'k');
+                end
                 if k == vmin || k == vmax
                     h.LineWidth = h.LineWidth * 3;
                 end
@@ -946,11 +961,13 @@ classdef ConfigureGUI < handle
                 'interpreter', 'latex', 'HorizontalAlignment', 'left', ...
                 'VerticalAlignment', 'top');
             h.FontSize = h.FontSize * GUISettings.LATEX_FACTOR * 1.25;
-            h = text(obj.hMatchSearchAx, center+offFront, ...
-                center+offFront*mean([sin(atan(vmin)) sin(atan(vmax))]), ...
-                '$v_{step}$', 'interpreter', 'latex', 'HorizontalAlignment', ...
-                'left', 'VerticalAlignment', 'middle');
-            h.FontSize = h.FontSize * GUISettings.LATEX_FACTOR * 1.25;
+            if obj.hMatchSearchMethodValue.Value == 1
+                h = text(obj.hMatchSearchAx, center+offFront, ...
+                    center+offFront*mean([sin(atan(vmin)) sin(atan(vmax))]), ...
+                    '$v_{step}$', 'interpreter', 'latex', 'HorizontalAlignment', ...
+                    'left', 'VerticalAlignment', 'middle');
+                h.FontSize = h.FontSize * GUISettings.LATEX_FACTOR * 1.25;
+            end
             plot(obj.hMatchSearchAx, [center-offBack center+offFront], ...
                 [sz sz], 'k');
             h = plot(obj.hMatchSearchAx, center-offBack, sz, 'k<');
@@ -1175,8 +1192,10 @@ classdef ConfigureGUI < handle
                 obj.hMatchSearchVmaxValue.Visible = 'on';
                 obj.hMatchSearchMethod.Visible = 'on';
                 obj.hMatchSearchMethodValue.Visible = 'on';
-                obj.hMatchSearchVstep.Visible = 'on';
-                obj.hMatchSearchVstepValue.Visible = 'on';
+                if obj.hMatchSearchMethodValue.Value == 1
+                    obj.hMatchSearchVstep.Visible = 'on';
+                    obj.hMatchSearchVstepValue.Visible = 'on';
+                end
                 obj.hMatchCriTitle.Visible = 'on';
                 obj.hMatchCriAx.Visible = 'on';
                 obj.hMatchCriMethod.Visible = 'on';
