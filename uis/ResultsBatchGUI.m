@@ -7,6 +7,7 @@ classdef ResultsBatchGUI < handle
 
     properties
         hFig;
+        hHelp;
 
         hTitle;
         hIndividual;
@@ -33,8 +34,8 @@ classdef ResultsBatchGUI < handle
             obj.sizeGUI();
 
             % Add the help button to the figure
-            %obj.hHelp = HelpPopup.addHelpButton(obj.hFig);
-            % TODO!
+            obj.hHelp = HelpPopup.addHelpButton(obj.hFig);
+            HelpPopup.setDestination(obj.hHelp, 'results_batch');
 
             % Draw the plots
             obj.drawPlots();
@@ -45,6 +46,11 @@ classdef ResultsBatchGUI < handle
     end
 
     methods (Access = private)
+        function cbClose(obj, src, event)
+            HelpPopup.requestClose();
+            delete(obj.hFig);
+        end
+
         function cbOpenIndividualResult(obj, src, event)
             % Prompt the user to select which iteration they want to open
             strTitle = 'Individual parameter results selection';
@@ -74,8 +80,11 @@ classdef ResultsBatchGUI < handle
                 return;
             end
             c.ground_truth.matrix = gt;
+            obj.interactivity(false);
             resultsui = ResultsGUI(r, c);
             uiwait(resultsui.hFig);
+            HelpPopup.setDestination(obj.hHelp, 'results_batch');
+            obj.interactivity(true);
         end
 
         function createGUI(obj)
@@ -135,6 +144,7 @@ classdef ResultsBatchGUI < handle
 
             % Callbacks (must be last, otherwise empty objects passed...)
             obj.hIndividual.Callback = {@obj.cbOpenIndividualResult};
+            obj.hFig.CloseRequestFcn = {@obj.cbClose};
         end
 
         function drawPlots(obj)
@@ -167,6 +177,16 @@ classdef ResultsBatchGUI < handle
             h.MarkerSize = h.MarkerSize * 0.5;
             hold(obj.hAxF1, 'off');
             GUISettings.axesF1Style(obj.hAxF1, vs, obj.results.batch_param);
+        end
+
+        function interactivity(obj, on)
+            if on
+                state = 'on';
+            else
+                state = 'off';
+            end
+            obj.hHelp.Enable = state;
+            obj.hIndividual.Enable = state;
         end
 
         function sizeGUI(obj)

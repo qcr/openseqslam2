@@ -136,6 +136,11 @@ classdef ResultsGUI < handle
     end
 
     methods (Access = private)
+        function cbClose(obj, src, event)
+            HelpPopup.requestClose();
+            delete(obj.hFig);
+        end
+
         function cbChangeDataset(obj, src, event)
             % Grey out all of the plots because we have a change
             obj.greyAxes();
@@ -177,7 +182,7 @@ classdef ResultsGUI < handle
             end
 
             % Update the precision recall plot
-            obj.refreshPrecisionRecallScreen();
+            obj.openScreen(obj.hScreen.Value);
         end
 
         function cbDiffClicked(obj, src, event)
@@ -810,6 +815,7 @@ classdef ResultsGUI < handle
             obj.hFocusPRVisualise.Callback = {@obj.cbTogglePRValueHighlight};
             addlistener(obj.hFocusPRSlider, 'Value', 'PostSet', ...
                 @obj.cbUpdatePRFocusValues);
+            obj.hFig.CloseRequestFcn = {@obj.cbClose};
         end
 
         function drawPreprocessed(obj)

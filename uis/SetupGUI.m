@@ -175,6 +175,11 @@ classdef SetupGUI < handle
     end
 
     methods (Access = private)
+        function cbClose(obj, src, event)
+            HelpPopup.requestClose();
+            delete(obj.hFig);
+        end
+
         function cbChooseDataset(obj, src, event, edit, status)
             obj.interactivity(false);
 
@@ -512,6 +517,7 @@ classdef SetupGUI < handle
                 obj.hResultsLocation, obj.hResultsStatus};
             obj.hConfigure.Callback = {@obj.cbConfigure};
             obj.hStart.Callback= {@obj.cbStart};
+            obj.hFig.CloseRequestFcn = {@obj.cbClose};
         end
 
         function evaluateDataset(obj, path, status)

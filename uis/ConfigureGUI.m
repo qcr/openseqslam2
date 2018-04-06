@@ -258,6 +258,7 @@ classdef ConfigureGUI < handle
                 obj.cachedGroundTruth = gtui.gt;
                 obj.updateGroundTruthOptions();
             end
+            obj.openScreen(obj.hScreen.Value);
         end
 
         function cbDone(obj, src, event)
@@ -593,7 +594,7 @@ classdef ConfigureGUI < handle
             obj.hMatchSearchTitle = uicontrol('Style', 'text');
             obj.hMatchSearchTitle.Parent = obj.hFig;
             GUISettings.applyUIControlStyle(obj.hMatchSearchTitle);
-            obj.hMatchSearchTitle.String = 'Search Trajectory Settings';
+            obj.hMatchSearchTitle.String = 'Sequence Search Settings';
             obj.hMatchSearchTitle.FontWeight = 'bold';
 
             obj.hMatchSearchAx = axes();
@@ -602,7 +603,7 @@ classdef ConfigureGUI < handle
             obj.hMatchSearchAx.Visible = 'off';
 
             obj.hMatchSearchLength = annotation(obj.hFig, 'textbox');
-            obj.hMatchSearchLength.String = 'Trajectory length ($d_s$):';
+            obj.hMatchSearchLength.String = 'Sequence length ($d_s$):';
             GUISettings.applyAnnotationStyle(obj.hMatchSearchLength);
 
             obj.hMatchSearchLengthValue = uicontrol('Style', 'edit');
@@ -611,7 +612,8 @@ classdef ConfigureGUI < handle
             obj.hMatchSearchLengthValue.String = '';
 
             obj.hMatchSearchVmin = annotation(obj.hFig, 'textbox');
-            obj.hMatchSearchVmin.String = 'Trajectory $v_{min}$:';
+            obj.hMatchSearchVmin.String = ...
+                'Minimum search velocity ($v_{min}$):';
             GUISettings.applyAnnotationStyle(obj.hMatchSearchVmin);
 
             obj.hMatchSearchVminValue = uicontrol('Style', 'edit');
@@ -620,7 +622,8 @@ classdef ConfigureGUI < handle
             obj.hMatchSearchVminValue.String = '';
 
             obj.hMatchSearchVmax = annotation(obj.hFig, 'textbox');
-            obj.hMatchSearchVmax.String = 'Trajectory $v_{max}$:';
+            obj.hMatchSearchVmax.String = ...
+                'Maximum search velocity ($v_{max}$):';
             GUISettings.applyAnnotationStyle(obj.hMatchSearchVmax);
 
             obj.hMatchSearchVmaxValue = uicontrol('Style', 'edit');
