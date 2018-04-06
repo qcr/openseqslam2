@@ -1,6 +1,6 @@
 # OpenSeqSLAM2.0 Toolbox
 
-The second release of OpenSeqSLAM, repackaged as an easy to use and configure toolbox for MATLAB. To get started, simply run "OpenSeqSLAM2" with no arguments.
+The second release of OpenSeqSLAM, repackaged as an easy to use and configure toolbox for MATLAB. To get started, simply run "OpenSeqSLAM2()" with no arguments.
 
 ## Known Bugs (roughly ordered by severity):
 
