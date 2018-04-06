@@ -82,6 +82,7 @@ classdef ResultsBatchGUI < handle
             c.ground_truth.matrix = gt;
             obj.interactivity(false);
             resultsui = ResultsGUI(r, c);
+            resultsui.closeHelp = false;
             uiwait(resultsui.hFig);
             HelpPopup.setDestination(obj.hHelp, 'results_batch');
             obj.interactivity(true);

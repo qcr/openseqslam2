@@ -363,7 +363,7 @@ classdef SetupGUI < handle
 
             % Report that the figure naturally finished, and then close
             obj.done = true;
-            close(obj.hFig);
+            delete(obj.hFig);
         end
 
         function createGUI(obj)

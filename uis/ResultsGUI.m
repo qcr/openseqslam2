@@ -91,6 +91,8 @@ classdef ResultsGUI < handle
 
         currentVideoMatch = [];
         videoTimer = [];
+
+        closeHelp = true;
     end
 
     methods
@@ -137,7 +139,9 @@ classdef ResultsGUI < handle
 
     methods (Access = private)
         function cbClose(obj, src, event)
-            HelpPopup.requestClose();
+            if obj.closeHelp
+                HelpPopup.requestClose();
+            end
             delete(obj.hFig);
         end
 
