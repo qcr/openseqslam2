@@ -41,30 +41,45 @@
             <setting name="r_window" type="numeric" value="10"/>
          </settings-group>
       </settings-group>
-      <settings-group name="matching">
-         <settings-group name="trajectory">
-            <setting name="d_s" type="numeric" value="20"/>
-            <setting name="v_min" type="numeric" value="0.5"/>
-            <setting name="v_max" type="numeric" value="2"/>
+      <settings-group name="search">
+         <setting name="d_s" type="numeric" value="20"/>
+         <setting name="v_min" type="numeric" value="0.5"/>
+         <setting name="v_max" type="numeric" value="2"/>
+         <setting name="method" type="string" value="traj"/>
+         <settings-group name="method_traj">
             <setting name="v_step" type="numeric" value="0.1"/>
          </settings-group>
+      </settings-group>
+      <settings-group name="matching">
          <setting name="method" type="string" value="thresh"/>
          <settings-group name="method_window">
             <setting name="r_window" type="numeric" value="10"/>
-            <setting name="u" type="numeric" value="1.0202"/>
+            <setting name="u" type="numeric" value="1.111"/>
          </settings-group>
          <settings-group name="method_thresh">
             <setting name="threshold" type="numeric" value="45"/>
          </settings-group>
       </settings-group>
    </settings-group>
-   <settings-group name="visual">
+   <settings-group name="ground_truth">
+      <setting name="exists" type="boolean" value="0"/>
+      <settings-group name="velocity"/>
+      <settings-group name="file"/>
+   </settings-group>
+   <settings-group name="batch">
+      <setting name="enabled" type="boolean" value="0"/>
+      <setting name="parallelise" type="boolean" value="0"/>
+      <setting name="trim_results" type="boolean" value="1"/>
+   </settings-group>
+   <settings-group name="ui">
       <settings-group name="progress">
+         <setting name="type" type="string" value="graphical"/>
          <setting name="percent_freq" type="numeric" value="1"/>
          <setting name="preprocess_freq" type="numeric" value="5"/>
          <setting name="diff_matrix_freq" type="numeric" value="5"/>
          <setting name="enhance_freq" type="numeric" value="5"/>
          <setting name="match_freq" type="numeric" value="5"/>
       </settings-group>
+      <setting name="results" type="boolean" value="1"/>
    </settings-group>
 </seqslam-settings>

@@ -43,13 +43,16 @@
             <setting name="r_window" type="numeric" value="10"/>
          </settings-group>
       </settings-group>
-      <settings-group name="matching">
-         <settings-group name="trajectory">
-            <setting name="d_s" type="numeric" value="10"/>
-            <setting name="v_min" type="numeric" value="0.8"/>
-            <setting name="v_max" type="numeric" value="1.2"/>
+      <settings-group name="search">
+         <setting name="d_s" type="numeric" value="15"/>
+         <setting name="v_min" type="numeric" value="0.8"/>
+         <setting name="v_max" type="numeric" value="1.2"/>
+         <setting name="method" type="string" value="traj"/>
+         <settings-group name="method_traj">
             <setting name="v_step" type="numeric" value="0.1"/>
          </settings-group>
+      </settings-group>
+      <settings-group name="matching">
          <setting name="method" type="string" value="window"/>
          <settings-group name="method_window">
             <setting name="r_window" type="numeric" value="10"/>
@@ -60,13 +63,32 @@
          </settings-group>
       </settings-group>
    </settings-group>
-   <settings-group name="visual">
+   <settings-group name="ground_truth">
+      <setting name="exists" type="boolean" value="1"/>
+      <setting name="type" type="string" value="mat"/>
+      <setting name="use_to_auto_optimise" type="string" value="f1"/>
+      <settings-group name="velocity"/>
+      <settings-group name="file">
+         <setting name="path" type="string" value="$TOOLBOX_ROOT/datasets/samples/nordland_trimmed/sample_ground_truth.mat"/>
+         <setting name="var" type="string" value="x"/>
+      </settings-group>
+   </settings-group>
+   <settings-group name="batch">
+      <setting name="enabled" type="boolean" value="0"/>
+      <setting name="param" type="string" value="seqslam.search.d_s"/>
+      <setting name="values" type="vector" value="2, 6, 15, 25, 35"/>
+      <setting name="parallelise" type="boolean" value="1"/>
+      <setting name="trim_results" type="boolean" value="1"/>
+   </settings-group>
+   <settings-group name="ui">
       <settings-group name="progress">
+         <setting name="type" type="string" value="graphical"/>
          <setting name="percent_freq" type="numeric" value="1"/>
          <setting name="preprocess_freq" type="numeric" value="5"/>
          <setting name="diff_matrix_freq" type="numeric" value="5"/>
          <setting name="enhance_freq" type="numeric" value="5"/>
          <setting name="match_freq" type="numeric" value="5"/>
       </settings-group>
+      <setting name="results" type="boolean" value="1"/>
    </settings-group>
 </seqslam-settings>

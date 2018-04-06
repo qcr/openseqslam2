@@ -2,13 +2,17 @@ function settings2xml(s, saveLocation)
     % Perform any substitutions
     % TODO this should be defined MUCH more robustly...
     VAR_ROOT = '$TOOLBOX_ROOT';
-    s.reference.path = strrep(s.reference.path, toolboxRoot(), VAR_ROOT); 
-    s.query.path = strrep(s.query.path, toolboxRoot(), VAR_ROOT); 
-    s.results.path = strrep(s.results.path, toolboxRoot(), VAR_ROOT); 
+    s.reference.path = strrep(s.reference.path, toolboxRoot(), VAR_ROOT);
+    s.query.path = strrep(s.query.path, toolboxRoot(), VAR_ROOT);
+    s.results.path = strrep(s.results.path, toolboxRoot(), VAR_ROOT);
+    if ~isempty(s.ground_truth.file.path)
+        s.ground_truth.file.path = strrep(s.ground_truth.file.path, ...
+            toolboxRoot(), VAR_ROOT);
+    end
 
     % Create the document node, and root element
     doc = com.mathworks.xml.XMLUtils.createDocument('seqslam-settings');
-    
+
     % Get the root node (which corresponds to the struct)
     root = doc.getDocumentElement();
 
@@ -18,7 +22,7 @@ function settings2xml(s, saveLocation)
 
     % Write the XML model to the save location
     xmlwrite(saveLocation, doc);
-    
+
     function writeRecursive(s, currentNode, doc)
         % Loop over all fields of the struct
         fs = fieldnames(s);
@@ -52,14 +56,15 @@ function settings2xml(s, saveLocation)
                 elseif isscalar(x) && isnumeric(x)
                     settingNode.setAttribute('value', num2str(x));
                     settingNode.setAttribute('type', 'numeric');
-                elseif isvector(x) && isnumeric(x) 
+                elseif isvector(x) && isnumeric(x)
                     settingNode.setAttribute('value', SafeData.vector2str(x));
                     settingNode.setAttribute('type', 'vector');
                 end
-                
+
                 % Add the node
                 currentNode.appendChild(settingNode);
             end
         end
     end
 end
+

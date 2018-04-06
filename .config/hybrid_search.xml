@@ -14,10 +14,10 @@
       <setting name="type" type="string" value="video"/>
       <settings-group name="video">
          <setting name="ext" type="string" value="avi"/>
-         <setting name="frames" type="numeric" value="14603"/>
+         <setting name="frames" type="numeric" value="16176"/>
          <setting name="frame_rate" type="numeric" value="50"/>
       </settings-group>
-      <setting name="path" type="string" value="$TOOLBOX_ROOT/datasets/samples/daynight/day_trunc.avi"/>
+      <setting name="path" type="string" value="$TOOLBOX_ROOT/datasets/samples/daynight/night_trunc.avi"/>
       <setting name="subsample_factor" type="numeric" value="50"/>
    </settings-group>
    <settings-group name="results">
@@ -45,7 +45,7 @@
          <setting name="d_s" type="numeric" value="20"/>
          <setting name="v_min" type="numeric" value="0.5"/>
          <setting name="v_max" type="numeric" value="2"/>
-         <setting name="method" type="string" value="traj"/>
+         <setting name="method" type="string" value="hybrid"/>
          <settings-group name="method_traj">
             <setting name="v_step" type="numeric" value="0.1"/>
          </settings-group>

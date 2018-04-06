@@ -19,7 +19,7 @@
          <setting name="token_start" type="string" value="images-"/>
          <setting name="token_end" type="string" value=".png"/>
       </settings-group>
-      <setting name="path" type="string" value="$TOOLBOX_ROOT/datasets/samples/nordland_trimmed/summer"/>
+      <setting name="path" type="string" value="$TOOLBOX_ROOT/datasets/samples/nordland_trimmed/winter"/>
       <setting name="subsample_factor" type="numeric" value="10"/>
    </settings-group>
    <settings-group name="results">
@@ -65,20 +65,19 @@
    </settings-group>
    <settings-group name="ground_truth">
       <setting name="exists" type="boolean" value="1"/>
-      <setting name="type" type="string" value="velocity"/>
-      <settings-group name="velocity">
-         <setting name="vel" type="numeric" value="1"/>
-         <setting name="tol" type="numeric" value="5"/>
-      </settings-group>
+      <setting name="type" type="string" value="mat"/>
+      <setting name="use_to_auto_optimise" type="string" value="f1"/>
+      <settings-group name="velocity"/>
       <settings-group name="file">
+         <setting name="path" type="string" value="$TOOLBOX_ROOT/datasets/samples/nordland_trimmed/sample_ground_truth.mat"/>
          <setting name="var" type="string" value="x"/>
       </settings-group>
    </settings-group>
    <settings-group name="batch">
-      <setting name="enabled" type="boolean" value="0"/>
+      <setting name="enabled" type="boolean" value="1"/>
       <setting name="param" type="string" value="seqslam.search.d_s"/>
-      <setting name="values" type="vector" value="2, 6, 15, 25, 35"/>
-      <setting name="parallelise" type="boolean" value="1"/>
+      <setting name="values" type="vector" value="2, 6, 10, 15, 25, 35, 45"/>
+      <setting name="parallelise" type="boolean" value="0"/>
       <setting name="trim_results" type="boolean" value="1"/>
    </settings-group>
    <settings-group name="ui">

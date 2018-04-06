@@ -1,4 +1,4 @@
-classdef ConfigSeqSLAMGUI < handle
+classdef ConfigureGUI < handle
     % TODO on the image preprocessing settings screen selecting the same value
     % should not cause the disabling, but currently does
 
@@ -51,16 +51,18 @@ classdef ConfigSeqSLAMGUI < handle
         hImPrNormStrength;
         hImPrNormStrengthValue;
 
-        hMatchTrajTitle;
-        hMatchTrajAx;
-        hMatchTrajLength;
-        hMatchTrajLengthValue;
-        hMatchTrajVmin;
-        hMatchTrajVminValue;
-        hMatchTrajVmax;
-        hMatchTrajVmaxValue;
-        hMatchTrajVstep;
-        hMatchTrajVstepValue;
+        hMatchSearchTitle;
+        hMatchSearchAx;
+        hMatchSearchLength;
+        hMatchSearchLengthValue;
+        hMatchSearchVmin;
+        hMatchSearchVminValue;
+        hMatchSearchVmax;
+        hMatchSearchVmaxValue;
+        hMatchSearchMethod;
+        hMatchSearchMethodValue;
+        hMatchSearchVstep;
+        hMatchSearchVstepValue;
         hMatchCriTitle;
         hMatchCriAx;
         hMatchCriMethod;
@@ -75,18 +77,35 @@ classdef ConfigSeqSLAMGUI < handle
         hMscDiff;
         hMscDiffEnh;
         hMscDiffEnhValue;
-        hMscVis;
-        hMscVisWarn;
-        hMscVisPerc;
-        hMscVisPercValue;
-        hMscVisPrepro;
-        hMscVisPreproValue;
-        hMscVisDiff;
-        hMscVisDiffValue;
-        hMscVisContr;
-        hMscVisContrValue;
-        hMscVisMatch;
-        hMscVisMatchValue;
+        hMscGt;
+        hMscGtStatus;
+        hMscGtConfigure;
+        hMscGtRemove;
+        hMscGtOptimise;
+        hMscGtOptimiseValue;
+        hMscBatch;
+        hMscBatchEnabled;
+        hMscBatchParam;
+        hMscBatchParamValue;
+        hMscBatchValues;
+        hMscBatchValuesValue;
+        hMscBatchParallelise;
+        hMscBatchTrim;
+        hMscUI;
+        hMscUIProgressType;
+        hMscUIProgressTypeValue;
+        hMscUIResults;
+        hMscUIWarn;
+        hMscUIPerc;
+        hMscUIPercValue;
+        hMscUIPrepro;
+        hMscUIPreproValue;
+        hMscUIDiff;
+        hMscUIDiffValue;
+        hMscUIContr;
+        hMscUIContrValue;
+        hMscUIMatch;
+        hMscUIMatchValue;
 
         hDone;
 
@@ -104,10 +123,12 @@ classdef ConfigSeqSLAMGUI < handle
         dataTraj = [];
         dataWindow = [];
         dataThresh = [];
+
+        cachedGroundTruth = [];
     end
 
     methods
-        function obj = ConfigSeqSLAMGUI(config)
+        function obj = ConfigureGUI(config)
             % Build all required data
             obj.config = config;
             obj.generateImageLists();
@@ -151,15 +172,18 @@ classdef ConfigSeqSLAMGUI < handle
     end
 
     methods (Access = private)
-        function cbDone(obj, src, event)
-            % Valid the data before proceeding
-            if ~obj.isDataValid([]);
-                return;
+        function cbBatchToggle(obj, src, event)
+            if obj.hMscBatchEnabled.Value
+                status = 'on';
+            else
+                status = 'off';
             end
-
-            % Strip the UI data, save it in the config, and close the GUI
-            obj.strip();
-            close(obj.hFig);
+            obj.hMscBatchParam.Enable = status;
+            obj.hMscBatchParamValue.Enable = status;
+            obj.hMscBatchValues.Enable = status;
+            obj.hMscBatchValuesValue.Enable = status;
+            obj.hMscBatchParallelise.Enable = status;
+            obj.hMscBatchTrim.Enable = status;
         end
 
         function cbChangeCrop(obj, src, event)
@@ -206,6 +230,48 @@ classdef ConfigSeqSLAMGUI < handle
             obj.openScreen(obj.hScreen.Value);
         end
 
+        function cbChooseSearchMethod(obj, src, event)
+            if obj.hMatchSearchMethodValue.Value == 1
+                status = 'on';
+            else
+                status = 'off';
+            end
+            obj.hMatchSearchVstep.Visible = status;
+            obj.hMatchSearchVstepValue.Visible = status;
+            obj.drawMatchDiagrams();
+        end
+
+        function cbConfigureGroundTruth(obj, src, event)
+            % Launch the ground truth popup
+            if isempty(obj.cachedGroundTruth)
+                gt = emptyGroundTruth;
+            else
+                gt = obj.cachedGroundTruth;
+            end
+            gtui = GroundTruthPopup(gt, ...
+                [length(SeqSLAMInstance.numbers(obj.config.query)), ...
+                length(SeqSLAMInstance.numbers(obj.config.reference))]);
+            uiwait(gtui.hFig);
+
+            % Update the ground truth options if one was selected
+            if ~isempty(gtui.gt)
+                obj.cachedGroundTruth = gtui.gt;
+                obj.updateGroundTruthOptions();
+            end
+            obj.openScreen(obj.hScreen.Value);
+        end
+
+        function cbDone(obj, src, event)
+            % Valid the data before proceeding
+            if ~obj.isDataValid([]);
+                return;
+            end
+
+            % Strip the UI data, save it in the config, and close the GUI
+            obj.strip();
+            close(obj.hFig);
+        end
+
         function cbLockAspectRatio(obj, src, event)
             if obj.hImPrResizeLock.Value == 1
                 % Set height to track aspect ratio
@@ -226,6 +292,11 @@ classdef ConfigSeqSLAMGUI < handle
             end
 
             obj.drawProcessingPreviews();
+        end
+
+        function cbRemoveGroundTruth(obj, src, event)
+            obj.cachedGroundTruth = [];
+            obj.updateGroundTruthOptions();
         end
 
         function cbSelectMatchMethod(obj, src, event)
@@ -280,16 +351,18 @@ classdef ConfigSeqSLAMGUI < handle
             obj.hImPrNormStrength.Visible = 'off';
             obj.hImPrNormStrengthValue.Visible = 'off';
 
-            obj.hMatchTrajTitle.Visible = 'off';
-            obj.hMatchTrajAx.Visible = 'off';
-            obj.hMatchTrajLength.Visible = 'off';
-            obj.hMatchTrajLengthValue.Visible = 'off';
-            obj.hMatchTrajVmin.Visible = 'off';
-            obj.hMatchTrajVminValue.Visible = 'off';
-            obj.hMatchTrajVmax.Visible = 'off';
-            obj.hMatchTrajVmaxValue.Visible = 'off';
-            obj.hMatchTrajVstep.Visible = 'off';
-            obj.hMatchTrajVstepValue.Visible = 'off';
+            obj.hMatchSearchTitle.Visible = 'off';
+            obj.hMatchSearchAx.Visible = 'off';
+            obj.hMatchSearchLength.Visible = 'off';
+            obj.hMatchSearchLengthValue.Visible = 'off';
+            obj.hMatchSearchVmin.Visible = 'off';
+            obj.hMatchSearchVminValue.Visible = 'off';
+            obj.hMatchSearchVmax.Visible = 'off';
+            obj.hMatchSearchVmaxValue.Visible = 'off';
+            obj.hMatchSearchMethod.Visible = 'off';
+            obj.hMatchSearchMethodValue.Visible = 'off';
+            obj.hMatchSearchVstep.Visible = 'off';
+            obj.hMatchSearchVstepValue.Visible = 'off';
             obj.hMatchCriTitle.Visible = 'off';
             obj.hMatchCriAx.Visible = 'off';
             obj.hMatchCriMethod.Visible = 'off';
@@ -302,7 +375,9 @@ classdef ConfigSeqSLAMGUI < handle
             obj.hMatchCriThresholdValue.Visible = 'off';
 
             obj.hMscDiff.Visible = 'off';
-            obj.hMscVis.Visible = 'off';
+            obj.hMscGt.Visible = 'off';
+            obj.hMscBatch.Visible = 'off';
+            obj.hMscUI.Visible = 'off';
 
             % Clear the axes
             cla(obj.hImPrRefAxCrop);
@@ -311,7 +386,7 @@ classdef ConfigSeqSLAMGUI < handle
             cla(obj.hImPrQueryAxCrop);
             cla(obj.hImPrQueryAxResize);
             cla(obj.hImPrQueryAxNorm);
-            cla(obj.hMatchTrajAx);
+            cla(obj.hMatchSearchAx);
             cla(obj.hMatchCriAx);
 
             % Delete any remaining objects
@@ -321,7 +396,7 @@ classdef ConfigSeqSLAMGUI < handle
 
         function posOut = constrainedQueryPosition(obj, posIn)
             % Force to be within axis limits
-            posOut = ConfigSeqSLAMGUI.constrainInLimits(posIn, ...
+            posOut = ConfigureGUI.constrainInLimits(posIn, ...
                 obj.hImPrQueryAxCrop.XLim, obj.hImPrQueryAxCrop.YLim);
 
             % Enforce that the aspect ratio must remain the same
@@ -347,7 +422,7 @@ classdef ConfigSeqSLAMGUI < handle
 
         function posOut = constrainedRefPosition(obj, posIn)
             % Force to be within axis limits
-            posOut = ConfigSeqSLAMGUI.constrainInLimits(posIn, ...
+            posOut = ConfigureGUI.constrainInLimits(posIn, ...
                 obj.hImPrRefAxCrop.XLim, obj.hImPrRefAxCrop.YLim);
 
             % Force the other crop box to have the same position
@@ -376,7 +451,7 @@ classdef ConfigSeqSLAMGUI < handle
             obj.hScreen = uicontrol('Style', 'popupmenu');
             obj.hScreen.Parent = obj.hFig;
             GUISettings.applyUIControlStyle(obj.hScreen);
-            obj.hScreen.String = ConfigSeqSLAMGUI.SCREENS;
+            obj.hScreen.String = ConfigureGUI.SCREENS;
 
             % Create the image processing panel
             obj.hImPrRef = uicontrol('Style', 'text');
@@ -516,52 +591,64 @@ classdef ConfigSeqSLAMGUI < handle
             obj.hImPrNormStrengthValue.String = '';
 
             % Create the matching panel
-            obj.hMatchTrajTitle = uicontrol('Style', 'text');
-            obj.hMatchTrajTitle.Parent = obj.hFig;
-            GUISettings.applyUIControlStyle(obj.hMatchTrajTitle);
-            obj.hMatchTrajTitle.String = 'Search Trajectory Settings';
-            obj.hMatchTrajTitle.FontWeight = 'bold';
+            obj.hMatchSearchTitle = uicontrol('Style', 'text');
+            obj.hMatchSearchTitle.Parent = obj.hFig;
+            GUISettings.applyUIControlStyle(obj.hMatchSearchTitle);
+            obj.hMatchSearchTitle.String = 'Sequence Search Settings';
+            obj.hMatchSearchTitle.FontWeight = 'bold';
 
-            obj.hMatchTrajAx = axes();
-            GUISettings.applyUIAxesStyle(obj.hMatchTrajAx);
-            obj.hMatchTrajAx.YDir = 'reverse';
-            obj.hMatchTrajAx.Visible = 'off';
+            obj.hMatchSearchAx = axes();
+            GUISettings.applyUIAxesStyle(obj.hMatchSearchAx);
+            obj.hMatchSearchAx.YDir = 'reverse';
+            obj.hMatchSearchAx.Visible = 'off';
 
-            obj.hMatchTrajLength = annotation(obj.hFig, 'textbox');
-            obj.hMatchTrajLength.String = 'Trajectory length ($d_s$):';
-            GUISettings.applyAnnotationStyle(obj.hMatchTrajLength);
+            obj.hMatchSearchLength = annotation(obj.hFig, 'textbox');
+            obj.hMatchSearchLength.String = 'Sequence length ($d_s$):';
+            GUISettings.applyAnnotationStyle(obj.hMatchSearchLength);
 
-            obj.hMatchTrajLengthValue = uicontrol('Style', 'edit');
-            obj.hMatchTrajLengthValue.Parent = obj.hFig;
-            GUISettings.applyUIControlStyle(obj.hMatchTrajLengthValue);
-            obj.hMatchTrajLengthValue.String = '';
+            obj.hMatchSearchLengthValue = uicontrol('Style', 'edit');
+            obj.hMatchSearchLengthValue.Parent = obj.hFig;
+            GUISettings.applyUIControlStyle(obj.hMatchSearchLengthValue);
+            obj.hMatchSearchLengthValue.String = '';
 
-            obj.hMatchTrajVmin = annotation(obj.hFig, 'textbox');
-            obj.hMatchTrajVmin.String = 'Trajectory $v_{min}$:';
-            GUISettings.applyAnnotationStyle(obj.hMatchTrajVmin);
+            obj.hMatchSearchVmin = annotation(obj.hFig, 'textbox');
+            obj.hMatchSearchVmin.String = ...
+                'Minimum search velocity ($v_{min}$):';
+            GUISettings.applyAnnotationStyle(obj.hMatchSearchVmin);
 
-            obj.hMatchTrajVminValue = uicontrol('Style', 'edit');
-            obj.hMatchTrajVminValue.Parent = obj.hFig;
-            GUISettings.applyUIControlStyle(obj.hMatchTrajVminValue);
-            obj.hMatchTrajVminValue.String = '';
+            obj.hMatchSearchVminValue = uicontrol('Style', 'edit');
+            obj.hMatchSearchVminValue.Parent = obj.hFig;
+            GUISettings.applyUIControlStyle(obj.hMatchSearchVminValue);
+            obj.hMatchSearchVminValue.String = '';
 
-            obj.hMatchTrajVmax = annotation(obj.hFig, 'textbox');
-            obj.hMatchTrajVmax.String = 'Trajectory $v_{max}$:';
-            GUISettings.applyAnnotationStyle(obj.hMatchTrajVmax);
+            obj.hMatchSearchVmax = annotation(obj.hFig, 'textbox');
+            obj.hMatchSearchVmax.String = ...
+                'Maximum search velocity ($v_{max}$):';
+            GUISettings.applyAnnotationStyle(obj.hMatchSearchVmax);
 
-            obj.hMatchTrajVmaxValue = uicontrol('Style', 'edit');
-            obj.hMatchTrajVmaxValue.Parent = obj.hFig;
-            GUISettings.applyUIControlStyle(obj.hMatchTrajVmaxValue);
-            obj.hMatchTrajVmaxValue.String = '';
+            obj.hMatchSearchVmaxValue = uicontrol('Style', 'edit');
+            obj.hMatchSearchVmaxValue.Parent = obj.hFig;
+            GUISettings.applyUIControlStyle(obj.hMatchSearchVmaxValue);
+            obj.hMatchSearchVmaxValue.String = '';
 
-            obj.hMatchTrajVstep = annotation(obj.hFig, 'textbox');
-            obj.hMatchTrajVstep.String = 'Trajectory $v_{step}$:';
-            GUISettings.applyAnnotationStyle(obj.hMatchTrajVstep);
+            obj.hMatchSearchMethod = annotation(obj.hFig, 'textbox');
+            GUISettings.applyAnnotationStyle(obj.hMatchSearchMethod);
+            obj.hMatchSearchMethod.String = 'Sequence search method:';
 
-            obj.hMatchTrajVstepValue = uicontrol('Style', 'edit');
-            obj.hMatchTrajVstepValue.Parent = obj.hFig;
-            GUISettings.applyUIControlStyle(obj.hMatchTrajVstepValue);
-            obj.hMatchTrajVstepValue.String = '';
+            obj.hMatchSearchMethodValue = uicontrol('Style', 'popupmenu');
+            obj.hMatchSearchMethodValue.Parent = obj.hFig;
+            GUISettings.applyUIControlStyle(obj.hMatchSearchMethodValue);
+            obj.hMatchSearchMethodValue.String = {'Trajectory-based', ...
+                'Cone-based', 'Hybrid'};
+
+            obj.hMatchSearchVstep = annotation(obj.hFig, 'textbox');
+            obj.hMatchSearchVstep.String = 'Trajectory $v_{step}$:';
+            GUISettings.applyAnnotationStyle(obj.hMatchSearchVstep);
+
+            obj.hMatchSearchVstepValue = uicontrol('Style', 'edit');
+            obj.hMatchSearchVstepValue.Parent = obj.hFig;
+            GUISettings.applyUIControlStyle(obj.hMatchSearchVstepValue);
+            obj.hMatchSearchVstepValue.String = '';
 
             obj.hMatchCriTitle = uicontrol('Style', 'text');
             obj.hMatchCriTitle.Parent = obj.hFig;
@@ -626,72 +713,166 @@ classdef ConfigSeqSLAMGUI < handle
             GUISettings.applyUIControlStyle(obj.hMscDiffEnhValue);
             obj.hMscDiffEnhValue.String = '';
 
-            obj.hMscVis = uipanel();
-            GUISettings.applyUIPanelStyle(obj.hMscVis);
-            obj.hMscVis.Title = 'Progress GUI Visualisation Timings';
+            obj.hMscGt = uipanel();
+            GUISettings.applyUIPanelStyle(obj.hMscGt);
+            obj.hMscGt.Title = 'Ground Truth Configuration';
 
-            obj.hMscVisWarn = uicontrol('Style', 'text');
-            obj.hMscVisWarn.Parent = obj.hMscVis;
-            GUISettings.applyUIControlStyle(obj.hMscVisWarn);
-            obj.hMscVisWarn.String = 'Note: Lowering values can significantly decrease performance!';
-            obj.hMscVisWarn.ForegroundColor = GUISettings.COL_ERROR;
-            obj.hMscVisWarn.FontWeight = 'bold';
-            obj.hMscVisWarn.FontAngle = 'italic';
+            obj.hMscGtStatus = uicontrol('Style', 'text');
+            obj.hMscGtStatus.Parent = obj.hMscGt;
+            GUISettings.applyUIControlStyle(obj.hMscGtStatus);
+            obj.hMscGtStatus.HorizontalAlignment = 'left';
+            obj.hMscGtStatus.FontAngle = 'italic';
+            obj.hMscGtStatus.String = '';
 
-            obj.hMscVisPerc = uicontrol('Style', 'text');
-            obj.hMscVisPerc.Parent = obj.hMscVis;
-            GUISettings.applyUIControlStyle(obj.hMscVisPerc);
-            obj.hMscVisPerc.String = 'Percent value update frequency (%):';
-            obj.hMscVisPerc.HorizontalAlignment = 'left';
+            obj.hMscGtConfigure = uicontrol('Style', 'pushbutton');
+            obj.hMscGtConfigure.Parent = obj.hMscGt;
+            GUISettings.applyUIControlStyle(obj.hMscGtConfigure);
+            obj.hMscGtConfigure.String = 'Configure';
 
-            obj.hMscVisPercValue = uicontrol('Style', 'edit');
-            obj.hMscVisPercValue.Parent = obj.hMscVis;
-            GUISettings.applyUIControlStyle(obj.hMscVisPercValue);
-            obj.hMscVisPercValue.String = '';
+            obj.hMscGtRemove = uicontrol('Style', 'pushbutton');
+            obj.hMscGtRemove.Parent = obj.hMscGt;
+            GUISettings.applyUIControlStyle(obj.hMscGtRemove);
+            obj.hMscGtRemove.String = 'Remove';
 
-            obj.hMscVisPrepro = uicontrol('Style', 'text');
-            obj.hMscVisPrepro.Parent = obj.hMscVis;
-            GUISettings.applyUIControlStyle(obj.hMscVisPrepro);
-            obj.hMscVisPrepro.String = 'Preprocessing visualisation update frequency (%):';
-            obj.hMscVisPrepro.HorizontalAlignment = 'left';
+            obj.hMscGtOptimise = uicontrol('Style', 'text');
+            obj.hMscGtOptimise.Parent = obj.hMscGt;
+            GUISettings.applyUIControlStyle(obj.hMscGtOptimise);
+            obj.hMscGtOptimise.HorizontalAlignment = 'left';
+            obj.hMscGtOptimise.String = ...
+                'Use ground truth to optimise match threshold selection:';
 
-            obj.hMscVisPreproValue = uicontrol('Style', 'edit');
-            obj.hMscVisPreproValue.Parent = obj.hMscVis;
-            GUISettings.applyUIControlStyle(obj.hMscVisPreproValue);
-            obj.hMscVisPreproValue.String = '';
+            obj.hMscGtOptimiseValue = uicontrol('Style', 'popupmenu');
+            obj.hMscGtOptimiseValue.Parent = obj.hMscGt;
+            GUISettings.applyUIControlStyle(obj.hMscGtOptimiseValue);
+            obj.hMscGtOptimiseValue.String = {'Off', ...
+                'Optimise by precision', 'Optimise by recall', ...
+                'Optimise by F1 score'};
 
-            obj.hMscVisDiff = uicontrol('Style', 'text');
-            obj.hMscVisDiff.Parent = obj.hMscVis;
-            GUISettings.applyUIControlStyle(obj.hMscVisDiff);
-            obj.hMscVisDiff.String = 'Difference matrix visualisation update frequency (%):';
-            obj.hMscVisDiff.HorizontalAlignment = 'left';
+            obj.hMscBatch = uipanel();
+            GUISettings.applyUIPanelStyle(obj.hMscBatch);
+            obj.hMscBatch.Title = 'Parameter sweeping through batch operation';
 
-            obj.hMscVisDiffValue = uicontrol('Style', 'edit');
-            obj.hMscVisDiffValue.Parent = obj.hMscVis;
-            GUISettings.applyUIControlStyle(obj.hMscVisDiffValue);
-            obj.hMscVisDiffValue.String = '';
+            obj.hMscBatchEnabled = uicontrol('Style', 'checkbox');
+            obj.hMscBatchEnabled.Parent = obj.hMscBatch;
+            GUISettings.applyUIControlStyle(obj.hMscBatchEnabled);
+            obj.hMscBatchEnabled.String = 'Batch operation mode enabled';
 
-            obj.hMscVisContr = uicontrol('Style', 'text');
-            obj.hMscVisContr.Parent = obj.hMscVis;
-            GUISettings.applyUIControlStyle(obj.hMscVisContr);
-            obj.hMscVisContr.String = 'Local contrast visualisation update frequency (%):';
-            obj.hMscVisContr.HorizontalAlignment = 'left';
+            obj.hMscBatchParam = uicontrol('Style', 'text');
+            obj.hMscBatchParam.Parent = obj.hMscBatch;
+            GUISettings.applyUIControlStyle(obj.hMscBatchParam);
+            obj.hMscBatchParam.HorizontalAlignment = 'left';
+            obj.hMscBatchParam.String = 'Sweep parameter name:';
 
-            obj.hMscVisContrValue = uicontrol('Style', 'edit');
-            obj.hMscVisContrValue.Parent = obj.hMscVis;
-            GUISettings.applyUIControlStyle(obj.hMscVisContrValue);
-            obj.hMscVisContrValue.String = '';
+            obj.hMscBatchParamValue = uicontrol('Style', 'edit');
+            obj.hMscBatchParamValue.Parent = obj.hMscBatch;
+            GUISettings.applyUIControlStyle(obj.hMscBatchParamValue);
+            obj.hMscBatchParamValue.String = '';
 
-            obj.hMscVisMatch = uicontrol('Style', 'text');
-            obj.hMscVisMatch.Parent = obj.hMscVis;
-            GUISettings.applyUIControlStyle(obj.hMscVisMatch);
-            obj.hMscVisMatch.String = 'Matching visualisation update frequency (%):';
-            obj.hMscVisMatch.HorizontalAlignment = 'left';
+            obj.hMscBatchValues = uicontrol('Style', 'text');
+            obj.hMscBatchValues.Parent = obj.hMscBatch;
+            GUISettings.applyUIControlStyle(obj.hMscBatchValues);
+            obj.hMscBatchValues.HorizontalAlignment = 'left';
+            obj.hMscBatchValues.String = 'Sweep parameter values:';
 
-            obj.hMscVisMatchValue = uicontrol('Style', 'edit');
-            obj.hMscVisMatchValue.Parent = obj.hMscVis;
-            GUISettings.applyUIControlStyle(obj.hMscVisMatchValue);
-            obj.hMscVisMatchValue.String = '';
+            obj.hMscBatchValuesValue = uicontrol('Style', 'edit');
+            obj.hMscBatchValuesValue.Parent = obj.hMscBatch;
+            GUISettings.applyUIControlStyle(obj.hMscBatchValuesValue);
+            obj.hMscBatchValuesValue.String = '';
+
+            obj.hMscBatchParallelise = uicontrol('Style', 'checkbox');
+            obj.hMscBatchParallelise.Parent = obj.hMscBatch;
+            GUISettings.applyUIControlStyle(obj.hMscBatchParallelise);
+            obj.hMscBatchParallelise.String = 'Parallelise tests';
+
+            obj.hMscBatchTrim = uicontrol('Style', 'checkbox');
+            obj.hMscBatchTrim.Parent = obj.hMscBatch;
+            GUISettings.applyUIControlStyle(obj.hMscBatchTrim);
+            obj.hMscBatchTrim.String = ...
+                'Trim individual test results from batch results file';
+
+            obj.hMscUI = uipanel();
+            GUISettings.applyUIPanelStyle(obj.hMscUI);
+            obj.hMscUI.Title = 'Graphical User Interface Controls';
+
+            obj.hMscUIProgressType = uicontrol('Style', 'text');
+            obj.hMscUIProgressType.Parent = obj.hMscUI;
+            GUISettings.applyUIControlStyle(obj.hMscUIProgressType);
+            obj.hMscUIProgressType.HorizontalAlignment = 'left';
+            obj.hMscUIProgressType.String = 'Progress UI Style:';
+
+            obj.hMscUIProgressTypeValue = uicontrol('Style', 'popupmenu');
+            obj.hMscUIProgressTypeValue.Parent = obj.hMscUI;
+            GUISettings.applyUIControlStyle(obj.hMscUIProgressTypeValue);
+            obj.hMscUIProgressTypeValue.String = {'Graphical', 'Console'};
+
+            obj.hMscUIResults = uicontrol('Style', 'checkbox');
+            obj.hMscUIResults.Parent = obj.hMscUI;
+            GUISettings.applyUIControlStyle(obj.hMscUIResults);
+            obj.hMscUIResults.String = 'Open a Results GUI on completion';
+
+            obj.hMscUIWarn = uicontrol('Style', 'text');
+            obj.hMscUIWarn.Parent = obj.hMscUI;
+            GUISettings.applyUIControlStyle(obj.hMscUIWarn);
+            obj.hMscUIWarn.String = ['Note: Lowering the below values can ' ...
+                'significantly decrease performance!'];
+            obj.hMscUIWarn.ForegroundColor = GUISettings.COL_ERROR;
+            obj.hMscUIWarn.FontWeight = 'bold';
+            obj.hMscUIWarn.FontAngle = 'italic';
+
+            obj.hMscUIPerc = uicontrol('Style', 'text');
+            obj.hMscUIPerc.Parent = obj.hMscUI;
+            GUISettings.applyUIControlStyle(obj.hMscUIPerc);
+            obj.hMscUIPerc.String = 'Percent value update frequency (%):';
+            obj.hMscUIPerc.HorizontalAlignment = 'left';
+
+            obj.hMscUIPercValue = uicontrol('Style', 'edit');
+            obj.hMscUIPercValue.Parent = obj.hMscUI;
+            GUISettings.applyUIControlStyle(obj.hMscUIPercValue);
+            obj.hMscUIPercValue.String = '';
+
+            obj.hMscUIPrepro = uicontrol('Style', 'text');
+            obj.hMscUIPrepro.Parent = obj.hMscUI;
+            GUISettings.applyUIControlStyle(obj.hMscUIPrepro);
+            obj.hMscUIPrepro.String = 'Preprocessing visualisation update frequency (%):';
+            obj.hMscUIPrepro.HorizontalAlignment = 'left';
+
+            obj.hMscUIPreproValue = uicontrol('Style', 'edit');
+            obj.hMscUIPreproValue.Parent = obj.hMscUI;
+            GUISettings.applyUIControlStyle(obj.hMscUIPreproValue);
+            obj.hMscUIPreproValue.String = '';
+
+            obj.hMscUIDiff = uicontrol('Style', 'text');
+            obj.hMscUIDiff.Parent = obj.hMscUI;
+            GUISettings.applyUIControlStyle(obj.hMscUIDiff);
+            obj.hMscUIDiff.String = 'Difference matrix visualisation update frequency (%):';
+            obj.hMscUIDiff.HorizontalAlignment = 'left';
+
+            obj.hMscUIDiffValue = uicontrol('Style', 'edit');
+            obj.hMscUIDiffValue.Parent = obj.hMscUI;
+            GUISettings.applyUIControlStyle(obj.hMscUIDiffValue);
+            obj.hMscUIDiffValue.String = '';
+
+            obj.hMscUIContr = uicontrol('Style', 'text');
+            obj.hMscUIContr.Parent = obj.hMscUI;
+            GUISettings.applyUIControlStyle(obj.hMscUIContr);
+            obj.hMscUIContr.String = 'Local contrast visualisation update frequency (%):';
+            obj.hMscUIContr.HorizontalAlignment = 'left';
+
+            obj.hMscUIContrValue = uicontrol('Style', 'edit');
+            obj.hMscUIContrValue.Parent = obj.hMscUI;
+            GUISettings.applyUIControlStyle(obj.hMscUIContrValue);
+            obj.hMscUIContrValue.String = '';
+
+            obj.hMscUIMatch = uicontrol('Style', 'text');
+            obj.hMscUIMatch.Parent = obj.hMscUI;
+            GUISettings.applyUIControlStyle(obj.hMscUIMatch);
+            obj.hMscUIMatch.String = 'Matching visualisation update frequency (%):';
+            obj.hMscUIMatch.HorizontalAlignment = 'left';
+
+            obj.hMscUIMatchValue = uicontrol('Style', 'edit');
+            obj.hMscUIMatchValue.Parent = obj.hMscUI;
+            GUISettings.applyUIControlStyle(obj.hMscUIMatchValue);
+            obj.hMscUIMatchValue.String = '';
 
             % Done button
             obj.hDone = uicontrol('Style', 'pushbutton');
@@ -709,14 +890,18 @@ classdef ConfigSeqSLAMGUI < handle
             obj.hImPrResizeMethodValue.Callback = {@obj.cbChangeResize};
             obj.hImPrNormThreshValue.Callback = {@obj.cbChangeNorm};
             obj.hImPrNormStrengthValue.Callback = {@obj.cbChangeNorm};
-            obj.hMatchTrajLengthValue.Callback = {@obj.cbRefreshDiagrams};
-            obj.hMatchTrajVminValue.Callback = {@obj.cbRefreshDiagrams};
-            obj.hMatchTrajVmaxValue.Callback = {@obj.cbRefreshDiagrams};
-            obj.hMatchTrajVstepValue.Callback = {@obj.cbRefreshDiagrams};
+            obj.hMatchSearchLengthValue.Callback = {@obj.cbRefreshDiagrams};
+            obj.hMatchSearchVminValue.Callback = {@obj.cbRefreshDiagrams};
+            obj.hMatchSearchVmaxValue.Callback = {@obj.cbRefreshDiagrams};
+            obj.hMatchSearchMethodValue.Callback = {@obj.cbChooseSearchMethod};
+            obj.hMatchSearchVstepValue.Callback = {@obj.cbRefreshDiagrams};
             obj.hMatchCriMethodValue.Callback = {@obj.cbSelectMatchMethod};
             obj.hMatchCriWindowValue.Callback = {@obj.cbRefreshDiagrams};
             obj.hMatchCriUValue.Callback = {@obj.cbRefreshDiagrams};
             obj.hMatchCriThresholdValue.Callback = {@obj.cbRefreshDiagrams};
+            obj.hMscGtConfigure.Callback = {@obj.cbConfigureGroundTruth};
+            obj.hMscGtRemove.Callback = {@obj.cbRemoveGroundTruth};
+            obj.hMscBatchEnabled.Callback = {@obj.cbBatchToggle};
             obj.hDone.Callback = {@obj.cbDone};
         end
 
@@ -727,15 +912,15 @@ classdef ConfigSeqSLAMGUI < handle
                 obj.hImPrRefAxNorm   , obj.hImPrQueryAxNorm ...
                 ];
             axs = axs(logical(mask));
-            arrayfun(@(x) alpha(x, ConfigSeqSLAMGUI.IMAGE_FADE), axs);
+            arrayfun(@(x) alpha(x, ConfigureGUI.IMAGE_FADE), axs);
         end
 
         function drawMatchDiagrams(obj)
             % Useful temporaries
-            ds = str2num(obj.hMatchTrajLengthValue.String);
-            vmin = str2num(obj.hMatchTrajVminValue.String);
-            vmax = str2num(obj.hMatchTrajVmaxValue.String);
-            vstep = str2num(obj.hMatchTrajVstepValue.String);
+            ds = str2num(obj.hMatchSearchLengthValue.String);
+            vmin = str2num(obj.hMatchSearchVminValue.String);
+            vmax = str2num(obj.hMatchSearchVmaxValue.String);
+            vstep = str2num(obj.hMatchSearchVstepValue.String);
 
             rwin = str2num(obj.hMatchCriWindowValue.String);
 
@@ -748,50 +933,55 @@ classdef ConfigSeqSLAMGUI < handle
             if (sz ~= length(obj.dataTraj))
                 obj.dataTraj = rand(sz);
             end
-            cla(obj.hMatchTrajAx);
-            hold(obj.hMatchTrajAx, 'on');
-            obj.hMatchTrajAx.Visible = 'off';
-            h = imagesc(obj.dataTraj, 'Parent', obj.hMatchTrajAx);
+            cla(obj.hMatchSearchAx);
+            hold(obj.hMatchSearchAx, 'on');
+            obj.hMatchSearchAx.Visible = 'off';
+            h = imagesc(obj.dataTraj, 'Parent', obj.hMatchSearchAx);
             h.AlphaData = 0.5;
-            h = plot(obj.hMatchTrajAx, center, center, 'k.');
+            h = plot(obj.hMatchSearchAx, center, center, 'k.');
             h.MarkerSize = h.MarkerSize * 6;
             for k = [vmin:vstep:vmax vmax]
                 th = atan(k);
-                h =plot(obj.hMatchTrajAx, ...
-                    [center-offBack center+offFront], ...
-                    [center-offBack*sin(th) center+offFront*sin(th)], 'k');
+                if k == vmin || k == vmax || ...
+                        obj.hMatchSearchMethodValue.Value == 1
+                    h =plot(obj.hMatchSearchAx, ...
+                        [center-offBack center+offFront], ...
+                        [center-offBack*sin(th) center+offFront*sin(th)], 'k');
+                end
                 if k == vmin || k == vmax
                     h.LineWidth = h.LineWidth * 3;
                 end
             end
 
             % Add text annotations to the trajectory preview diagram
-            h = text(obj.hMatchTrajAx, center+offFront, ...
+            h = text(obj.hMatchSearchAx, center+offFront, ...
                 center+offFront*sin(atan(vmin)), '$v_{min}$', ...
                 'interpreter', 'latex', 'HorizontalAlignment', 'left', ...
                 'VerticalAlignment', 'bottom');
             h.FontSize = h.FontSize * GUISettings.LATEX_FACTOR * 1.25;
-            h = text(obj.hMatchTrajAx, center+offFront, ...
+            h = text(obj.hMatchSearchAx, center+offFront, ...
                 center+offFront*sin(atan(vmax)), '$v_{max}$', ...
                 'interpreter', 'latex', 'HorizontalAlignment', 'left', ...
                 'VerticalAlignment', 'top');
             h.FontSize = h.FontSize * GUISettings.LATEX_FACTOR * 1.25;
-            h = text(obj.hMatchTrajAx, center+offFront, ...
-                center+offFront*mean([sin(atan(vmin)) sin(atan(vmax))]), ...
-                '$v_{step}$', 'interpreter', 'latex', 'HorizontalAlignment', ...
-                'left', 'VerticalAlignment', 'middle');
-            h.FontSize = h.FontSize * GUISettings.LATEX_FACTOR * 1.25;
-            plot(obj.hMatchTrajAx, [center-offBack center+offFront], ...
+            if obj.hMatchSearchMethodValue.Value == 1
+                h = text(obj.hMatchSearchAx, center+offFront, ...
+                    center+offFront*mean([sin(atan(vmin)) sin(atan(vmax))]), ...
+                    '$v_{step}$', 'interpreter', 'latex', 'HorizontalAlignment', ...
+                    'left', 'VerticalAlignment', 'middle');
+                h.FontSize = h.FontSize * GUISettings.LATEX_FACTOR * 1.25;
+            end
+            plot(obj.hMatchSearchAx, [center-offBack center+offFront], ...
                 [sz sz], 'k');
-            h = plot(obj.hMatchTrajAx, center-offBack, sz, 'k<');
+            h = plot(obj.hMatchSearchAx, center-offBack, sz, 'k<');
             h.MarkerFaceColor = 'k';
-            h = plot(obj.hMatchTrajAx, center+offFront, sz, 'k>');
+            h = plot(obj.hMatchSearchAx, center+offFront, sz, 'k>');
             h.MarkerFaceColor = 'k';
-            h = text(obj.hMatchTrajAx, center, sz-0.5, '$d_s$', ...
+            h = text(obj.hMatchSearchAx, center, sz-0.5, '$d_s$', ...
                 'interpreter', 'latex', 'HorizontalAlignment', 'center', ...
                 'VerticalAlignment', 'bottom');
             h.FontSize = h.FontSize * GUISettings.LATEX_FACTOR * 1.25;
-            hold(obj.hMatchTrajAx, 'off');
+            hold(obj.hMatchSearchAx, 'off');
 
             % Draw match selection diagram for the chosen method
             if (obj.hMatchCriMethodValue.Value == 2)
@@ -864,7 +1054,7 @@ classdef ConfigSeqSLAMGUI < handle
         end
 
         function drawProcessingPreviews(obj)
-            % Get a config representing curring UI state
+            % Get a config representing current UI state
             % TODO VERY lazy inefficient way to do this...
             configTemp = obj.config;
             obj.strip();
@@ -931,7 +1121,7 @@ classdef ConfigSeqSLAMGUI < handle
                 v = str2num(obj.hImPrNormThreshValue.String);
                 if v < 0 || v > 1
                     uiwait(errordlg(['Normalisation edge threshold must ' ...
-                        'be in range [0, 1]']));
+                        'be in range [0, 1]'], 'modal'));
                     return;
                 end
 
@@ -939,7 +1129,8 @@ classdef ConfigSeqSLAMGUI < handle
                 v = str2num(obj.hImPrNormStrengthValue.String);
                 if v < -1 || v > 1
                     uiwait(errordlg( ...
-                        'Normalisation strength must be in range [-1, 1]'));
+                        'Normalisation strength must be in range [-1, 1]', ...
+                        'modal'));
                     return;
                 end
             end
@@ -994,16 +1185,20 @@ classdef ConfigSeqSLAMGUI < handle
                     'seqslam_settings/sequence_matching');
 
                 % Show the appropriate options and axes
-                obj.hMatchTrajTitle.Visible = 'on';
-                obj.hMatchTrajAx.Visible = 'on';
-                obj.hMatchTrajLength.Visible = 'on';
-                obj.hMatchTrajLengthValue.Visible = 'on';
-                obj.hMatchTrajVmin.Visible = 'on';
-                obj.hMatchTrajVminValue.Visible = 'on';
-                obj.hMatchTrajVmax.Visible = 'on';
-                obj.hMatchTrajVmaxValue.Visible = 'on';
-                obj.hMatchTrajVstep.Visible = 'on';
-                obj.hMatchTrajVstepValue.Visible = 'on';
+                obj.hMatchSearchTitle.Visible = 'on';
+                obj.hMatchSearchAx.Visible = 'on';
+                obj.hMatchSearchLength.Visible = 'on';
+                obj.hMatchSearchLengthValue.Visible = 'on';
+                obj.hMatchSearchVmin.Visible = 'on';
+                obj.hMatchSearchVminValue.Visible = 'on';
+                obj.hMatchSearchVmax.Visible = 'on';
+                obj.hMatchSearchVmaxValue.Visible = 'on';
+                obj.hMatchSearchMethod.Visible = 'on';
+                obj.hMatchSearchMethodValue.Visible = 'on';
+                if obj.hMatchSearchMethodValue.Value == 1
+                    obj.hMatchSearchVstep.Visible = 'on';
+                    obj.hMatchSearchVstepValue.Visible = 'on';
+                end
                 obj.hMatchCriTitle.Visible = 'on';
                 obj.hMatchCriAx.Visible = 'on';
                 obj.hMatchCriMethod.Visible = 'on';
@@ -1027,7 +1222,9 @@ classdef ConfigSeqSLAMGUI < handle
 
                 % Show the appropriate options
                 obj.hMscDiff.Visible = 'on';
-                obj.hMscVis.Visible = 'on';
+                obj.hMscGt.Visible = 'on';
+                obj.hMscBatch.Visible = 'on';
+                obj.hMscUI.Visible = 'on';
             end
 
             % Force a draw at the end
@@ -1063,14 +1260,23 @@ classdef ConfigSeqSLAMGUI < handle
                 obj.config.seqslam.image_processing.normalisation.strength, ...
                 0.5);
 
-            obj.hMatchTrajLengthValue.String = SafeData.noEmpty( ...
-                obj.config.seqslam.matching.trajectory.d_s, 10);
-            obj.hMatchTrajVminValue.String = SafeData.noEmpty( ...
-                obj.config.seqslam.matching.trajectory.v_min, 0.8);
-            obj.hMatchTrajVmaxValue.String = SafeData.noEmpty( ...
-                obj.config.seqslam.matching.trajectory.v_max, 1.2);
-            obj.hMatchTrajVstepValue.String = SafeData.noEmpty( ...
-                obj.config.seqslam.matching.trajectory.v_step, 0.1);
+            obj.hMatchSearchLengthValue.String = SafeData.noEmpty( ...
+                obj.config.seqslam.search.d_s, 10);
+            obj.hMatchSearchVminValue.String = SafeData.noEmpty( ...
+                obj.config.seqslam.search.v_min, 0.8);
+            obj.hMatchSearchVmaxValue.String = SafeData.noEmpty( ...
+                obj.config.seqslam.search.v_max, 1.2);
+            method = SafeData.noEmpty(obj.config.seqslam.search.method, ...
+                'traj');
+            if strcmpi(method, 'hybrid')
+                obj.hMatchSearchMethodValue.Value = 3;
+            elseif strcmpi(method, 'cone')
+                obj.hMatchSearchMethodValue.Value = 2;
+            else
+                obj.hMatchSearchMethodValue.Value = 1;
+            end
+            obj.hMatchSearchVstepValue.String = SafeData.noEmpty( ...
+                obj.config.seqslam.search.method_traj.v_step, 0.1);
             method = SafeData.noEmpty(obj.config.seqslam.matching.method, ...
                 'window');
             if strcmpi(method, 'thresh')
@@ -1087,16 +1293,54 @@ classdef ConfigSeqSLAMGUI < handle
 
             obj.hMscDiffEnhValue.String = SafeData.noEmpty( ...
                 obj.config.seqslam.diff_matrix.contrast.r_window, 10);
-            obj.hMscVisPercValue.String = SafeData.noEmpty( ...
-                obj.config.visual.progress.percent_freq, 1);
-            obj.hMscVisPreproValue.String = SafeData.noEmpty( ...
-                obj.config.visual.progress.preprocess_freq, 5);
-            obj.hMscVisDiffValue.String = SafeData.noEmpty( ...
-                obj.config.visual.progress.diff_matrix_freq, 5);
-            obj.hMscVisContrValue.String = SafeData.noEmpty( ...
-                obj.config.visual.progress.enhance_freq, 5);
-            obj.hMscVisMatchValue.String = SafeData.noEmpty( ...
-                obj.config.visual.progress.match_freq, 5);
+            opt = obj.config.ground_truth.use_to_auto_optimise;
+            if strcmpi(opt, 'f1')
+                obj.hMscGtOptimiseValue.Value = 4;
+            elseif strcmpi(opt, 'p')
+                obj.hMscGtOptimiseValue.Value = 3;
+            elseif strcmpi(opt, 'r')
+                obj.hMscGtOptimiseValue.Value = 2;
+            else
+                obj.hMscGtOptimiseValue.Value = 1;
+            end
+
+            obj.hMscBatchEnabled.Value = SafeData.noEmpty( ...
+                obj.config.batch.enabled, false);
+            obj.cbBatchToggle(obj.hMscBatchEnabled, []);
+            obj.hMscBatchParamValue.String = SafeData.noEmpty( ...
+                obj.config.batch.param, '');
+            obj.hMscBatchValuesValue.String = SafeData.vector2str( ...
+                obj.config.batch.values);
+            obj.hMscBatchParallelise.Value = SafeData.noEmpty( ...
+                obj.config.batch.parallelise, false);
+            obj.hMscBatchTrim.Value = SafeData.noEmpty( ...
+                obj.config.batch.trim_results, true);
+            ui = SafeData.noEmpty(obj.config.ui.progress.type, 'graphical');
+            if strcmpi(ui, 'console')
+                obj.hMscUIProgressTypeValue.Value = 2;
+            else
+                obj.hMscUIProgressTypeValue.Value = 1;
+            end
+            obj.hMscUIResults.Value = SafeData.noEmpty( ...
+                obj.config.ui.results, false);
+            obj.hMscUIPercValue.String = SafeData.noEmpty( ...
+                obj.config.ui.progress.percent_freq, 1);
+            obj.hMscUIPreproValue.String = SafeData.noEmpty( ...
+                obj.config.ui.progress.preprocess_freq, 5);
+            obj.hMscUIDiffValue.String = SafeData.noEmpty( ...
+                obj.config.ui.progress.diff_matrix_freq, 5);
+            obj.hMscUIContrValue.String = SafeData.noEmpty( ...
+                obj.config.ui.progress.enhance_freq, 5);
+            obj.hMscUIMatchValue.String = SafeData.noEmpty( ...
+                obj.config.ui.progress.match_freq, 5);
+
+            % Handle populating the ground truth
+            if obj.config.ground_truth.exists
+                obj.cachedGroundTruth = obj.config.ground_truth;
+            else
+                obj.cachedGroundTruth = [];
+            end
+            obj.updateGroundTruthOptions();
         end
 
         function sizeGUI(obj)
@@ -1107,8 +1351,8 @@ classdef ConfigSeqSLAMGUI < handle
 
             % Size and position of the figure
             obj.hFig.Position = [0, 0, ...
-                widthUnit * ConfigSeqSLAMGUI.FIG_WIDTH_FACTOR, ...
-                heightUnit * ConfigSeqSLAMGUI.FIG_HEIGHT_FACTOR];
+                widthUnit * ConfigureGUI.FIG_WIDTH_FACTOR, ...
+                heightUnit * ConfigureGUI.FIG_HEIGHT_FACTOR];
             movegui(obj.hFig, 'center');
 
             % Now that the figure (space for placing UI elements is set),
@@ -1183,32 +1427,36 @@ classdef ConfigSeqSLAMGUI < handle
             SpecSize.size(obj.hImPrNormStrengthValue, SpecSize.WIDTH, ...
                 SpecSize.PERCENT, obj.hImPrRefresh, 0.3);
 
-            SpecSize.size(obj.hMatchTrajTitle, SpecSize.WIDTH, ...
+            SpecSize.size(obj.hMatchSearchTitle, SpecSize.WIDTH, ...
                 SpecSize.MATCH, obj.hFig);
-            SpecSize.size(obj.hMatchTrajAx, SpecSize.WIDTH, ...
+            SpecSize.size(obj.hMatchSearchAx, SpecSize.WIDTH, ...
                 SpecSize.PERCENT, obj.hFig, 0.5, 4*GUISettings.PAD_LARGE);
-            SpecSize.size(obj.hMatchTrajAx, SpecSize.HEIGHT, ...
+            SpecSize.size(obj.hMatchSearchAx, SpecSize.HEIGHT, ...
                 SpecSize.RATIO, 1);
-            SpecSize.size(obj.hMatchTrajLength, SpecSize.WIDTH, ...
+            SpecSize.size(obj.hMatchSearchLength, SpecSize.WIDTH, ...
                 SpecSize.PERCENT, obj.hFig, 0.25);
-            SpecSize.size(obj.hMatchTrajLengthValue, SpecSize.WIDTH, ...
+            SpecSize.size(obj.hMatchSearchLengthValue, SpecSize.WIDTH, ...
                 SpecSize.PERCENT, obj.hFig, 0.2);
-            SpecSize.size(obj.hMatchTrajVmin, SpecSize.WIDTH, ...
+            SpecSize.size(obj.hMatchSearchVmin, SpecSize.WIDTH, ...
                 SpecSize.PERCENT, obj.hFig, 0.25);
-            SpecSize.size(obj.hMatchTrajVminValue, SpecSize.WIDTH, ...
+            SpecSize.size(obj.hMatchSearchVminValue, SpecSize.WIDTH, ...
                 SpecSize.PERCENT, obj.hFig, 0.2);
-            SpecSize.size(obj.hMatchTrajVmax, SpecSize.WIDTH, ...
+            SpecSize.size(obj.hMatchSearchVmax, SpecSize.WIDTH, ...
                 SpecSize.PERCENT, obj.hFig, 0.25);
-            SpecSize.size(obj.hMatchTrajVmaxValue, SpecSize.WIDTH, ...
+            SpecSize.size(obj.hMatchSearchVmaxValue, SpecSize.WIDTH, ...
                 SpecSize.PERCENT, obj.hFig, 0.2);
-            SpecSize.size(obj.hMatchTrajVstep, SpecSize.WIDTH, ...
+            SpecSize.size(obj.hMatchSearchMethod, SpecSize.WIDTH, ...
                 SpecSize.PERCENT, obj.hFig, 0.25);
-            SpecSize.size(obj.hMatchTrajVstepValue, SpecSize.WIDTH, ...
+            SpecSize.size(obj.hMatchSearchMethodValue, SpecSize.WIDTH, ...
+                SpecSize.PERCENT, obj.hFig, 0.2);
+            SpecSize.size(obj.hMatchSearchVstep, SpecSize.WIDTH, ...
+                SpecSize.PERCENT, obj.hFig, 0.25);
+            SpecSize.size(obj.hMatchSearchVstepValue, SpecSize.WIDTH, ...
                 SpecSize.PERCENT, obj.hFig, 0.2);
             SpecSize.size(obj.hMatchCriTitle, SpecSize.WIDTH, ...
                 SpecSize.MATCH, obj.hFig);
-            SpecSize.size(obj.hMatchCriAx, SpecSize.WIDTH, SpecSize.PERCENT, ...
-                obj.hFig, 0.5, 4*GUISettings.PAD_LARGE);
+            SpecSize.size(obj.hMatchCriAx, SpecSize.WIDTH, ...
+                SpecSize.PERCENT, obj.hFig, 0.5, 4*GUISettings.PAD_LARGE);
             SpecSize.size(obj.hMatchCriAx, SpecSize.HEIGHT, SpecSize.RATIO, ...
                 0.5);
             SpecSize.size(obj.hMatchCriMethod, SpecSize.WIDTH, ...
@@ -1232,37 +1480,79 @@ classdef ConfigSeqSLAMGUI < handle
                 obj.hFig, GUISettings.PAD_MED);
             SpecSize.size(obj.hMscDiff, SpecSize.HEIGHT, SpecSize.PERCENT, ...
                 obj.hFig, 0.1);
-            SpecSize.size(obj.hMscDiffEnh, SpecSize.WIDTH, SpecSize.PERCENT, ...
-                obj.hMscDiff, 0.35, GUISettings.PAD_SMALL);
+            SpecSize.size(obj.hMscDiffEnh, SpecSize.WIDTH, ...
+                SpecSize.PERCENT, obj.hMscDiff, 0.35, GUISettings.PAD_SMALL);
             SpecSize.size(obj.hMscDiffEnhValue, SpecSize.WIDTH, ...
                 SpecSize.PERCENT, obj.hMscDiff, 0.1, GUISettings.PAD_MED);
 
-            SpecSize.size(obj.hMscVis, SpecSize.WIDTH, SpecSize.MATCH, ...
+            SpecSize.size(obj.hMscGt, SpecSize.WIDTH, SpecSize.MATCH, ...
                 obj.hFig, GUISettings.PAD_MED);
-            SpecSize.size(obj.hMscVis, SpecSize.HEIGHT, SpecSize.PERCENT, ...
-                obj.hFig, 0.225);
-            SpecSize.size(obj.hMscVisWarn, SpecSize.WIDTH, SpecSize.MATCH, ...
-                obj.hMscVis, GUISettings.PAD_LARGE);
-            SpecSize.size(obj.hMscVisPerc, SpecSize.WIDTH, SpecSize.PERCENT, ...
-                obj.hMscVis, 0.35, GUISettings.PAD_SMALL);
-            SpecSize.size(obj.hMscVisPercValue, SpecSize.WIDTH, ...
-                SpecSize.PERCENT, obj.hMscVis, 0.1, GUISettings.PAD_MED);
-            SpecSize.size(obj.hMscVisPrepro, SpecSize.WIDTH, ...
-                SpecSize.PERCENT, obj.hMscVis, 0.35, GUISettings.PAD_SMALL);
-            SpecSize.size(obj.hMscVisPreproValue, SpecSize.WIDTH, ...
-                SpecSize.PERCENT, obj.hMscVis, 0.1, GUISettings.PAD_MED);
-            SpecSize.size(obj.hMscVisDiff, SpecSize.WIDTH, SpecSize.PERCENT, ...
-                obj.hMscVis, 0.35, GUISettings.PAD_SMALL);
-            SpecSize.size(obj.hMscVisDiffValue, SpecSize.WIDTH, ...
-                SpecSize.PERCENT, obj.hMscVis, 0.1, GUISettings.PAD_MED);
-            SpecSize.size(obj.hMscVisContr, SpecSize.WIDTH, ...
-                SpecSize.PERCENT, obj.hMscVis, 0.35, GUISettings.PAD_SMALL);
-            SpecSize.size(obj.hMscVisContrValue, SpecSize.WIDTH, ...
-                SpecSize.PERCENT, obj.hMscVis, 0.1, GUISettings.PAD_MED);
-            SpecSize.size(obj.hMscVisMatch, SpecSize.WIDTH, ...
-                SpecSize.PERCENT, obj.hMscVis, 0.35, GUISettings.PAD_SMALL);
-            SpecSize.size(obj.hMscVisMatchValue, SpecSize.WIDTH, ...
-                SpecSize.PERCENT, obj.hMscVis, 0.1, GUISettings.PAD_MED);
+            SpecSize.size(obj.hMscGt, SpecSize.HEIGHT, SpecSize.PERCENT, ...
+                obj.hFig, 0.15);
+            SpecSize.size(obj.hMscGtStatus, SpecSize.WIDTH, ...
+                SpecSize.PERCENT, obj.hMscGt, 0.75);
+            SpecSize.size(obj.hMscGtStatus, SpecSize.HEIGHT, ...
+                SpecSize.PERCENT, obj.hMscGt, 0.3);
+            SpecSize.size(obj.hMscGtConfigure, SpecSize.WIDTH, ...
+                SpecSize.WRAP, GUISettings.PAD_MED);
+            SpecSize.size(obj.hMscGtRemove, SpecSize.WIDTH, SpecSize.WRAP, ...
+                GUISettings.PAD_MED);
+            SpecSize.size(obj.hMscGtOptimise, SpecSize.WIDTH, ...
+                SpecSize.PERCENT, obj.hMscGt, 0.4);
+            SpecSize.size(obj.hMscGtOptimiseValue, SpecSize.WIDTH, ...
+                SpecSize.PERCENT, obj.hMscGt, 0.3);
+
+            SpecSize.size(obj.hMscBatch, SpecSize.WIDTH, SpecSize.MATCH, ...
+                obj.hFig, GUISettings.PAD_MED);
+            SpecSize.size(obj.hMscBatch, SpecSize.HEIGHT, SpecSize.PERCENT, ...
+                obj.hFig, 0.2);
+            SpecSize.size(obj.hMscBatchEnabled, SpecSize.WIDTH, ...
+                SpecSize.PERCENT, obj.hMscBatch, 0.25);
+            SpecSize.size(obj.hMscBatchParam, SpecSize.WIDTH, ...
+                SpecSize.PERCENT, obj.hMscBatch, 0.2);
+            SpecSize.size(obj.hMscBatchParamValue, SpecSize.WIDTH, ...
+                SpecSize.PERCENT, obj.hMscBatch, 0.75);
+            SpecSize.size(obj.hMscBatchValues, SpecSize.WIDTH, ...
+                SpecSize.PERCENT, obj.hMscBatch, 0.2);
+            SpecSize.size(obj.hMscBatchValuesValue, SpecSize.WIDTH, ...
+                SpecSize.PERCENT, obj.hMscBatch, 0.75);
+            SpecSize.size(obj.hMscBatchParallelise, SpecSize.WIDTH, ...
+                SpecSize.PERCENT, obj.hMscBatch, 0.5);
+            SpecSize.size(obj.hMscBatchTrim, SpecSize.WIDTH, ...
+                SpecSize.PERCENT, obj.hMscBatch, 0.5);
+
+            SpecSize.size(obj.hMscUI, SpecSize.WIDTH, SpecSize.MATCH, ...
+                obj.hFig, GUISettings.PAD_MED);
+            SpecSize.size(obj.hMscUI, SpecSize.HEIGHT, SpecSize.PERCENT, ...
+                obj.hFig, 0.3);
+            SpecSize.size(obj.hMscUIProgressType, SpecSize.WIDTH, ...
+                SpecSize.PERCENT, obj.hMscUI, 0.15);
+            SpecSize.size(obj.hMscUIProgressTypeValue, SpecSize.WIDTH, ...
+                SpecSize.WRAP, GUISettings.PAD_MED);
+            SpecSize.size(obj.hMscUIResults, SpecSize.WIDTH, ...
+                SpecSize.PERCENT, obj.hMscUI, 0.5);
+            SpecSize.size(obj.hMscUIWarn, SpecSize.WIDTH, SpecSize.MATCH, ...
+                obj.hMscUI, GUISettings.PAD_LARGE);
+            SpecSize.size(obj.hMscUIPerc, SpecSize.WIDTH, SpecSize.PERCENT, ...
+                obj.hMscUI, 0.35, GUISettings.PAD_SMALL);
+            SpecSize.size(obj.hMscUIPercValue, SpecSize.WIDTH, ...
+                SpecSize.PERCENT, obj.hMscUI, 0.1, GUISettings.PAD_MED);
+            SpecSize.size(obj.hMscUIPrepro, SpecSize.WIDTH, ...
+                SpecSize.PERCENT, obj.hMscUI, 0.35, GUISettings.PAD_SMALL);
+            SpecSize.size(obj.hMscUIPreproValue, SpecSize.WIDTH, ...
+                SpecSize.PERCENT, obj.hMscUI, 0.1, GUISettings.PAD_MED);
+            SpecSize.size(obj.hMscUIDiff, SpecSize.WIDTH, SpecSize.PERCENT, ...
+                obj.hMscUI, 0.35, GUISettings.PAD_SMALL);
+            SpecSize.size(obj.hMscUIDiffValue, SpecSize.WIDTH, ...
+                SpecSize.PERCENT, obj.hMscUI, 0.1, GUISettings.PAD_MED);
+            SpecSize.size(obj.hMscUIContr, SpecSize.WIDTH, ...
+                SpecSize.PERCENT, obj.hMscUI, 0.35, GUISettings.PAD_SMALL);
+            SpecSize.size(obj.hMscUIContrValue, SpecSize.WIDTH, ...
+                SpecSize.PERCENT, obj.hMscUI, 0.1, GUISettings.PAD_MED);
+            SpecSize.size(obj.hMscUIMatch, SpecSize.WIDTH, ...
+                SpecSize.PERCENT, obj.hMscUI, 0.35, GUISettings.PAD_SMALL);
+            SpecSize.size(obj.hMscUIMatchValue, SpecSize.WIDTH, ...
+                SpecSize.PERCENT, obj.hMscUI, 0.1, GUISettings.PAD_MED);
 
             SpecSize.size(obj.hDone, SpecSize.WIDTH, ...
                 SpecSize.PERCENT, obj.hFig, 0.2);
@@ -1395,55 +1685,65 @@ classdef ConfigSeqSLAMGUI < handle
                 obj.hImPrNormStrength, SpecPosition.RIGHT_OF, ...
                 GUISettings.PAD_MED);
 
-            SpecPosition.positionRelative(obj.hMatchTrajTitle, obj.hScreen, ...
+            SpecPosition.positionRelative(obj.hMatchSearchTitle, obj.hScreen, ...
                 SpecPosition.BELOW, GUISettings.PAD_MED);
-            SpecPosition.positionIn(obj.hMatchTrajTitle, obj.hFig, ...
+            SpecPosition.positionIn(obj.hMatchSearchTitle, obj.hFig, ...
                 SpecPosition.CENTER_X);
-            SpecPosition.positionRelative(obj.hMatchTrajAx, ...
-                obj.hMatchTrajTitle, SpecPosition.BELOW, GUISettings.PAD_MED);
-            SpecPosition.positionIn(obj.hMatchTrajAx, obj.hFig, ...
+            SpecPosition.positionRelative(obj.hMatchSearchAx, ...
+                obj.hMatchSearchTitle, SpecPosition.BELOW, GUISettings.PAD_MED);
+            SpecPosition.positionIn(obj.hMatchSearchAx, obj.hFig, ...
                 SpecPosition.LEFT, 3*GUISettings.PAD_LARGE);
-            SpecPosition.positionRelative(obj.hMatchTrajLengthValue, ...
-                obj.hMatchTrajTitle, SpecPosition.BELOW, GUISettings.PAD_MED);
-            SpecPosition.positionIn(obj.hMatchTrajLengthValue, obj.hFig, ...
+            SpecPosition.positionRelative(obj.hMatchSearchLengthValue, ...
+                obj.hMatchSearchTitle, SpecPosition.BELOW, GUISettings.PAD_MED);
+            SpecPosition.positionIn(obj.hMatchSearchLengthValue, obj.hFig, ...
                 SpecPosition.RIGHT, GUISettings.PAD_LARGE);
-            SpecPosition.positionRelative(obj.hMatchTrajLength, ...
-                obj.hMatchTrajLengthValue, SpecPosition.CENTER_Y);
-            SpecPosition.positionRelative(obj.hMatchTrajLength, ...
-                obj.hMatchTrajLengthValue, SpecPosition.LEFT_OF, ...
+            SpecPosition.positionRelative(obj.hMatchSearchLength, ...
+                obj.hMatchSearchLengthValue, SpecPosition.CENTER_Y);
+            SpecPosition.positionRelative(obj.hMatchSearchLength, ...
+                obj.hMatchSearchLengthValue, SpecPosition.LEFT_OF, ...
                 GUISettings.PAD_MED);
-            SpecPosition.positionRelative(obj.hMatchTrajVminValue, ...
-                obj.hMatchTrajLengthValue, SpecPosition.BELOW, ...
+            SpecPosition.positionRelative(obj.hMatchSearchVminValue, ...
+                obj.hMatchSearchLengthValue, SpecPosition.BELOW, ...
                 GUISettings.PAD_MED);
-            SpecPosition.positionRelative(obj.hMatchTrajVminValue, ...
-                obj.hMatchTrajLengthValue, SpecPosition.CENTER_X);
-            SpecPosition.positionRelative(obj.hMatchTrajVmin, ...
-                obj.hMatchTrajVminValue, SpecPosition.CENTER_Y);
-            SpecPosition.positionRelative(obj.hMatchTrajVmin, ...
-                obj.hMatchTrajVminValue, SpecPosition.LEFT_OF, ...
+            SpecPosition.positionRelative(obj.hMatchSearchVminValue, ...
+                obj.hMatchSearchLengthValue, SpecPosition.CENTER_X);
+            SpecPosition.positionRelative(obj.hMatchSearchVmin, ...
+                obj.hMatchSearchVminValue, SpecPosition.CENTER_Y);
+            SpecPosition.positionRelative(obj.hMatchSearchVmin, ...
+                obj.hMatchSearchVminValue, SpecPosition.LEFT_OF, ...
                 GUISettings.PAD_MED);
-            SpecPosition.positionRelative(obj.hMatchTrajVmaxValue, ...
-                obj.hMatchTrajVminValue, SpecPosition.BELOW, ...
+            SpecPosition.positionRelative(obj.hMatchSearchVmaxValue, ...
+                obj.hMatchSearchVminValue, SpecPosition.BELOW, ...
                 GUISettings.PAD_MED);
-            SpecPosition.positionRelative(obj.hMatchTrajVmaxValue, ...
-                obj.hMatchTrajVminValue, SpecPosition.CENTER_X);
-            SpecPosition.positionRelative(obj.hMatchTrajVmax, ...
-                obj.hMatchTrajVmaxValue, SpecPosition.CENTER_Y);
-            SpecPosition.positionRelative(obj.hMatchTrajVmax, ...
-                obj.hMatchTrajVmaxValue, SpecPosition.LEFT_OF, ...
+            SpecPosition.positionRelative(obj.hMatchSearchVmaxValue, ...
+                obj.hMatchSearchVminValue, SpecPosition.CENTER_X);
+            SpecPosition.positionRelative(obj.hMatchSearchVmax, ...
+                obj.hMatchSearchVmaxValue, SpecPosition.CENTER_Y);
+            SpecPosition.positionRelative(obj.hMatchSearchVmax, ...
+                obj.hMatchSearchVmaxValue, SpecPosition.LEFT_OF, ...
                 GUISettings.PAD_MED);
-            SpecPosition.positionRelative(obj.hMatchTrajVstepValue, ...
-                obj.hMatchTrajVmaxValue, SpecPosition.BELOW, ...
+            SpecPosition.positionRelative(obj.hMatchSearchMethodValue, ...
+                obj.hMatchSearchVmaxValue, SpecPosition.BELOW, ...
                 GUISettings.PAD_MED);
-            SpecPosition.positionRelative(obj.hMatchTrajVstepValue, ...
-                obj.hMatchTrajVmaxValue, SpecPosition.CENTER_X);
-            SpecPosition.positionRelative(obj.hMatchTrajVstep, ...
-                obj.hMatchTrajVstepValue, SpecPosition.CENTER_Y);
-            SpecPosition.positionRelative(obj.hMatchTrajVstep, ...
-                obj.hMatchTrajVstepValue, SpecPosition.LEFT_OF, ...
+            SpecPosition.positionRelative(obj.hMatchSearchMethodValue, ...
+                obj.hMatchSearchVmaxValue, SpecPosition.CENTER_X);
+            SpecPosition.positionRelative(obj.hMatchSearchMethod, ...
+                obj.hMatchSearchMethodValue, SpecPosition.CENTER_Y);
+            SpecPosition.positionRelative(obj.hMatchSearchMethod, ...
+                obj.hMatchSearchMethodValue, SpecPosition.LEFT_OF, ...
+                GUISettings.PAD_MED);
+            SpecPosition.positionRelative(obj.hMatchSearchVstepValue, ...
+                obj.hMatchSearchMethodValue, SpecPosition.BELOW, ...
+                GUISettings.PAD_MED);
+            SpecPosition.positionRelative(obj.hMatchSearchVstepValue, ...
+                obj.hMatchSearchMethodValue, SpecPosition.CENTER_X);
+            SpecPosition.positionRelative(obj.hMatchSearchVstep, ...
+                obj.hMatchSearchVstepValue, SpecPosition.CENTER_Y);
+            SpecPosition.positionRelative(obj.hMatchSearchVstep, ...
+                obj.hMatchSearchVstepValue, SpecPosition.LEFT_OF, ...
                 GUISettings.PAD_MED);
             SpecPosition.positionRelative(obj.hMatchCriTitle, ...
-                obj.hMatchTrajAx, SpecPosition.BELOW, 3*GUISettings.PAD_LARGE);
+                obj.hMatchSearchAx, SpecPosition.BELOW, 3*GUISettings.PAD_LARGE);
             SpecPosition.positionIn(obj.hMatchCriTitle, obj.hFig, ...
                 SpecPosition.CENTER_X);
             SpecPosition.positionRelative(obj.hMatchCriAx, ...
@@ -1502,55 +1802,129 @@ classdef ConfigSeqSLAMGUI < handle
                 obj.hMscDiffEnh, SpecPosition.CENTER_Y);
             SpecPosition.positionRelative(obj.hMscDiffEnhValue, ...
                 obj.hMscDiffEnh, SpecPosition.RIGHT_OF, GUISettings.PAD_MED);
-            SpecPosition.positionRelative(obj.hMscVis, obj.hMscDiff, ...
+            SpecPosition.positionRelative(obj.hMscGt, obj.hMscDiff, ...
                 SpecPosition.BELOW, GUISettings.PAD_LARGE);
-            SpecPosition.positionIn(obj.hMscVis, obj.hFig, ...
+            SpecPosition.positionIn(obj.hMscGt, obj.hFig, ...
                 SpecPosition.CENTER_X);
-            SpecPosition.positionIn(obj.hMscVisWarn, obj.hMscVis, ...
-                SpecPosition.TOP, 2*GUISettings.PAD_LARGE);
-            SpecPosition.positionIn(obj.hMscVisWarn, obj.hMscVis, ...
-                SpecPosition.CENTER_X);
-            SpecPosition.positionRelative(obj.hMscVisPerc, obj.hMscVisWarn, ...
-                SpecPosition.BELOW, GUISettings.PAD_LARGE);
-            SpecPosition.positionIn(obj.hMscVisPerc, obj.hMscVis, ...
+            SpecPosition.positionIn(obj.hMscGtStatus, obj.hMscGt, ...
+                SpecPosition.TOP, 2.5*GUISettings.PAD_LARGE);
+            SpecPosition.positionIn(obj.hMscGtStatus, obj.hMscGt, ...
                 SpecPosition.LEFT, GUISettings.PAD_MED);
-            SpecPosition.positionRelative(obj.hMscVisPercValue, ...
-                obj.hMscVisPerc, SpecPosition.CENTER_Y);
-            SpecPosition.positionRelative(obj.hMscVisPercValue, ...
-                obj.hMscVisPerc, SpecPosition.RIGHT_OF, GUISettings.PAD_MED);
-            SpecPosition.positionRelative(obj.hMscVisPrepro, ...
-                obj.hMscVisPerc, SpecPosition.BELOW, 2*GUISettings.PAD_LARGE);
-            SpecPosition.positionRelative(obj.hMscVisPrepro, ...
-                obj.hMscVisPerc, SpecPosition.CENTER_X);
-            SpecPosition.positionRelative(obj.hMscVisPreproValue, ...
-                obj.hMscVisPrepro, SpecPosition.CENTER_Y);
-            SpecPosition.positionRelative(obj.hMscVisPreproValue, ...
-                obj.hMscVisPrepro, SpecPosition.RIGHT_OF, GUISettings.PAD_MED);
-            SpecPosition.positionRelative(obj.hMscVisDiff, ...
-                obj.hMscVisPrepro, SpecPosition.BELOW, GUISettings.PAD_MED);
-            SpecPosition.positionRelative(obj.hMscVisDiff, ...
-                obj.hMscVisPrepro, SpecPosition.CENTER_X);
-            SpecPosition.positionRelative(obj.hMscVisDiffValue, ...
-                obj.hMscVisDiff, SpecPosition.CENTER_Y);
-            SpecPosition.positionRelative(obj.hMscVisDiffValue, ...
-                obj.hMscVisDiff, SpecPosition.RIGHT_OF, GUISettings.PAD_MED);
-            SpecPosition.positionRelative(obj.hMscVisContrValue, ...
-                obj.hMscVisPrepro, SpecPosition.CENTER_Y);
-            SpecPosition.positionIn(obj.hMscVisContrValue, obj.hMscVis, ...
-                SpecPosition.RIGHT, GUISettings.PAD_MED);
-            SpecPosition.positionRelative(obj.hMscVisContr, ...
-                obj.hMscVisContrValue, SpecPosition.CENTER_Y);
-            SpecPosition.positionRelative(obj.hMscVisContr, ...
-                obj.hMscVisContrValue, SpecPosition.LEFT_OF, ...
+            SpecPosition.positionRelative(obj.hMscGtRemove, ...
+                obj.hMscGtStatus, SpecPosition.CENTER_Y);
+            SpecPosition.positionIn(obj.hMscGtRemove, obj.hMscGt, ...
+                SpecPosition.RIGHT, GUISettings.PAD_LARGE);
+            SpecPosition.positionRelative(obj.hMscGtConfigure, ...
+                obj.hMscGtStatus, SpecPosition.CENTER_Y);
+            SpecPosition.positionRelative(obj.hMscGtConfigure, ...
+                obj.hMscGtRemove, SpecPosition.LEFT_OF, ...
                 GUISettings.PAD_MED);
-            SpecPosition.positionRelative(obj.hMscVisMatchValue, ...
-                obj.hMscVisContrValue, SpecPosition.BELOW, GUISettings.PAD_MED);
-            SpecPosition.positionRelative(obj.hMscVisMatchValue, ...
-                obj.hMscVisContrValue, SpecPosition.CENTER_X);
-            SpecPosition.positionRelative(obj.hMscVisMatch, ...
-                obj.hMscVisMatchValue, SpecPosition.CENTER_Y);
-            SpecPosition.positionRelative(obj.hMscVisMatch, ...
-                obj.hMscVisMatchValue, SpecPosition.LEFT_OF, ...
+            SpecPosition.positionRelative(obj.hMscGtOptimise, ...
+                obj.hMscGtStatus, SpecPosition.BELOW, GUISettings.PAD_LARGE);
+            SpecPosition.positionRelative(obj.hMscGtOptimise, ...
+                obj.hMscGtStatus, SpecPosition.LEFT);
+            SpecPosition.positionRelative(obj.hMscGtOptimiseValue, ...
+                obj.hMscGtOptimise, SpecPosition.CENTER_Y);
+            SpecPosition.positionRelative(obj.hMscGtOptimiseValue, ...
+                obj.hMscGtOptimise, SpecPosition.RIGHT_OF, ...
+                GUISettings.PAD_MED);
+            SpecPosition.positionRelative(obj.hMscBatch, obj.hMscGt, ...
+                SpecPosition.BELOW, GUISettings.PAD_LARGE);
+            SpecPosition.positionIn(obj.hMscBatch, obj.hFig, ...
+                SpecPosition.CENTER_X);
+            SpecPosition.positionIn(obj.hMscBatchEnabled, obj.hMscBatch, ...
+                SpecPosition.TOP, 1.5*GUISettings.PAD_LARGE);
+            SpecPosition.positionIn(obj.hMscBatchEnabled, obj.hMscBatch, ...
+                SpecPosition.RIGHT, GUISettings.PAD_MED);
+            SpecPosition.positionRelative(obj.hMscBatchParam, ...
+                obj.hMscBatchEnabled, SpecPosition.BELOW, GUISettings.PAD_MED);
+            SpecPosition.positionIn(obj.hMscBatchParam, obj.hMscBatch, ...
+                SpecPosition.LEFT, GUISettings.PAD_MED);
+            SpecPosition.positionRelative(obj.hMscBatchParamValue, ...
+                obj.hMscBatchParam, SpecPosition.CENTER_Y);
+            SpecPosition.positionRelative(obj.hMscBatchParamValue, ...
+                obj.hMscBatchParam, SpecPosition.RIGHT_OF, ...
+                GUISettings.PAD_MED);
+            SpecPosition.positionRelative(obj.hMscBatchValues, ...
+                obj.hMscBatchParam, SpecPosition.BELOW, GUISettings.PAD_MED);
+            SpecPosition.positionRelative(obj.hMscBatchValues, ...
+                obj.hMscBatchParam, SpecPosition.CENTER_X);
+            SpecPosition.positionRelative(obj.hMscBatchValuesValue, ...
+                obj.hMscBatchValues, SpecPosition.CENTER_Y);
+            SpecPosition.positionRelative(obj.hMscBatchValuesValue, ...
+                obj.hMscBatchValues, SpecPosition.RIGHT_OF, ...
+                GUISettings.PAD_MED);
+            SpecPosition.positionRelative(obj.hMscBatchParallelise, ...
+                obj.hMscBatchValues, SpecPosition.BELOW, GUISettings.PAD_MED);
+            SpecPosition.positionIn(obj.hMscBatchParallelise, ...
+                obj.hMscBatch, SpecPosition.LEFT, GUISettings.PAD_LARGE);
+            SpecPosition.positionRelative(obj.hMscBatchTrim, ...
+                obj.hMscBatchParallelise, SpecPosition.CENTER_Y);
+            SpecPosition.positionIn(obj.hMscBatchTrim, obj.hMscBatch, ...
+                SpecPosition.RIGHT);
+            SpecPosition.positionRelative(obj.hMscUI, obj.hMscBatch, ...
+                SpecPosition.BELOW, GUISettings.PAD_LARGE);
+            SpecPosition.positionIn(obj.hMscUI, obj.hFig, ...
+                SpecPosition.CENTER_X);
+            SpecPosition.positionIn(obj.hMscUIProgressType, obj.hMscUI, ...
+                SpecPosition.TOP, 2.5*GUISettings.PAD_LARGE);
+            SpecPosition.positionIn(obj.hMscUIProgressType, obj.hMscUI, ...
+                SpecPosition.LEFT, GUISettings.PAD_MED);
+            SpecPosition.positionRelative(obj.hMscUIProgressTypeValue, ...
+                obj.hMscUIProgressType, SpecPosition.CENTER_Y);
+            SpecPosition.positionRelative(obj.hMscUIProgressTypeValue, ...
+                obj.hMscUIProgressType, SpecPosition.RIGHT_OF, ...
+                GUISettings.PAD_MED);
+            SpecPosition.positionRelative(obj.hMscUIResults, ...
+                obj.hMscUIProgressType, SpecPosition.CENTER_Y);
+            SpecPosition.positionIn(obj.hMscUIResults, obj.hMscUI, ...
+                SpecPosition.RIGHT, GUISettings.PAD_LARGE);
+            SpecPosition.positionRelative(obj.hMscUIWarn, ...
+                obj.hMscUIProgressType, SpecPosition.BELOW, ...
+                2*GUISettings.PAD_LARGE);
+            SpecPosition.positionIn(obj.hMscUIWarn, obj.hMscUI, ...
+                SpecPosition.CENTER_X);
+            SpecPosition.positionRelative(obj.hMscUIPerc, obj.hMscUIWarn, ...
+                SpecPosition.BELOW, GUISettings.PAD_LARGE);
+            SpecPosition.positionIn(obj.hMscUIPerc, obj.hMscUI, ...
+                SpecPosition.LEFT, GUISettings.PAD_MED);
+            SpecPosition.positionRelative(obj.hMscUIPercValue, ...
+                obj.hMscUIPerc, SpecPosition.CENTER_Y);
+            SpecPosition.positionRelative(obj.hMscUIPercValue, ...
+                obj.hMscUIPerc, SpecPosition.RIGHT_OF, GUISettings.PAD_MED);
+            SpecPosition.positionRelative(obj.hMscUIPrepro, ...
+                obj.hMscUIPerc, SpecPosition.BELOW, 2*GUISettings.PAD_LARGE);
+            SpecPosition.positionRelative(obj.hMscUIPrepro, ...
+                obj.hMscUIPerc, SpecPosition.CENTER_X);
+            SpecPosition.positionRelative(obj.hMscUIPreproValue, ...
+                obj.hMscUIPrepro, SpecPosition.CENTER_Y);
+            SpecPosition.positionRelative(obj.hMscUIPreproValue, ...
+                obj.hMscUIPrepro, SpecPosition.RIGHT_OF, GUISettings.PAD_MED);
+            SpecPosition.positionRelative(obj.hMscUIDiff, ...
+                obj.hMscUIPrepro, SpecPosition.BELOW, GUISettings.PAD_MED);
+            SpecPosition.positionRelative(obj.hMscUIDiff, ...
+                obj.hMscUIPrepro, SpecPosition.CENTER_X);
+            SpecPosition.positionRelative(obj.hMscUIDiffValue, ...
+                obj.hMscUIDiff, SpecPosition.CENTER_Y);
+            SpecPosition.positionRelative(obj.hMscUIDiffValue, ...
+                obj.hMscUIDiff, SpecPosition.RIGHT_OF, GUISettings.PAD_MED);
+            SpecPosition.positionRelative(obj.hMscUIContrValue, ...
+                obj.hMscUIPrepro, SpecPosition.CENTER_Y);
+            SpecPosition.positionIn(obj.hMscUIContrValue, obj.hMscUI, ...
+                SpecPosition.RIGHT, GUISettings.PAD_MED);
+            SpecPosition.positionRelative(obj.hMscUIContr, ...
+                obj.hMscUIContrValue, SpecPosition.CENTER_Y);
+            SpecPosition.positionRelative(obj.hMscUIContr, ...
+                obj.hMscUIContrValue, SpecPosition.LEFT_OF, ...
+                GUISettings.PAD_MED);
+            SpecPosition.positionRelative(obj.hMscUIMatchValue, ...
+                obj.hMscUIContrValue, SpecPosition.BELOW, GUISettings.PAD_MED);
+            SpecPosition.positionRelative(obj.hMscUIMatchValue, ...
+                obj.hMscUIContrValue, SpecPosition.CENTER_X);
+            SpecPosition.positionRelative(obj.hMscUIMatch, ...
+                obj.hMscUIMatchValue, SpecPosition.CENTER_Y);
+            SpecPosition.positionRelative(obj.hMscUIMatch, ...
+                obj.hMscUIMatchValue, SpecPosition.LEFT_OF, ...
                 GUISettings.PAD_MED);
 
             SpecPosition.positionIn(obj.hDone, obj.hFig, ...
@@ -1585,38 +1959,105 @@ classdef ConfigSeqSLAMGUI < handle
             obj.config.seqslam.image_processing.normalisation.strength = ...
                 str2num(obj.hImPrNormStrengthValue.String);
 
-            obj.config.seqslam.matching.trajectory.d_s = ...
-                str2num(obj.hMatchTrajLengthValue.String);
-            obj.config.seqslam.matching.trajectory.v_min = ...
-                str2num(obj.hMatchTrajVminValue.String);
-            obj.config.seqslam.matching.trajectory.v_max = ...
-                str2num(obj.hMatchTrajVmaxValue.String);
-            obj.config.seqslam.matching.trajectory.v_step = ...
-                str2num(obj.hMatchTrajVstepValue.String);
+            obj.config.seqslam.search.d_s = ...
+                str2num(obj.hMatchSearchLengthValue.String);
+            obj.config.seqslam.search.v_min = ...
+                str2num(obj.hMatchSearchVminValue.String);
+            obj.config.seqslam.search.v_max = ...
+                str2num(obj.hMatchSearchVmaxValue.String);
+            if obj.hMatchSearchMethodValue.Value == 3
+                obj.config.seqslam.search.method = 'hybrid';
+            elseif obj.hMatchSearchMethodValue.Value == 2
+                obj.config.seqslam.search.method = 'cone';
+            else
+                obj.config.seqslam.search.method = 'traj';
+                obj.config.seqslam.search.method_traj.v_step = ...
+                    str2num(obj.hMatchSearchVstepValue.String);
+            end
             if obj.hMatchCriMethodValue.Value == 2
                 obj.config.seqslam.matching.method = 'thresh';
+                obj.config.seqslam.matching.method_thresh.threshold = ...
+                    str2num(obj.hMatchCriThresholdValue.String);
             else
                 obj.config.seqslam.matching.method = 'window';
+                obj.config.seqslam.matching.method_window.r_window = ...
+                    str2num(obj.hMatchCriWindowValue.String);
+                obj.config.seqslam.matching.method_window.u = ...
+                    str2num(obj.hMatchCriUValue.String);
             end
-            obj.config.seqslam.matching.method_window.r_window = ...
-                str2num(obj.hMatchCriWindowValue.String);
-            obj.config.seqslam.matching.method_window.u = ...
-                str2num(obj.hMatchCriUValue.String);
-            obj.config.seqslam.matching.method_thresh.threshold = ...
-                str2num(obj.hMatchCriThresholdValue.String);
 
-            empty.seqslam.diff_matrix.contrast.r_window = ...
+            obj.config.seqslam.diff_matrix.contrast.r_window = ...
                 str2num(obj.hMscDiffEnhValue.String);
-            empty.visual.progress.percent_freq = ...
-                str2num(obj.hMscVisPercValue.String);
-            empty.visual.progress.preprocess_freq = ...
-                str2num(obj.hMscVisPreproValue.String);
-            empty.visual.progress.diff_matrix_freq = ...
-                str2num(obj.hMscVisDiffValue.String);
-            empty.visual.progress.enhance_freq = ...
-                str2num(obj.hMscVisContrValue.String);
-            empty.visual.progress.match_freq = ...
-                str2num(obj.hMscVisMatchValue.String);
+            if ~isempty(obj.cachedGroundTruth)
+                obj.config.ground_truth = obj.cachedGroundTruth;
+                obj.config.ground_truth.exists = true;
+                if obj.hMscGtOptimiseValue.Value == 4
+                    obj.config.ground_truth.use_to_auto_optimise = 'f1';
+                elseif obj.hMscGtOptimiseValue.Value == 3
+                    obj.config.ground_truth.use_to_auto_optimise = 'r';
+                elseif obj.hMscGtOptimiseValue.Value == 2
+                    obj.config.ground_truth.use_to_auto_optimise = 'p';
+                else
+                    obj.config.ground_truth.use_to_auto_optimise = [];
+                end
+            else
+                obj.config.ground_truth.exists = false;
+            end
+            if obj.hMscBatchEnabled.Value == 1
+                obj.config.batch.enabled = true;
+            else
+                obj.config.batch.enabled = false;
+            end
+            obj.config.batch.param = obj.hMscBatchParamValue.String;
+            obj.config.batch.values = SafeData.str2vector( ...
+                obj.hMscBatchValuesValue.String);
+            if obj.hMscBatchParallelise.Value == 1
+                obj.config.batch.parallelise = true;
+            else
+                obj.config.batch.parallelise = false;
+            end
+            if obj.hMscBatchTrim.Value == 1
+                obj.config.batch.trim_results = true;
+            else
+                obj.config.batch.trim_results = false;
+            end
+            if obj.hMscUIProgressTypeValue.Value == 2
+                obj.config.ui.progress.type = 'console';
+            else
+                obj.config.ui.progress.type = 'graphical';
+            end
+            if obj.hMscUIResults.Value == 1
+                obj.config.ui.results = true;
+            else
+                obj.config.ui.results = false;
+            end
+            obj.config.ui.progress.percent_freq = ...
+                str2num(obj.hMscUIPercValue.String);
+            obj.config.ui.progress.preprocess_freq = ...
+                str2num(obj.hMscUIPreproValue.String);
+            obj.config.ui.progress.diff_matrix_freq = ...
+                str2num(obj.hMscUIDiffValue.String);
+            obj.config.ui.progress.enhance_freq = ...
+                str2num(obj.hMscUIContrValue.String);
+            obj.config.ui.progress.match_freq = ...
+                str2num(obj.hMscUIMatchValue.String);
+        end
+
+        function updateGroundTruthOptions(obj)
+            % Update the status string
+            [obj.hMscGtStatus.String, ...
+                obj.hMscGtStatus.ForegroundColor] = ...
+                GroundTruthPopup.gtDescription(obj.cachedGroundTruth);
+
+            % Update the optimisation options
+            if isempty(obj.cachedGroundTruth) || isequal( ...
+                    obj.hMscGtStatus.ForegroundColor, GUISettings.COL_ERROR)
+                status = 'off';
+            else
+                status = 'on';
+            end
+            obj.hMscGtOptimise.Enable = status;
+            obj.hMscGtOptimiseValue.Enable = status;
         end
     end
 end

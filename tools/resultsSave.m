@@ -10,16 +10,21 @@ function err = resultsSave(path, data, fname)
         settings2xml(data, fullfile(path, fname));
     elseif strcmp(fname, 'preprocessed.mat')
         preprocessed = data;
-        save(fullfile(path, 'preprocessed.mat'), 'preprocessed');
+        save(fullfile(path, fname), 'preprocessed');
     elseif strcmp(fname, 'diff_matrix.mat')
         diffMatrix = data;
-        save(fullfile(path, 'diff_matrix.mat'), 'diffMatrix');
+        save(fullfile(path, fname), 'diffMatrix');
     elseif strcmp(fname, 'matching.mat')
         matching = data;
-        save(fullfile(path, 'matching.mat'), 'matching');
+        save(fullfile(path, fname), 'matching');
     elseif strcmp(fname, 'precision_recall.mat')
         pr = data;
-        save(fullfile(path, 'precision_recall.mat'), 'pr');
+        save(fullfile(path, fname), 'pr');
+    elseif strcmp(fname, 'batch_results.mat')
+        results = data;
+        save(fullfile(path, fname), 'results');
+    elseif strcmp(fname, 'batch_config.xml')
+        settings2xml(data, fullfile(path, fname));
     else
         err = ['There is not supprted saving method for filename ''' fname '''.'];
     end

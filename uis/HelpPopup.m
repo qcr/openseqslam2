@@ -132,6 +132,13 @@ classdef HelpPopup < handle
                 popup.setHelpScreen(docName);
             end
         end
+
+        function requestClose()
+            popup = HelpPopup.getPopup();
+            if ~isempty(popup)
+                delete(popup.hFig);
+            end
+        end
     end
 
     methods (Access = private, Static)
