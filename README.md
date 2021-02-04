@@ -1,5 +1,7 @@
 # OpenSeqSLAM2.0 Toolbox
 
+![The various interactive screens in OpenSeqSLAM2](./docs/openseqslam2.png)
+
 OpenSeqSLAM2.0 is a MATLAB toolbox that allows users to thoroughly explore the SeqSLAM method in addressing the visual place recognition problem. The visual place recognition problem is centred around recognising a previously traversed route, regardless of whether it is seen during the day or night, in clear or inclement conditions, or in summer or winter. Recognising previously traversed routes is a crucial capability of navigating robots. Through the graphical interfaces packaged in OpenSeqSLAM2 users are able to:
 
 - explore a number of previously published variations to the SeqSLAM method (including search and match selection methods);
@@ -25,15 +27,15 @@ OpenSeqSLAM2();
 
 There are a number of default configuration files included in the `.config` directory which showcase the capabilities of the toolbox. To use a configuration file, open the toolbox as described above, then use the `Import config` button. A summary of the features showcased in each of the configuration files is included below:
 
-- `'images_same'`: The trimmed Nordland dataset images, with the same dataset used as both reference and query. Trajectory based search is used, and a velocity-based ground truth is included, but not used for auto-optimisation of match threshold.
-- `'images_diff'`: The trimmed Nordland dataset images, with the summer traversal used as the reference dataset and the winter traversal as the query. Trajectory based search is used, and a \*.csv based ground truth is used for auto-optimising the match threshold selection.
-- `'videos_same'`: The day night video dataset, with the same video used as both the reference and query dataset. Trajectory based search is used, with no ground truth provided.
-- `'videos_diff'`: The day night video dataset, with the day traversal used as the reference dataset and the night traversal as the query. Trajectory based search is used, with no ground truth provided.
-- `'hybrid_search'`: Same as `'videos_diff'`, but the hybrid search is used instead of trajectory search.
-- `'no_gui'`: Same as `'videos_diff'`, but the progress is presented in the console rather than GUI and no results GUI is shown (tip: run OpenSeqSLAM2(‘<configpath>/no_gui.xml’) to see how the toolbox can run entirely headless)
-- `'batch_with_gui'`: Same as `'images_diff'`, but a batch parameter sweep of the sequence length parameter is performed. The progress GUI shows the progress of the individual iteration and overall in separate windows.
-- `'parrallelised_batch'`: Same as `'batch_with_gui'`, but the parameter sweep is done in parallel mode (which cannot be performed with the Progress GUI). The parallel mode will use a worker for each core available in the host CPU.
-- `'default'`: is set to `'images_diff'`
+- **`'images_same'`**: The trimmed Nordland dataset images, with the same dataset used as both reference and query. Trajectory based search is used, and a velocity-based ground truth is included, but not used for auto-optimisation of match threshold.
+- **`'images_diff'`**: The trimmed Nordland dataset images, with the summer traversal used as the reference dataset and the winter traversal as the query. Trajectory based search is used, and a \*.csv based ground truth is used for auto-optimising the match threshold selection.
+- **`'videos_same'`**: The day night video dataset, with the same video used as both the reference and query dataset. Trajectory based search is used, with no ground truth provided.
+- **`'videos_diff'`**: The day night video dataset, with the day traversal used as the reference dataset and the night traversal as the query. Trajectory based search is used, with no ground truth provided.
+- **`'hybrid_search'`**: Same as `'videos_diff'`, but the hybrid search is used instead of trajectory search.
+- **`'no_gui'`**: Same as `'videos_diff'`, but the progress is presented in the console rather than GUI and no results GUI is shown (tip: run OpenSeqSLAM2(‘<configpath>/no_gui.xml’) to see how the toolbox can run entirely headless)
+- **`'batch_with_gui'`**: Same as `'images_diff'`, but a batch parameter sweep of the sequence length parameter is performed. The progress GUI shows the progress of the individual iteration and overall in separate windows.
+- **`'parrallelised_batch'`**: Same as `'batch_with_gui'`, but the parameter sweep is done in parallel mode (which cannot be performed with the Progress GUI). The parallel mode will use a worker for each core available in the host CPU.
+- **`'default'`**: is set to `'images_diff'`
 
 _*Note:* the programs in the `./bin` directory can be run standalone by providing the appropriate results / config structs as arguments if you would like to use only a specific part of the pipeline (i.e. only configuration, or progress wrapped execution, or viewing results)._
 
